@@ -1,0 +1,2306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FluidNC Board Mapping Wizard — Prototype</title>
+<script>(function(e,t){typeof exports==`object`&&typeof module<`u`?t(exports):typeof define==`function`&&define.amd?define([`exports`],t):(e=typeof globalThis<`u`?globalThis:e||self,t(e.jsyaml={}))})(this,function(e){Object.defineProperty(e,Symbol.toStringTag,{value:`Module`});var t=Symbol(`NOT_RESOLVED`),n=Symbol(`MERGE_KEY`);function r(e,t){var n,r,i,a,o,s;return{tagName:e,nodeKind:`scalar`,implicit:(n=t.implicit)==null?!1:n,matchByTagPrefix:(r=t.matchByTagPrefix)==null?!1:r,implicitFirstChars:(i=t.implicitFirstChars)==null?null:i,resolve:t.resolve,identify:(a=t.identify)==null?null:a,represent:(o=t.represent)==null?(e=>String(e)):o,representTagName:(s=t.representTagName)==null?null:s}}function i(e,t){var n,r,i,a,o;let s=t.finalize===void 0;return{tagName:e,nodeKind:`sequence`,implicit:!1,matchByTagPrefix:(n=t.matchByTagPrefix)==null?!1:n,create:t.create,addItem:t.addItem,finalize:(r=t.finalize)==null?(e=>e):r,carrierIsResult:s,identify:(i=t.identify)==null?null:i,represent:(a=t.represent)==null?(e=>e):a,representTagName:(o=t.representTagName)==null?null:o}}function a(e,t){var n,r,i,a,o;let s=t.finalize===void 0;return{tagName:e,nodeKind:`mapping`,implicit:!1,matchByTagPrefix:(n=t.matchByTagPrefix)==null?!1:n,create:t.create,addPair:t.addPair,has:t.has,keys:t.keys,get:t.get,finalize:(r=t.finalize)==null?(e=>e):r,carrierIsResult:s,identify:(i=t.identify)==null?null:i,represent:(a=t.represent)==null?(e=>e):a,representTagName:(o=t.representTagName)==null?null:o}}var o=r(`tag:yaml.org,2002:str`,{resolve:e=>e,identify:e=>typeof e==`string`}),s=[``,`~`,`null`,`Null`,`NULL`],c=r(`tag:yaml.org,2002:null`,{implicit:!0,implicitFirstChars:[``,`~`,`n`,`N`],resolve:e=>s.indexOf(e)===-1?t:null,identify:e=>e===null,represent:()=>`null`}),l=r(`tag:yaml.org,2002:null`,{implicit:!0,implicitFirstChars:[`n`],resolve:(e,n)=>e===`null`||n&&e===``?null:t,identify:e=>e===null,represent:()=>`null`}),u=[``,`~`,`null`,`Null`,`NULL`],d=r(`tag:yaml.org,2002:null`,{implicit:!0,implicitFirstChars:[``,`~`,`n`,`N`],resolve:e=>u.indexOf(e)===-1?t:null,identify:e=>e===null,represent:()=>`null`}),f=[`true`,`True`,`TRUE`],p=[`false`,`False`,`FALSE`],m=r(`tag:yaml.org,2002:bool`,{implicit:!0,implicitFirstChars:[`t`,`T`,`f`,`F`],resolve:e=>f.indexOf(e)===-1?p.indexOf(e)===-1?t:!1:!0,identify:e=>Object.prototype.toString.call(e)===`[object Boolean]`,represent:e=>e?`true`:`false`}),h=[`true`],ee=[`false`],te=r(`tag:yaml.org,2002:bool`,{implicit:!0,implicitFirstChars:[`t`,`f`],resolve:e=>h.indexOf(e)===-1?ee.indexOf(e)===-1?t:!1:!0,identify:e=>Object.prototype.toString.call(e)===`[object Boolean]`,represent:e=>e?`true`:`false`}),ne=[`true`,`True`,`TRUE`,`y`,`Y`,`yes`,`Yes`,`YES`,`on`,`On`,`ON`],re=[`false`,`False`,`FALSE`,`n`,`N`,`no`,`No`,`NO`,`off`,`Off`,`OFF`],ie=r(`tag:yaml.org,2002:bool`,{implicit:!0,implicitFirstChars:[`y`,`Y`,`n`,`N`,`t`,`T`,`f`,`F`,`o`,`O`],resolve:e=>ne.indexOf(e)===-1?re.indexOf(e)===-1?t:!1:!0,identify:e=>Object.prototype.toString.call(e)===`[object Boolean]`,represent:e=>e?`true`:`false`}),ae=RegExp(`^(?:0o[0-7]+|0x[0-9a-fA-F]+|[-+]?[0-9]+)$`),oe=RegExp(`^(?:[-+]?0b[0-1]+|[-+]?0o[0-7]+|[-+]?0x[0-9a-fA-F]+|[-+]?[0-9]+)$`);function se(e){let t=e,n=1;return(t[0]===`-`||t[0]===`+`)&&(t[0]===`-`&&(n=-1),t=t.slice(1)),t.startsWith(`0b`)?n*parseInt(t.slice(2),2):t.startsWith(`0o`)?n*parseInt(t.slice(2),8):t.startsWith(`0x`)?n*parseInt(t.slice(2),16):n*parseInt(t,10)}function ce(e,n){if(n){if(!oe.test(e))return t}else if(!ae.test(e))return t;let r=se(e);return Number.isFinite(r)?r:t}var le=r(`tag:yaml.org,2002:int`,{implicit:!0,implicitFirstChars:[`-`,`+`,...`0123456789`],resolve:ce,identify:e=>Number.isInteger(e)&&!Object.is(e,-0)&&e.toString(10).indexOf(`e`)<0,represent:e=>e.toString(10)}),ue=RegExp(`^-?(?:0|[1-9][0-9]*)$`),de=RegExp(`^(?:[-+]?0b[0-1]+|[-+]?0o[0-7]+|[-+]?0x[0-9a-fA-F]+|[-+]?[0-9]+)$`);function fe(e){let t=e,n=1;return(t[0]===`-`||t[0]===`+`)&&(t[0]===`-`&&(n=-1),t=t.slice(1)),t.startsWith(`0b`)?n*parseInt(t.slice(2),2):t.startsWith(`0o`)?n*parseInt(t.slice(2),8):t.startsWith(`0x`)?n*parseInt(t.slice(2),16):n*parseInt(t,10)}function pe(e,n){if(n){if(!de.test(e))return t}else if(!ue.test(e))return t;let r=fe(e);return Number.isFinite(r)?r:t}var me=r(`tag:yaml.org,2002:int`,{implicit:!0,implicitFirstChars:[`-`,...`0123456789`],resolve:pe,identify:e=>Number.isInteger(e)&&!Object.is(e,-0)&&e.toString(10).indexOf(`e`)<0,represent:e=>e.toString(10)}),he=RegExp(`^(?:[-+]?0b[0-1_]+|[-+]?0[0-7_]+|[-+]?0x[0-9a-fA-F_]+|[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+|[-+]?(?:0|[1-9][0-9_]*))$`);function ge(e){let t=e.replace(/_/g,``),n=1;if((t[0]===`-`||t[0]===`+`)&&(t[0]===`-`&&(n=-1),t=t.slice(1)),t.startsWith(`0b`))return n*parseInt(t.slice(2),2);if(t.startsWith(`0x`))return n*parseInt(t.slice(2),16);if(t.includes(`:`)){let e=0;for(let n of t.split(`:`))e=e*60+Number(n);return n*e}return t!==`0`&&t[0]===`0`?n*parseInt(t,8):n*parseInt(t,10)}function _e(e){if(!he.test(e))return t;let n=ge(e);return Number.isFinite(n)?n:t}var ve=r(`tag:yaml.org,2002:int`,{implicit:!0,implicitFirstChars:[`-`,`+`,...`0123456789`],resolve:_e,identify:e=>Number.isInteger(e)&&!Object.is(e,-0)&&e.toString(10).indexOf(`e`)<0,represent:e=>e.toString(10)}),ye=RegExp(`^(?:[-+]?[0-9]+(?:\\.[0-9]*)?(?:[eE][-+]?[0-9]+)?|[-+]?\\.[0-9]+(?:[eE][-+]?[0-9]+)?|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`),be=RegExp(`^(?:[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`);function xe(e){if(!ye.test(e))return t;let n=e.toLowerCase(),r=n[0]===`-`?-1:1;if(`+-`.includes(n[0])&&(n=n.slice(1)),n===`.inf`)return r===1?1/0:-1/0;if(n===`.nan`)return NaN;let i=r*parseFloat(n);return Number.isFinite(i)||be.test(e)?i:t}function Se(e){if(isNaN(e))return`.nan`;if(e===1/0)return`.inf`;if(e===-1/0)return`-.inf`;if(Object.is(e,-0))return`-0.0`;let t=e.toString(10);return/^[-+]?[0-9]+e/.test(t)?t.replace(`e`,`.e`):t}var Ce=r(`tag:yaml.org,2002:float`,{implicit:!0,implicitFirstChars:[`-`,`+`,`.`,...`0123456789`],resolve:xe,identify:e=>typeof e==`number`&&(!Number.isInteger(e)||Object.is(e,-0)||e.toString(10).indexOf(`e`)>=0),represent:Se}),we=RegExp(`^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]*)?(?:[eE][-+]?[0-9]+)?$`),Te=RegExp(`^(?:[-+]?[0-9]+(?:\\.[0-9]*)?(?:[eE][-+]?[0-9]+)?|[-+]?\\.[0-9]+(?:[eE][-+]?[0-9]+)?|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`);function Ee(e,n){if(n){if(!Te.test(e))return t;let n=e.toLowerCase(),r=n[0]===`-`?-1:1;if(`+-`.includes(n[0])&&(n=n.slice(1)),n===`.inf`)return r===1?1/0:-1/0;if(n===`.nan`)return NaN;let i=r*parseFloat(n);return Number.isFinite(i)?i:t}if(!we.test(e))return t;let r=Number(e);return Number.isFinite(r)?r:t}function De(e){if(isNaN(e))return`.nan`;if(e===1/0)return`.inf`;if(e===-1/0)return`-.inf`;if(Object.is(e,-0))return`-0.0`;let t=e.toString(10);return/^[-+]?[0-9]+e/.test(t)?t.replace(`e`,`.e`):t}var Oe=r(`tag:yaml.org,2002:float`,{implicit:!0,implicitFirstChars:[`-`,...`0123456789`],resolve:Ee,identify:e=>typeof e==`number`&&(!Number.isInteger(e)||Object.is(e,-0)||e.toString(10).indexOf(`e`)>=0),represent:De}),ke=RegExp(`^(?:[-+]?(?:(?:[0-9][0-9_]*)?\\.[0-9_]*)(?:[eE][-+][0-9]+)?|[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\\.[0-9_]*|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`),Ae=RegExp(`^(?:[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`);function je(e){if(!ke.test(e))return t;let n=e.toLowerCase().replace(/_/g,``),r=n[0]===`-`?-1:1;if(`+-`.includes(n[0])&&(n=n.slice(1)),n===`.inf`)return r===1?1/0:-1/0;if(n===`.nan`)return NaN;let i=0;if(n.includes(`:`)){for(let e of n.split(`:`))i=i*60+Number(e);i*=r}else i=r*parseFloat(n);return Number.isFinite(i)||Ae.test(e)?i:t}function Me(e){if(isNaN(e))return`.nan`;if(e===1/0)return`.inf`;if(e===-1/0)return`-.inf`;if(Object.is(e,-0))return`-0.0`;let t=e.toString(10);return/^[-+]?[0-9]+e/.test(t)?t.replace(`e`,`.e`):t}var Ne=r(`tag:yaml.org,2002:float`,{implicit:!0,implicitFirstChars:[`-`,`+`,`.`,...`0123456789`],resolve:je,identify:e=>typeof e==`number`&&(!Number.isInteger(e)||Object.is(e,-0)||e.toString(10).indexOf(`e`)>=0),represent:Me}),Pe=r(`tag:yaml.org,2002:merge`,{implicit:!0,implicitFirstChars:[`<`],resolve:(e,r)=>e===`<<`||r&&e===``?n:t}),Fe=/^[A-Za-z0-9+/]*={0,2}$/;function Ie(e){let n=e.replace(/\s/g,``);if(n.length%4!=0||!Fe.test(n))return t;let r=atob(n),i=new Uint8Array(r.length);for(let e=0;e<r.length;e++)i[e]=r.charCodeAt(e);return i}function Le(e){let t=``;for(let n=0;n<e.length;n++)t+=String.fromCharCode(e[n]);return btoa(t)}var Re=r(`tag:yaml.org,2002:binary`,{resolve:Ie,identify:e=>Object.prototype.toString.call(e)===`[object Uint8Array]`,represent:Le}),ze=RegExp(`^([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9])$`),Be=RegExp(`^([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)(?:[Tt]|[ \\t]+)([0-9][0-9]?):([0-9][0-9]):([0-9][0-9])(?:\\.([0-9]*))?(?:[ \\t]*(Z|([-+])([0-9][0-9]?)(?::([0-9][0-9]))?))?$`);function Ve(e){let n=ze.exec(e);if(n===null&&(n=Be.exec(e)),n===null)return t;let r=+n[1],i=n[2]-1,a=+n[3];if(!n[4]){let e=new Date(Date.UTC(r,i,a));return e.getUTCFullYear()!==r||e.getUTCMonth()!==i||e.getUTCDate()!==a?t:e}let o=+n[4],s=+n[5],c=+n[6],l=0;if(o>23||s>59||c>59)return t;if(n[7]){let e=n[7].slice(0,3);for(;e.length<3;)e+=`0`;l=+e}let u=new Date(Date.UTC(r,i,a,o,s,c,l));if(u.getUTCFullYear()!==r||u.getUTCMonth()!==i||u.getUTCDate()!==a)return t;if(n[9]){let e=+n[10],r=+(n[11]||0);if(e>23||r>59)return t;let i=(e*60+r)*6e4;u.setTime(u.getTime()-(n[9]===`-`?-i:i))}return u}var He=r(`tag:yaml.org,2002:timestamp`,{implicit:!0,implicitFirstChars:[...`0123456789`],resolve:Ve,identify:e=>e instanceof Date,represent:e=>e.toISOString()}),Ue=i(`tag:yaml.org,2002:seq`,{create:()=>[],addItem:(e,t)=>{e.push(t)},identify:Array.isArray});function We(e){if(typeof e!=`object`||!e||Array.isArray(e))return!1;let t=Object.getPrototypeOf(e);return t===null||t===Object.prototype}function Ge(e,t){let n={};for(let r of t)e[r]!==void 0&&(n[r]=e[r]);return n}var Ke=i(`tag:yaml.org,2002:omap`,{create:()=>({list:[],seen:new Set}),addItem:(e,t)=>{let n;if(t instanceof Map){if(t.size!==1)return`cannot resolve an ordered map item`;n=t.keys().next().value}else if(We(t)){let e=Object.keys(t);if(e.length!==1)return`cannot resolve an ordered map item`;n=e[0]}else return`cannot resolve an ordered map item`;return e.seen.has(n)?`duplicate key in ordered map`:(e.seen.add(n),e.list.push(t),``)},finalize:e=>e.list}),qe=i(`tag:yaml.org,2002:pairs`,{create:()=>[],addItem:(e,t)=>{if(t instanceof Map)return t.size===1?(e.push(t.entries().next().value),``):`cannot resolve a pairs item`;if(Object.prototype.toString.call(t)!==`[object Object]`)return`cannot resolve a pairs item`;let n=t,r=Object.keys(n);return r.length===1?(e.push([r[0],n[r[0]]]),``):`cannot resolve a pairs item`}}),Je=a(`tag:yaml.org,2002:map`,{create:()=>({}),identify:We,represent:e=>{let t=new Map;for(let n of Object.keys(e))t.set(n,e[n]);return t},addPair:(e,t,n)=>{if(typeof t==`object`&&t)return`object-based map does not support complex keys`;let r=String(t);return r===`__proto__`?Object.defineProperty(e,r,{value:n,enumerable:!0,configurable:!0,writable:!0}):e[r]=n,``},has:(e,t)=>typeof t==`object`&&t?!1:Object.prototype.hasOwnProperty.call(e,String(t)),keys:e=>Object.keys(e),get:(e,t)=>e[String(t)]}),Ye=a(`tag:yaml.org,2002:set`,{create:()=>new Set,identify:e=>e instanceof Set,represent:e=>{let t=new Map;for(let n of e)t.set(n,null);return t},addPair:(e,t,n)=>n===null?(e.add(t),``):`cannot resolve a set item`,has:(e,t)=>e.has(t),keys:e=>e.keys(),get:()=>null});function g(e){"@babel/helpers - typeof";return g=typeof Symbol==`function`&&typeof Symbol.iterator==`symbol`?function(e){return typeof e}:function(e){return e&&typeof Symbol==`function`&&e.constructor===Symbol&&e!==Symbol.prototype?`symbol`:typeof e},g(e)}function Xe(e,t){if(g(e)!=`object`||!e)return e;var n=e[Symbol.toPrimitive];if(n!==void 0){var r=n.call(e,t||`default`);if(g(r)!=`object`)return r;throw TypeError(`@@toPrimitive must return a primitive value.`)}return(t===`string`?String:Number)(e)}function Ze(e){var t=Xe(e,`string`);return g(t)==`symbol`?t:t+``}function _(e,t,n){return(t=Ze(t))in e?Object.defineProperty(e,t,{value:n,enumerable:!0,configurable:!0,writable:!0}):e[t]=n,e}function Qe(){return{scalar:{},sequence:{},mapping:{}}}function $e(){return{scalar:[],sequence:[],mapping:[]}}function et(e){let t=[];for(let n of e){let e=t.length;for(let r=0;r<t.length;r++){let i=t[r];if(i.nodeKind===n.nodeKind&&i.tagName===n.tagName&&i.matchByTagPrefix===n.matchByTagPrefix){e=r;break}}t[e]=n}return t}var v=class e{constructor(e){_(this,`tags`,void 0),_(this,`implicitScalarTags`,void 0),_(this,`implicitScalarByFirstChar`,void 0),_(this,`implicitScalarAnyFirstChar`,void 0),_(this,`defaultScalarTag`,void 0),_(this,`defaultSequenceTag`,void 0),_(this,`defaultMappingTag`,void 0),_(this,`exact`,void 0),_(this,`prefix`,void 0);let t=et(e),n=[],r=Qe(),i=$e();for(let e of t){if(e.nodeKind===`scalar`&&e.implicit){if(e.matchByTagPrefix)throw Error(`Implicit scalar tags cannot match by tag prefix`);n.push(e)}switch(e.nodeKind){case`scalar`:e.matchByTagPrefix?i.scalar.push(e):r.scalar[e.tagName]=e;break;case`sequence`:e.matchByTagPrefix?i.sequence.push(e):r.sequence[e.tagName]=e;break;case`mapping`:e.matchByTagPrefix?i.mapping.push(e):r.mapping[e.tagName]=e;break}}let a=n.filter(e=>e.implicitFirstChars===null),o=new Set;for(let e of n)if(e.implicitFirstChars!==null)for(let t of e.implicitFirstChars)o.add(t);let s=new Map;for(let e of o)s.set(e,n.filter(t=>t.implicitFirstChars===null||t.implicitFirstChars.indexOf(e)!==-1));let c=r.scalar[`tag:yaml.org,2002:str`];if(!c)throw Error(`schema does not define the default scalar tag (tag:yaml.org,2002:str)`);this.tags=t,this.implicitScalarTags=n,this.implicitScalarByFirstChar=s,this.implicitScalarAnyFirstChar=a,this.defaultScalarTag=c,this.defaultSequenceTag=r.sequence[`tag:yaml.org,2002:seq`],this.defaultMappingTag=r.mapping[`tag:yaml.org,2002:map`],this.exact=r,this.prefix=i}withTags(...t){let n=[];for(let e of t)n=n.concat(e);return new e([...this.tags,...n])}},tt=new v([o,Ue,Je]),nt=new v([...tt.tags,l,te,me,Oe]),rt=new v([...tt.tags,c,m,le,Ce]),it=new v([...tt.tags,d,ie,ve,Ne,He,Pe,Re,Ke,qe,Ye]),at=a(`tag:yaml.org,2002:map`,{create:()=>new Map,addPair:(e,t,n)=>(e.set(t,n),``),has:(e,t)=>e.has(t),keys:e=>e.keys(),get:(e,t)=>e.get(t),identify:e=>e instanceof Map||We(e),represent:e=>{if(e instanceof Map)return e;let t=new Map,n=e;for(let e of Object.keys(n))t.set(e,n[e]);return t}});function ot(e){if(Array.isArray(e)){let t=Array.prototype.slice.call(e);for(let e=0;e<t.length;e++){if(Array.isArray(t[e]))return null;typeof t[e]==`object`&&Object.prototype.toString.call(t[e])===`[object Object]`&&(t[e]=`[object Object]`)}return String(t)}return typeof e==`object`&&Object.prototype.toString.call(e)===`[object Object]`?`[object Object]`:String(e)}var st=a(`tag:yaml.org,2002:map`,{create:()=>({}),identify:We,represent:e=>{let t=new Map;for(let n of Object.keys(e))t.set(n,e[n]);return t},addPair:(e,t,n)=>{let r=ot(t);return r===null?`nested arrays are not supported inside keys`:(r===`__proto__`?Object.defineProperty(e,r,{value:n,enumerable:!0,configurable:!0,writable:!0}):e[r]=n,``)},has:(e,t)=>{let n=ot(t);return n!==null&&Object.prototype.hasOwnProperty.call(e,n)},keys:e=>Object.keys(e),get:(e,t)=>e[String(t)]});function ct(e,t){var n=Object.keys(e);if(Object.getOwnPropertySymbols){var r=Object.getOwnPropertySymbols(e);t&&(r=r.filter(function(t){return Object.getOwnPropertyDescriptor(e,t).enumerable})),n.push.apply(n,r)}return n}function y(e){for(var t=1;t<arguments.length;t++){var n=arguments[t]==null?{}:arguments[t];t%2?ct(Object(n),!0).forEach(function(t){_(e,t,n[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(e,Object.getOwnPropertyDescriptors(n)):ct(Object(n)).forEach(function(t){Object.defineProperty(e,t,Object.getOwnPropertyDescriptor(n,t))})}return e}var lt={maxLength:79,indent:1,linesBefore:3,linesAfter:2};function ut(e,t,n,r,i){let a=``,o=``,s=Math.floor(i/2)-1;return r-t>s&&(a=` ... `,t=r-s+a.length),n-r>s&&(o=` ...`,n=r+s-o.length),{str:a+e.slice(t,n).replace(/\t/g,`→`)+o,pos:r-t+a.length}}function dt(e,t){return` `.repeat(Math.max(t-e.length,0))+e}function ft(e,t){if(!e.buffer)return null;let n=y(y({},lt),t),r=/\r?\n|\r|\0/g,i=[0],a=[],o,s=-1;for(;o=r.exec(e.buffer);)a.push(o.index),i.push(o.index+o[0].length),e.position<=o.index&&s<0&&(s=i.length-2);s<0&&(s=i.length-1);let c=``,l=Math.min(e.line+n.linesAfter,a.length).toString().length,u=n.maxLength-(n.indent+l+3);for(let t=1;t<=n.linesBefore&&!(s-t<0);t++){let r=ut(e.buffer,i[s-t],a[s-t],e.position-(i[s]-i[s-t]),u);c=`${` `.repeat(n.indent)}${dt((e.line-t+1).toString(),l)} | ${r.str}\n${c}`}let d=ut(e.buffer,i[s],a[s],e.position,u);c+=`${` `.repeat(n.indent)}${dt((e.line+1).toString(),l)} | ${d.str}\n`,c+=`${`-`.repeat(n.indent+l+3+d.pos)}^\n`;for(let t=1;t<=n.linesAfter&&!(s+t>=a.length);t++){let r=ut(e.buffer,i[s+t],a[s+t],e.position-(i[s]-i[s+t]),u);c+=`${` `.repeat(n.indent)}${dt((e.line+t+1).toString(),l)} | ${r.str}\n`}return c.replace(/\n$/,``)}function pt(e,t){let n=``;return e.mark?(e.mark.name&&(n+=`in "${e.mark.name}" `),n+=`(${e.mark.line+1}:${e.mark.column+1})`,!t&&e.mark.snippet&&(n+=`\n\n${e.mark.snippet}`),`${e.reason} ${n}`):e.reason}var b=class extends Error{constructor(e,t){super(),_(this,`reason`,void 0),_(this,`mark`,void 0),this.name=`YAMLException`,this.reason=e,this.mark=t,this.message=pt(this,!1),Error.captureStackTrace&&Error.captureStackTrace(this,this.constructor)}toString(e){return`${this.name}: ${pt(this,e)}`}};function mt(e,t,n,r=``){let i=0,a=0;for(let n=0;n<t;n++){let t=e.charCodeAt(n);t===10?(i++,a=n+1):t===13&&(i++,e.charCodeAt(n+1)===10&&n++,a=n+1)}let o={name:r,buffer:e,position:t,line:i,column:t-a};throw o.snippet=ft(o),new b(n,o)}var ht=1,gt=2,_t=3,vt=4,yt=5,bt=6,xt=1,St=2,Ct=3,wt=4,Tt=5,Et=1,Dt=2,Ot=1,kt=2,At=3,jt=-1;function Mt(e){switch(e){case 48:return`\0`;case 97:return`\x07`;case 98:return`\b`;case 116:return`	`;case 9:return`	`;case 110:return`
+`;case 118:return`\v`;case 102:return`\f`;case 114:return`\r`;case 101:return`\x1B`;case 32:return` `;case 34:return`"`;case 47:return`/`;case 92:return`\\`;case 78:return``;case 95:return`\xA0`;case 76:return`\u2028`;case 80:return`\u2029`;default:return``}}var Nt=Array(256),Pt=Array(256);for(let e=0;e<256;e++)Nt[e]=+!!Mt(e),Pt[e]=Mt(e);function Ft(e){return e<=65535?String.fromCharCode(e):String.fromCharCode((e-65536>>10)+55296,(e-65536&1023)+56320)}function It(e){return e>=48&&e<=57?e-48:(e|32)-97+10}function Lt(e){return e===120?2:e===117?4:8}function Rt(e,t,n){let r=0;for(;t<n;){let n=e.charCodeAt(t);if(n===10)r++,t++;else if(n===13)r++,t++,e.charCodeAt(t)===10&&t++;else if(n===32||n===9)t++;else break}return{position:t,breaks:r}}function zt(e){return e===1?` `:`
+`.repeat(e-1)}function Bt(e,t,n){let r=``,i=t,a=t,o=t;for(;i<n;){let t=e.charCodeAt(i);if(t===10||t===13){r+=e.slice(a,o);let t=Rt(e,i,n);r+=zt(t.breaks),i=a=o=t.position}else i++,t!==32&&t!==9&&(o=i)}return r+e.slice(a,o)}function Vt(e,t,n){let r=``,i=t,a=t,o=t;for(;i<n;){let t=e.charCodeAt(i);if(t===39)r+=e.slice(a,i)+`'`,i+=2,a=o=i;else if(t===10||t===13){r+=e.slice(a,o);let t=Rt(e,i,n);r+=zt(t.breaks),i=a=o=t.position}else i++,t!==32&&t!==9&&(o=i)}return r+e.slice(a,n)}function Ht(e,t,n){let r=``,i=t,a=t,o=t;for(;i<n;){let t=e.charCodeAt(i);if(t===92){r+=e.slice(a,i),i++;let t=e.charCodeAt(i);if(t===10||t===13)i=Rt(e,i,n).position;else if(t<256&&Nt[t])r+=Pt[t],i++;else{let n=Lt(t),a=0;for(;n>0;n--){i++;let t=It(e.charCodeAt(i));a=(a<<4)+t}r+=Ft(a),i++}a=o=i}else if(t===10||t===13){r+=e.slice(a,o);let t=Rt(e,i,n);r+=zt(t.breaks),i=a=o=t.position}else i++,t!==32&&t!==9&&(o=i)}return r+e.slice(a,n)}function Ut(e,t,n,r,i,a){let o=r<0?0:r,s=e.slice(t,n).replace(/\r\n?/g,`
+`),c=s===``?[]:(s.endsWith(`
+`)?s.slice(0,-1):s).split(`
+`),l=``,u=!1,d=0,f=!1;for(let e of c){let t=0;for(;t<o&&e.charCodeAt(t)===32;)t++;if(r<0||t>=e.length){d++;continue}let n=e.slice(o),i=n.charCodeAt(0);a?i===32||i===9?(f=!0,l+=`
+`.repeat(u?1+d:d)):f?(f=!1,l+=`
+`.repeat(d+1)):d===0?u&&(l+=` `):l+=`
+`.repeat(d):l+=`
+`.repeat(u?1+d:d),l+=n,u=!0,d=0}return i===3?l+=`
+`.repeat(u?1+d:d):i!==2&&u&&(l+=`
+`),l}function Wt(e,t){if(t.valueStart===jt)return``;let{valueStart:n,valueEnd:r}=t;if(t.fast)return e.slice(n,r);switch(t.style){case 2:return Vt(e,n,r);case 3:return Ht(e,n,r);case 4:return Ut(e,n,r,t.indent,t.chomping,!1);case 5:return Ut(e,n,r,t.indent,t.chomping,!0);default:return Bt(e,n,r)}}var Gt={"!":`!`,"!!":`tag:yaml.org,2002:`};function Kt(e){return encodeURI(e).replace(/!/g,`%21`)}function qt(e,t){var n,r;if(e.startsWith(`!<`)&&e.endsWith(`>`))return decodeURIComponent(e.slice(2,-1));let i=e.indexOf(`!`,1),a=i===-1?`!`:e.slice(0,i+1),o=(n=(r=t==null?void 0:t[a])==null?Gt[a]:r)==null?a:n;return decodeURIComponent(o)+decodeURIComponent(e.slice(a.length))}function Jt(e){let t=e;return t.charCodeAt(0)===33?(t=t.slice(1),`!${Kt(t)}`):t.slice(0,18)===`tag:yaml.org,2002:`?`!!${Kt(t.slice(18))}`:`!<${Kt(t)}>`}var x=-1,Yt={filename:``,schema:rt,json:!1,maxTotalMergeKeys:1e4,maxAliases:-1};function Xt(e){return`tagStart`in e&&e.tagStart!==x?e.tagStart:`anchorStart`in e&&e.anchorStart!==x?e.anchorStart:`valueStart`in e&&e.valueStart!==x?e.valueStart:`start`in e?e.start:0}function S(e,t){mt(e.source,e.position,t,e.filename)}function Zt(e,t,n,r){try{return n.finalize(r)}catch(n){if(n instanceof b)throw n;mt(e.source,t,n instanceof Error?n.message:String(n),e.filename)}}function Qt(e,t,n){let r=e[n];if(r)return r;for(let e of t)if(n.startsWith(e.tagName))return e}function $t(e,t,n,r,i){let a=Qt(t,n,r);if(a)return a;S(e,`unknown ${i} tag !<${r}>`)}function en(e,n){let r=Wt(e.source,n),i=n.tagStart===x?``:e.source.slice(n.tagStart,n.tagEnd),a=e.schema.defaultScalarTag;if(i!==``){var o;if(i===`!`)return{value:r,tag:a};let n=qt(i,e.tagHandlers),s=Qt(e.schema.exact.scalar,e.schema.prefix.scalar,n);if(s){let i=s.resolve(r,!0,n);return i===t&&S(e,`cannot resolve a node with !<${n}> explicit tag`),{value:i,tag:s}}let c=(o=Qt(e.schema.exact.mapping,e.schema.prefix.mapping,n))==null?Qt(e.schema.exact.sequence,e.schema.prefix.sequence,n):o;if(c){r!==``&&S(e,`cannot resolve a node with !<${n}> explicit tag`);let t=c.create(n);return{value:c.carrierIsResult?t:Zt(e,e.position,c,t),tag:c}}S(e,`unknown scalar tag !<${n}>`)}if(n.style===1){var s;let n=(s=e.schema.implicitScalarByFirstChar.get(r.charAt(0)))==null?e.schema.implicitScalarAnyFirstChar:s;for(let e of n){let n=e.resolve(r,!1,e.tagName);if(n!==t)return{value:n,tag:e}}}return{value:a.resolve(r,!1,a.tagName),tag:a}}function tn(e,t,n,r,i,a){let o=t.tagStart===x?``:e.source.slice(t.tagStart,t.tagEnd),s=o===``||o===`!`?i:qt(o,e.tagHandlers);return{tagName:s,tag:$t(e,n,r,s,a)}}function nn(e){return e.nodeKind===`mapping`}function rn(e,t,n,r){for(let a of r.keys(n)){var i;if(e.maxTotalMergeKeys!==-1&&++e.totalMergeKeys>e.maxTotalMergeKeys&&S(e,`merge keys exceeded maxTotalMergeKeys (${e.maxTotalMergeKeys})`),t.tag.has(t.value,a))continue;let o=t.tag.addPair(t.value,a,r.get(n,a));o&&S(e,o),((i=t.overridable)==null?t.overridable=new Set:i).add(a)}}function an(e,t,n,r){if(e.position=t.keyPosition,nn(r))rn(e,t,n,r);else if(r.nodeKind===`sequence`&&Array.isArray(n))for(let r of n)rn(e,t,r,t.tag);else S(e,`cannot merge mappings; the provided source object is unacceptable`)}function on(e,t,r,i,a){var o,s;if(e.position=t.keyPosition,r===n){an(e,t,i,a);return}!e.json&&t.tag.has(t.value,r)&&!((o=t.overridable)!=null&&o.has(r))&&S(e,`duplicated mapping key`);let c=t.tag.addPair(t.value,r,i);c&&S(e,c),(s=t.overridable)==null||s.delete(r)}function sn(e,t,n){let r=e.frames[e.frames.length-1];if(r.kind===`document`)r.value=t,r.hasValue=!0;else if(r.kind===`sequence`){r.merge&&(nn(n)||S(e,`cannot merge mappings; the provided source object is unacceptable`));let i=r.tag.addItem(r.value,t,r.index++);i&&S(e,i)}else if(r.hasKey){let i=r.key;r.key=void 0,r.hasKey=!1,on(e,r,i,t,n)}else r.key=t,r.keyPosition=e.position,r.hasKey=!0}function cn(e,t,n,r,i){if(t.anchorStart!==x){let a={value:n,tag:r,isValueFinal:i};return e.anchors.set(e.source.slice(t.anchorStart,t.anchorEnd),a),a}return null}function ln(e,t){let r=y(y(y({},Yt),t),{},{events:e,documents:[],eventIndex:0,position:0,frames:[],anchors:new Map,tagHandlers:Object.create(null),totalMergeKeys:0,aliasCount:0});for(;r.eventIndex<r.events.length;){let e=r.events[r.eventIndex++];switch(r.position=Xt(e),e.type){case 1:r.anchors=new Map,r.aliasCount=0,r.tagHandlers=Object.create(null);for(let t of e.directives)t.kind===`tag`&&(r.tagHandlers[t.handle]=t.prefix);r.frames.push({kind:`document`,position:r.position,value:void 0,hasValue:!1});break;case 4:{let{value:t,tag:n}=en(r,e);cn(r,e,t,n,!0),sn(r,t,n);break}case 2:{let t=tn(r,e,r.schema.exact.sequence,r.schema.prefix.sequence,`tag:yaml.org,2002:seq`,`sequence`),i=t.tag.create(t.tagName),a=cn(r,e,i,t.tag,t.tag.carrierIsResult),o=r.frames[r.frames.length-1],s=o!==void 0&&o.kind===`mapping`&&o.hasKey&&o.key===n;r.frames.push({kind:`sequence`,position:r.position,value:i,tag:t.tag,anchor:a,index:0,merge:s});break}case 3:{let t=tn(r,e,r.schema.exact.mapping,r.schema.prefix.mapping,`tag:yaml.org,2002:map`,`mapping`),n=t.tag.create(t.tagName),i=cn(r,e,n,t.tag,t.tag.carrierIsResult);r.frames.push({kind:`mapping`,position:r.position,value:n,tag:t.tag,anchor:i,key:void 0,keyPosition:r.position,hasKey:!1,overridable:null});break}case 5:{r.maxAliases!==-1&&++r.aliasCount>r.maxAliases&&S(r,`aliases exceeded maxAliases (${r.maxAliases})`);let t=r.source.slice(e.anchorStart,e.anchorEnd),n=r.anchors.get(t);n||S(r,`unidentified alias "${t}"`),n.isValueFinal||S(r,`recursive alias "${t}" is not supported for tag ${n.tag.tagName} because it uses finalize()`),sn(r,n.value,n.tag);break}case 6:{let e=r.frames.pop();if(e.kind===`document`)r.documents.push(e.value);else{let t=e.tag.carrierIsResult?e.value:Zt(r,e.position,e.tag,e.value);e.anchor&&(e.anchor.value=t,e.anchor.isValueFinal=!0),sn(r,t,e.tag)}break}}}return r.documents}var C=-1,un=Object.prototype.hasOwnProperty,w=1,dn=2,fn=3,pn=4,mn=/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x84\x86-\x9F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]/,hn=/[,\[\]{}]/,gn=/^(?:!|!!|![0-9A-Za-z-]+!)$/,_n=String.raw`(?:%[0-9A-Fa-f]{2}|[0-9A-Za-z\-#;/?:@&=+$,_.!~*'()\[\]])`,vn=String.raw`(?:%[0-9A-Fa-f]{2}|[0-9A-Za-z\-#;/?:@&=+$.~*'()_])`,yn=RegExp(`^(?:${_n})*$`),bn=RegExp(`^(?:${vn})+$`),xn=RegExp(`^(?:!(?:${_n})*|${vn}(?:${_n})*)$`),Sn={filename:``,maxDepth:100};function Cn(e,t,n){e.events.push({type:1,explicitStart:t,explicitEnd:n,directives:e.directives})}function wn(e,t,n,r,i,a,o){e.events.push({type:2,start:t,anchorStart:n,anchorEnd:r,tagStart:i,tagEnd:a,style:o})}function T(e,t,n,r,i,a,o){e.events.push({type:3,start:t,anchorStart:n,anchorEnd:r,tagStart:i,tagEnd:a,style:o})}function E(e,t,n,r,i,a,o,s,c=1,l=-1,u=!1){e.events.push({type:4,valueStart:t,valueEnd:n,anchorStart:r,anchorEnd:i,tagStart:a,tagEnd:o,style:s,chomping:c,indent:l,fast:u})}function Tn(e,t,n){e.events.push({type:5,anchorStart:t,anchorEnd:n})}function D(e){e.events.push({type:6})}function O(e){E(e,C,C,C,C,C,C,1)}function En(){return{anchorStart:C,anchorEnd:C,tagStart:C,tagEnd:C}}function k(e){return{position:e.position,line:e.line,lineStart:e.lineStart,lineIndent:e.lineIndent,firstTabInLine:e.firstTabInLine,eventsLength:e.events.length}}function A(e,t){e.position=t.position,e.line=t.line,e.lineStart=t.lineStart,e.lineIndent=t.lineIndent,e.firstTabInLine=t.firstTabInLine,e.events.length=t.eventsLength}function j(e,t){mt(e.input.slice(0,e.length),e.position,t,e.filename)}function M(e){return e===10||e===13}function N(e){return e===9||e===32}function P(e){return N(e)||M(e)}function F(e){return e===0||P(e)}function I(e){return e===44||e===91||e===93||e===123||e===125}function Dn(e){return e>=48&&e<=57?e-48:-1}function On(e){if(e>=48&&e<=57)return e-48;let t=e|32;return t>=97&&t<=102?t-97+10:-1}function kn(e){return e===120?2:e===117?4:e===85?8:0}function An(e){return e===48||e===97||e===98||e===116||e===9||e===110||e===118||e===102||e===114||e===101||e===32||e===34||e===47||e===92||e===78||e===95||e===76||e===80}function jn(e){e.input.charCodeAt(e.position)===10?e.position++:(e.position++,e.input.charCodeAt(e.position)===10&&e.position++),e.line++,e.lineStart=e.position,e.lineIndent=0,e.firstTabInLine=-1}function L(e,t){let n=0,r=e.input.charCodeAt(e.position),i=e.position===e.lineStart||P(e.input.charCodeAt(e.position-1));for(;r!==0;){for(;N(r);)i=!0,r===9&&e.firstTabInLine===-1&&(e.firstTabInLine=e.position),r=e.input.charCodeAt(++e.position);if(t&&i&&r===35)do r=e.input.charCodeAt(++e.position);while(!M(r)&&r!==0);if(!M(r))break;for(jn(e),n++,i=!0,r=e.input.charCodeAt(e.position);r===32;)e.lineIndent++,r=e.input.charCodeAt(++e.position)}return n}function R(e,t=e.position){let n=e.input.charCodeAt(t);if((n===45||n===46)&&n===e.input.charCodeAt(t+1)&&n===e.input.charCodeAt(t+2)){let n=e.input.charCodeAt(t+3);return n===0||P(n)}return!1}function Mn(e){let t=e.input.charCodeAt(e.position);for(;t!==0&&!M(t);)t=e.input.charCodeAt(++e.position)}function Nn(e,t,n){mn.test(e.input.slice(t,n))&&j(e,`the stream contains non-printable characters`)}function Pn(e,t,n){if(e.input.charCodeAt(e.position)!==33)return!1;t.tagStart!==C&&j(e,`duplication of a tag property`);let r=e.position,i=!1,a=!1,o=`!`,s=e.input.charCodeAt(++e.position);s===60?(i=!0,s=e.input.charCodeAt(++e.position)):s===33&&(a=!0,o=`!!`,s=e.input.charCodeAt(++e.position));let c=e.position,l;if(i){for(;s!==0&&s!==62;)s=e.input.charCodeAt(++e.position);s!==62&&j(e,`unexpected end of the stream within a verbatim tag`),l=e.input.slice(c,e.position),e.position++}else{for(;s!==0&&!P(s)&&!(n&&I(s));)s===33&&(a?j(e,`tag suffix cannot contain exclamation marks`):(o=e.input.slice(c-1,e.position+1),gn.test(o)||j(e,`named tag handle cannot contain such characters`),a=!0,c=e.position+1)),s=e.input.charCodeAt(++e.position);l=e.input.slice(c,e.position),hn.test(l)&&j(e,`tag suffix cannot contain flow indicator characters`)}return l&&!(i?yn.test(l):bn.test(l))&&j(e,`tag name cannot contain such characters: ${l}`),!i&&o!==`!`&&o!==`!!`&&!un.call(e.tagHandlers,o)&&j(e,`undeclared tag handle "${o}"`),t.tagStart=r,t.tagEnd=e.position,!0}function Fn(e,t){if(e.input.charCodeAt(e.position)!==38)return!1;t.anchorStart!==C&&j(e,`duplication of an anchor property`),e.position++;let n=e.position;for(;e.input.charCodeAt(e.position)!==0&&!P(e.input.charCodeAt(e.position))&&!I(e.input.charCodeAt(e.position));)e.position++;return e.position===n&&j(e,`name of an anchor node must contain at least one character`),t.anchorStart=n,t.anchorEnd=e.position,!0}function In(e,t){if(e.input.charCodeAt(e.position)!==42)return!1;(t.anchorStart!==C||t.tagStart!==C)&&j(e,`alias node should not have any properties`),e.position++;let n=e.position;for(;e.input.charCodeAt(e.position)!==0&&!P(e.input.charCodeAt(e.position))&&!I(e.input.charCodeAt(e.position));)e.position++;return e.position===n&&j(e,`name of an alias node must contain at least one character`),Tn(e,n,e.position),!0}function Ln(e,t){L(e,!1),e.lineIndent<t&&j(e,`deficient indentation`)}function Rn(e,t,n){if(e.input.charCodeAt(e.position)!==39)return!1;e.position++;let r=e.position,i=!0;for(;e.input.charCodeAt(e.position)!==0;){let a=e.input.charCodeAt(e.position);if(a===39){if(e.input.charCodeAt(e.position+1)===39){i=!1,e.position+=2;continue}let t=e.position;return e.position++,E(e,r,t,n.anchorStart,n.anchorEnd,n.tagStart,n.tagEnd,2,1,-1,i),!0}M(a)?(i=!1,Ln(e,t)):e.position===e.lineStart&&R(e)?j(e,`unexpected end of the document within a single quoted scalar`):a!==9&&a<32?j(e,`expected valid JSON character`):e.position++}j(e,`unexpected end of the stream within a single quoted scalar`)}function zn(e,t,n){if(e.input.charCodeAt(e.position)!==34)return!1;e.position++;let r=e.position,i=!0;for(;e.input.charCodeAt(e.position)!==0;){let a=e.input.charCodeAt(e.position);if(a===34){let t=e.position;return e.position++,E(e,r,t,n.anchorStart,n.anchorEnd,n.tagStart,n.tagEnd,3,1,-1,i),!0}if(a===92){i=!1;let n=e.input.charCodeAt(++e.position);if(M(n))Ln(e,t);else if(An(n))e.position++;else{let t=kn(n);for(t===0&&j(e,`unknown escape sequence`);t-->0;)e.position++,On(e.input.charCodeAt(e.position))<0&&j(e,`expected hexadecimal character`);e.position++}}else M(a)?(i=!1,Ln(e,t)):e.position===e.lineStart&&R(e)?j(e,`unexpected end of the document within a double quoted scalar`):a!==9&&a<32?j(e,`expected valid JSON character`):e.position++}j(e,`unexpected end of the stream within a double quoted scalar`)}function Bn(e,t,n){let r=e.input.charCodeAt(e.position),i=1,a=-1,o=!1;if(r!==124&&r!==62)return!1;let s=r===124?4:5;for(e.position++;e.input.charCodeAt(e.position)!==0;){let n=e.input.charCodeAt(e.position),r=Dn(n);if(n===43||n===45)i!==1&&j(e,`repeat of a chomping mode identifier`),i=n===43?3:2,e.position++;else if(r>=0)r===0&&j(e,`bad explicit indentation width of a block scalar; it cannot be less than one`),o&&j(e,`repeat of an indentation width identifier`),a=t+r-1,o=!0,e.position++;else break}let c=!1;for(;N(e.input.charCodeAt(e.position));)c=!0,e.position++;c&&e.input.charCodeAt(e.position)===35&&Mn(e),M(e.input.charCodeAt(e.position))?jn(e):e.input.charCodeAt(e.position)!==0&&j(e,`a line break is expected`);let l=o?a:-1,u=0,d=e.position,f=e.position;for(;e.input.charCodeAt(e.position)!==0;){let n=e.position,r=0;for(;e.input.charCodeAt(n+r)===32;)r++;let i=e.input.charCodeAt(n+r);if(i===0){l>=0?r>l&&(f=n+r):r>0&&(f=n+r);break}if(n===e.lineStart&&R(e,n))break;if(!o&&l===-1&&M(i)&&(u=Math.max(u,r)),!o&&l===-1&&!M(i)&&(i===9&&r<t&&(e.position=n+r,j(e,`tab characters must not be used in indentation`)),r<u&&(e.position=n+r,j(e,`bad indentation of a mapping entry`))),l===-1&&i!==0&&!M(i)&&r<t){e.lineIndent=r,e.position=n+r;break}!o&&i!==0&&!M(i)&&l===-1&&(l=r);let a=l===-1?t+1:l;if(i!==0&&!M(i)&&r<a){e.lineIndent=r,e.position=n+r;break}Mn(e),f=e.position,M(e.input.charCodeAt(e.position))&&(jn(e),f=e.position)}return Nn(e,d,f),E(e,d,f,n.anchorStart,n.anchorEnd,n.tagStart,n.tagEnd,s,i,l),!0}function Vn(e,t){let n=e.input.charCodeAt(e.position),r=t===w;if(n===0||P(n)||n===35||n===38||n===42||n===33||n===124||n===62||n===39||n===34||n===37||n===64||n===96||r&&I(n))return!1;if(n===63||n===45){let t=e.input.charCodeAt(e.position+1);if(F(t)||r&&I(t))return!1}return!0}function Hn(e,t,n,r){if(!Vn(e,n))return!1;let i=e.position,a=e.position,o=e.input.charCodeAt(e.position),s=n===w,c=!1;for(;o!==0&&!(e.position===e.lineStart&&R(e));){if(o===58){let t=e.input.charCodeAt(e.position+1);if(F(t)||s&&I(t))break}else if(o===35){if(P(e.input.charCodeAt(e.position-1)))break}else if(s&&I(o))break;else if(M(o)){let n=e.position,r=e.line,i=e.lineStart,a=e.lineIndent;if(L(e,!1),e.lineIndent>=t){c=!0,o=e.input.charCodeAt(e.position);continue}e.position=n,e.line=r,e.lineStart=i,e.lineIndent=a;break}N(o)||(a=e.position+1),o=e.input.charCodeAt(++e.position)}return a===i?!1:(Nn(e,i,a),E(e,i,a,r.anchorStart,r.anchorEnd,r.tagStart,r.tagEnd,1,1,-1,!c),!0)}function z(e,t){let n=e.line;L(e,!0),(e.line>n&&e.lineIndent<t||e.firstTabInLine!==-1&&e.lineIndent<t)&&j(e,`deficient indentation`)}function Un(e,t,n){let r=e.input.charCodeAt(e.position),i=r===123,a=e.position,o=!0;if(r!==91&&r!==123)return!1;let s=i?125:93;for(i?T(e,a,n.anchorStart,n.anchorEnd,n.tagStart,n.tagEnd,2):wn(e,a,n.anchorStart,n.anchorEnd,n.tagStart,n.tagEnd,2),e.position++;e.input.charCodeAt(e.position)!==0;){z(e,t);let n=e.input.charCodeAt(e.position);if(n===s)return e.position++,D(e),!0;o?n===44&&j(e,`expected the node content, but found ','`):j(e,`missed comma between flow collection entries`);let r=!1,a=!1;n===63&&P(e.input.charCodeAt(e.position+1))&&(r=a=!0,e.position+=1,z(e,t));let c=e.line,l=k(e),u=B(e,t,w,!1,!0);z(e,t),n=e.input.charCodeAt(e.position),(i||a||e.line===c)&&n===58?(r=!0,e.position++,z(e,t),i?u||O(e):(A(e,l),T(e,l.position,C,C,C,C,2),B(e,t,w,!1,!0)||O(e),z(e,t),e.position++,z(e,t)),B(e,t,w,!1,!0)||O(e),z(e,t),i||D(e)):i&&r?(u||O(e),O(e)):i?O(e):r&&(A(e,l),T(e,l.position,C,C,C,C,2),B(e,t,w,!1,!0),O(e),D(e)),n=e.input.charCodeAt(e.position),n===44?(o=!0,e.position++):o=!1}j(e,`unexpected end of the stream within a flow collection`)}function Wn(e,t,n){if(e.firstTabInLine!==-1||e.input.charCodeAt(e.position)!==45||!F(e.input.charCodeAt(e.position+1)))return!1;for(wn(e,e.position,n.anchorStart,n.anchorEnd,n.tagStart,n.tagEnd,1);e.input.charCodeAt(e.position)===45&&F(e.input.charCodeAt(e.position+1));){e.firstTabInLine!==-1&&(e.position=e.firstTabInLine,j(e,`tab characters must not be used in indentation`));let n=e.line;e.position++;let r=L(e,!0)>0;if(e.firstTabInLine!==-1&&e.input.charCodeAt(e.position)===45&&F(e.input.charCodeAt(e.position+1))&&j(e,`bad indentation of a sequence entry`),r&&e.lineIndent<=t?O(e):B(e,t,fn,!1,!0),L(e,!0),e.lineIndent<t||e.position>=e.length)break;e.lineIndent>t&&j(e,`bad indentation of a sequence entry`),e.line===n&&e.input.charCodeAt(e.position)===45&&F(e.input.charCodeAt(e.position+1))&&j(e,`bad indentation of a sequence entry`)}return D(e),!0}function Gn(e,t,n,r){let i=!1,a=!1,o=!1,s=!1;if(e.firstTabInLine!==-1)return!1;let c=e.input.charCodeAt(e.position);for(;c!==0;){!i&&e.firstTabInLine!==-1&&(e.position=e.firstTabInLine,j(e,`tab characters must not be used in indentation`));let l=e.input.charCodeAt(e.position+1),u=e.line;if((c===63||c===58)&&F(l))o||(T(e,e.position,r.anchorStart,r.anchorEnd,r.tagStart,r.tagEnd,1),o=!0),c===63?(i&&O(e),a=!0,i=!0):i?i=!1:(O(e),a=!0,i=!1),e.position+=1,s=!0;else{i&&(O(e),i=!1);let t=k(e);if(!B(e,n,dn,!1,!0))break;if(e.line===u){for(c=e.input.charCodeAt(e.position);N(c);)c=e.input.charCodeAt(++e.position);if(c===58){if(c=e.input.charCodeAt(++e.position),F(c)||j(e,`a whitespace character is expected after the key-value separator within a block mapping`),!o){for(A(e,t),T(e,t.position,r.anchorStart,r.anchorEnd,r.tagStart,r.tagEnd,1),o=!0,B(e,n,dn,!1,!0),c=e.input.charCodeAt(e.position);N(c);)c=e.input.charCodeAt(++e.position);e.position++}a=!0,i=!1,s=!1}else if(a)j(e,`expected ':' after a mapping key`);else return r.anchorStart!==C||r.tagStart!==C?(A(e,t),!1):!0}else if(a)j(e,`can not read a block mapping entry; a multiline key may not be an implicit key`);else return r.anchorStart!==C||r.tagStart!==C?(A(e,t),!1):!0}if(B(e,t,pn,!0,s)&&(s=!1),i||s&&(O(e),s=!1),L(e,!0),c=e.input.charCodeAt(e.position),(e.line===u||e.lineIndent>t)&&c!==0)j(e,`bad indentation of a mapping entry`);else if(e.lineIndent<t)break}return a?(i&&O(e),o&&D(e),!0):!1}function B(e,t,n,r,i,a=!0){e.depth>=e.maxDepth&&j(e,`nesting exceeded maxDepth (${e.maxDepth})`),e.depth++;let o=1,s=!1,c=!1,l=null,u=En(),d=n===pn||n===fn,f=d,p=d;if(r&&L(e,!0)&&(s=!0,o=e.lineIndent>t?1:e.lineIndent===t?0:-1),e.position===e.lineStart&&R(e))return e.depth--,!1;if(o===1)for(;;){let r=e.input.charCodeAt(e.position),i=k(e);if(s&&o!==1&&(r===33||r===38))break;if(s&&p&&(u.tagStart!==C||u.anchorStart!==C)&&(r===33||r===38)){var m;let n=k(e),r=t+1;if(Gn(e,e.position-e.lineStart,r,u)&&((m=e.events[n.eventsLength])==null?void 0:m.type)===3)return e.depth--,!0;A(e,n)}if(s&&(r===33&&u.tagStart!==C||r===38&&u.anchorStart!==C)||!Pn(e,u,n===w)&&!Fn(e,u))break;l===null&&(l=i),L(e,!0)?(s=!0,f=p,o=e.lineIndent>t?1:e.lineIndent===t?0:-1):f=!1}if(f&&(f=s||i),o===1||n===pn){let r=n===w||n===dn?t:t+1,i=e.position-e.lineStart;if(o===1)if(f&&(Wn(e,i,u)||Gn(e,i,r,u))||Un(e,r,u))c=!0;else{let t=e.input.charCodeAt(e.position);if(l!==null&&a&&p&&!f&&t!==124&&t!==62){var h;let t=k(e),n=l.position-l.lineStart;A(e,l),Gn(e,n,r,En())&&((h=e.events[t.eventsLength])==null?void 0:h.type)===3?c=!0:A(e,t)}!c&&(d&&Bn(e,r,u)||Rn(e,r,u)||zn(e,r,u)||In(e,u)||Hn(e,r,n,u))&&(c=!0)}else o===0&&(c=f&&Wn(e,i,u))}return d=d&&!c,!c&&(u.anchorStart!==C||u.tagStart!==C||d)&&(E(e,C,C,u.anchorStart,u.anchorEnd,u.tagStart,u.tagEnd,1),c=!0),e.depth--,c||u.anchorStart!==C||u.tagStart!==C}function Kn(e){if(e.lineIndent>0||e.input.charCodeAt(e.position)!==37)return!1;e.position++;let t=e.position;for(;e.input.charCodeAt(e.position)!==0&&!P(e.input.charCodeAt(e.position));)e.position++;let n=e.input.slice(t,e.position),r=[];for(n.length===0&&j(e,`directive name must not be less than one character in length`);e.input.charCodeAt(e.position)!==0&&!M(e.input.charCodeAt(e.position));){for(;N(e.input.charCodeAt(e.position));)e.position++;if(e.input.charCodeAt(e.position)===35||M(e.input.charCodeAt(e.position))||e.input.charCodeAt(e.position)===0)break;let t=e.position;for(;e.input.charCodeAt(e.position)!==0&&!P(e.input.charCodeAt(e.position));)e.position++;r.push(e.input.slice(t,e.position))}if(M(e.input.charCodeAt(e.position))&&jn(e),n===`YAML`){e.directives.some(e=>e.kind===`yaml`)&&j(e,`duplication of %YAML directive`),r.length!==1&&j(e,`YAML directive accepts exactly one argument`);let t=/^([0-9]+)\.([0-9]+)$/.exec(r[0]);t===null&&j(e,`ill-formed argument of the YAML directive`),parseInt(t[1],10)!==1&&j(e,`unacceptable YAML version of the document`),e.directives.push({kind:`yaml`,version:r[0]})}else if(n===`TAG`){r.length!==2&&j(e,`TAG directive accepts exactly two arguments`);let[t,n]=r;gn.test(t)||j(e,`ill-formed tag handle (first argument) of the TAG directive`),un.call(e.tagHandlers,t)&&j(e,`there is a previously declared suffix for "${t}" tag handle`),xn.test(n)||j(e,`ill-formed tag prefix (second argument) of the TAG directive`),e.tagHandlers[t]=n,e.directives.push({kind:`tag`,handle:t,prefix:n})}return!0}function qn(e){e.directives=[],e.tagHandlers=Object.create(null);let t=!1;for(L(e,!0);Kn(e);)t=!0,L(e,!0);let n=!1,r=!1,i=!0;if(e.lineIndent===0&&e.input.charCodeAt(e.position)===45&&e.input.charCodeAt(e.position+1)===45&&e.input.charCodeAt(e.position+2)===45&&F(e.input.charCodeAt(e.position+3))){n=!0;let t=e.line;e.position+=3,L(e,!0),i=e.line>t}else t&&j(e,`directives end mark is expected`);let a=e.events.length;if(!n&&e.position===e.lineStart&&e.input.charCodeAt(e.position)===46&&R(e)){e.position+=3,L(e,!0);return}if(Cn(e,n,!1),B(e,e.lineIndent-1,pn,!1,i,i)||O(e),L(e,!0),e.position===e.lineStart&&R(e)&&(r=e.input.charCodeAt(e.position)===46,r)){let t=e.line;e.position+=3,L(e,!0),e.line===t&&e.position<e.length&&j(e,`end of the stream or a document separator is expected`)}let o=e.events[a];(o==null?void 0:o.type)===1&&(o.explicitEnd=r),D(e),!r&&e.position<e.length&&!(e.position===e.lineStart&&R(e))&&j(e,`end of the stream or a document separator is expected`)}function Jn(e,t){let n=e.length,r=y(y(y({},Sn),t),{},{input:`${e}\0`,length:n,position:0,line:0,lineStart:0,lineIndent:0,firstTabInLine:-1,depth:0,directives:[],tagHandlers:Object.create(null),events:[]}),i=e.indexOf(`\0`);for(i!==-1&&mt(e,i,`null byte is not allowed in input`,r.filename),r.input.charCodeAt(r.position)===65279&&r.position++;r.position<r.length&&(L(r,!0),!(r.position>=r.length));){let e=r.position;qn(r),r.position===e&&j(r,`can not read a document`)}return r.events}var Yn=y(y({},Sn),Yt);function Xn(e,t={}){let n=y(y({},Yn),t),r=String(e),i=Object.keys(Sn),a=Object.keys(Yt);return ln(Jn(r,Ge(n,i)),y(y({},Ge(n,a)),{},{source:r}))}function Zn(e,t,n){let r=null;typeof t==`function`?r=t:typeof t==`object`&&t&&(n=t);let i=Xn(e,n);if(r===null)return i;for(let e of i)r(e)}function Qn(e,t){let n=Xn(e,t);if(n.length===0)throw new b(`expected a document, but the input is empty`);if(n.length===1)return n[0];throw new b(`expected a single document in the stream, but found more`)}var V=class{constructor(){_(this,`tagged`,!1),_(this,`flow`,!1),_(this,`singleQuoted`,!1),_(this,`doubleQuoted`,!1),_(this,`literal`,!1),_(this,`folded`,!1)}},H=Symbol(`INVALID`);function $n(e){let t=new Set([e.defaultScalarTag,e.defaultSequenceTag,e.defaultMappingTag].filter(e=>e!==void 0)),n=e.implicitScalarTags,r=e.tags.filter(e=>!(e.nodeKind===`scalar`&&e.implicit)&&!t.has(e)),i=e.tags.filter(e=>t.has(e));return[...n.map(e=>({tag:e,implicitTag:!0})),...r.map(e=>({tag:e,implicitTag:!1})),...i.map(e=>({tag:e,implicitTag:!0}))]}function er(e,t){for(let n=0,r=e.representTypes.length;n<r;n+=1){let{tag:r,implicitTag:i}=e.representTypes[n];if(r.identify&&r.identify(t)){let e;return e=r.matchByTagPrefix&&r.representTagName?r.representTagName(t):r.tagName,{tag:r,tagName:e,implicitTag:i}}}return null}function U(e,t){if(!e.noRefs&&typeof t==`object`&&t){let n=e.refs.get(t);if(n)return n.anchor===void 0&&(n.anchor=`ref_${e.refCounter++}`),{kind:`alias`,tag:``,style:new V,anchor:n.anchor}}let n=er(e,t);if(!n){if(t===void 0||e.skipInvalid)return H;throw new b(`unacceptable kind of an object to dump ${Object.prototype.toString.call(t)}`)}let{tag:r,tagName:i,implicitTag:a}=n,o=a?i:Jt(i);if(r.nodeKind===`scalar`){let e=new V;return e.tagged=!a,{kind:`scalar`,tag:o,style:e,value:r.represent(t)}}if(r.nodeKind===`sequence`){let n=r.represent(t),i=new V;i.tagged=!a;let s={kind:`sequence`,tag:o,style:i,items:[]};e.noRefs||e.refs.set(t,s);for(let t=0,r=n.length;t<r;t+=1){let r=U(e,n[t]);r===H&&n[t]===void 0&&(r=U(e,null)),r!==H&&s.items.push(r)}return s}let s=r.represent(t),c=new V;c.tagged=!a;let l={kind:`mapping`,tag:o,style:c,items:[]};e.noRefs||e.refs.set(t,l);for(let[t,n]of s){let r=U(e,t);if(r===H)continue;let i=U(e,n);i!==H&&l.items.push({key:r,value:i})}return l}function tr(e,t,n={}){var r,i;let a=U({representTypes:$n(t),noRefs:(r=n.noRefs)==null?!1:r,skipInvalid:(i=n.skipInvalid)==null?!1:i,refs:new Map,refCounter:0},e);return[{contents:a===H?null:a,directives:[]}]}var nr=Symbol(`visit:break`),rr=Symbol(`visit:skip`);function ir(e,t,n){let r=t(e,n);if(r===nr)return!0;if(r===rr)return!1;let i=n.depth+1;switch(e.kind){case`sequence`:for(let n of e.items)if(ir(n,t,{depth:i,parent:e,isKey:!1}))return!0;break;case`mapping`:for(let{key:n,value:r}of e.items)if(ir(n,t,{depth:i,parent:e,isKey:!0})||ir(r,t,{depth:i,parent:e,isKey:!1}))return!0;break}return!1}function ar(e,t){for(let n of e)if(n.contents&&ir(n.contents,t,{depth:0,parent:null,isKey:!1}))return}var or=65279,sr=9,W=10,cr=13,lr=32,ur=33,dr=34,fr=35,pr=37,mr=38,hr=39,gr=42,_r=44,vr=45,G=58,yr=61,br=62,xr=63,Sr=64,Cr=91,wr=93,Tr=96,Er=123,Dr=124,Or=125,K={};K[0]=`\\0`,K[7]=`\\a`,K[8]=`\\b`,K[9]=`\\t`,K[10]=`\\n`,K[11]=`\\v`,K[12]=`\\f`,K[13]=`\\r`,K[27]=`\\e`,K[34]=`\\"`,K[92]=`\\\\`,K[133]=`\\N`,K[160]=`\\_`,K[8232]=`\\L`,K[8233]=`\\P`;var kr={indent:2,seqNoIndent:!1,seqInlineFirst:!0,sortKeys:!1,lineWidth:80,flowBracketPadding:!1,flowSkipCommaSpace:!1,flowSkipColonSpace:!1,quoteFlowKeys:!1,quoteStyle:`single`,forceQuotes:!1,tagBeforeAnchor:!1};function Ar(e){return e.style.tagged?e.tag:Jt(e.tag)}function jr(e){let t=y(y({},kr),e);return y(y({},t),{},{defaultScalarTagName:t.schema.defaultScalarTag.tagName,implicitResolvers:t.schema.implicitScalarTags})}function Mr(e){let t=e.toString(16).toUpperCase(),n=e<=255?`x`:`u`,r=e<=255?2:4;return`\\${n}${`0`.repeat(r-t.length)}${t}`}function Nr(e,t){let n=` `.repeat(t),r=0,i=``,a=e.length;for(;r<a;){let t,o=e.indexOf(`
+`,r);o===-1?(t=e.slice(r),r=a):(t=e.slice(r,o+1),r=o+1),t.length&&t!==`
+`&&(i+=n),i+=t}return i}function Pr(e,t){return`\n${` `.repeat(e.indent*t)}`}function Fr(e,t){let n=e.indent*Math.max(1,t);return{indent:n,blockIndent:t===0?e.indent+1:e.indent,lineWidth:e.lineWidth===-1?-1:Math.max(Math.min(e.lineWidth,40),e.lineWidth-n)}}function Ir(e,n){for(let r=0,i=e.implicitResolvers.length;r<i;r+=1){let i=e.implicitResolvers[r];if(i.resolve(n,!1,i.tagName)!==t)return i.tagName}return e.defaultScalarTagName}function q(e){return e===lr||e===sr}function Lr(e){let t=e.charCodeAt(0);if(t!==vr&&t!==46||e.charCodeAt(1)!==t||e.charCodeAt(2)!==t)return!1;if(e.length===3)return!0;let n=e.charCodeAt(3);return q(n)||n===cr||n===W}function J(e){return e>=32&&e<=126||e>=161&&e<=55295&&e!==8232&&e!==8233||e>=57344&&e<=65533&&e!==or||e>=65536&&e<=1114111}function Rr(e){return J(e)&&e!==or&&e!==cr&&e!==W}function zr(e,t,n){let r=Rr(e),i=r&&!q(e);return(n?r:r&&e!==_r&&e!==Cr&&e!==wr&&e!==Er&&e!==Or)&&e!==fr&&!(t===G&&!i)||Rr(t)&&!q(t)&&e===fr||t===G&&i}function Br(e){return J(e)&&e!==or&&!q(e)&&e!==vr&&e!==xr&&e!==G&&e!==_r&&e!==Cr&&e!==wr&&e!==Er&&e!==Or&&e!==fr&&e!==mr&&e!==gr&&e!==ur&&e!==Dr&&e!==yr&&e!==br&&e!==hr&&e!==dr&&e!==pr&&e!==Sr&&e!==Tr}function Vr(e,t){let n=Y(e,0);if(Br(n))return!0;if(e.length>1&&(n===vr||n===xr||n===G)){let r=Y(e,1);return!q(r)&&zr(r,n,t)}return!1}function Hr(e){return!q(e)&&e!==G}function Y(e,t){let n=e.charCodeAt(t),r;return n>=55296&&n<=56319&&t+1<e.length&&(r=e.charCodeAt(t+1),r>=56320&&r<=57343)?(n-55296)*1024+r-56320+65536:n}function Ur(e){return/^\n* /.test(e)}var X=1,Wr=2,Gr=3,Kr=4,Z=5;function qr(e,t,n,r,i,a){let{blockIndent:o,lineWidth:s}=n,c,l=0,u=-1,d=!1,f=!1,p=s!==-1,m=-1,h=!Lr(t)&&Vr(t,a)&&Hr(Y(t,t.length-1));if(r||i)for(c=0;c<t.length;l>=65536?c+=2:c++){if(l=Y(t,c),!J(l))return Z;h=h&&zr(l,u,a),u=l}else{for(c=0;c<t.length;l>=65536?c+=2:c++){if(l=Y(t,c),l===W)d=!0,p&&(f=f||c-m-1>s&&t[m+1]!==` `,m=c);else if(!J(l))return Z;h=h&&zr(l,u,a),u=l}f=f||p&&c-m-1>s&&t[m+1]!==` `}return!d&&!f?h&&!i?X:e.quoteStyle===`double`?Z:Wr:o>9&&Ur(t)?Z:f?Kr:Gr}function Jr(e,t,n){let{indent:r,blockIndent:i,lineWidth:a}=n;switch(t){case X:return Zr(e,r);case Wr:return`'${Zr(e,r).replace(/'/g,`''`)}'`;case Gr:return`|`+Xr(e,i)+Qr(Nr(e,r));case Kr:return`>`+Xr(e,i)+Qr(Nr($r(e,a),r));case Z:return`"${ti(e)}"`}}function Yr(e,t,n,r,i){let a=r||!i;if(t.style.singleQuoted)return Wr;if(t.style.doubleQuoted)return Z;if(!a){if(t.style.literal)return Gr;if(t.style.folded)return Kr}let o=t.value;if(o.length===0)return t.style.tagged||Ir(e,o)===t.tag?X:e.quoteStyle===`double`?Z:Wr;let s=qr(e,o,n,a,e.forceQuotes&&!r,i);return s===X&&!t.style.tagged&&Ir(e,o)!==t.tag?e.quoteStyle===`double`?Z:Wr:s}function Xr(e,t){let n=Ur(e)?String(t):``,r=e[e.length-1]===`
+`;return`${n}${r&&(e[e.length-2]===`
+`||e===`
+`)?`+`:r?``:`-`}\n`}function Zr(e,t){let n=e.indexOf(`
+`);if(n===-1)return e;let r=` `.repeat(t),i=e.slice(0,n),a=/(\n+)([^\n]*)/g;a.lastIndex=n;let o;for(;o=a.exec(e);){let e=o[1].length,t=o[2];i+=`
+`.repeat(e+1)+r+t}return i}function Qr(e){return e[e.length-1]===`
+`?e.slice(0,-1):e}function $r(e,t){let n=/(\n+)([^\n]*)/g,r=e.indexOf(`
+`);r===-1&&(r=e.length),n.lastIndex=r;let i=ei(e.slice(0,r),t),a=e[0]===`
+`||e[0]===` `,o,s;for(;s=n.exec(e);){let e=s[1],n=s[2];o=n[0]===` `,i+=e+(!a&&!o&&n!==``?`
+`:``)+ei(n,t),a=o}return i}function ei(e,t){if(e===``||e[0]===` `)return e;let n=/ [^ ]/g,r,i=0,a,o=0,s=0,c=``;for(;r=n.exec(e);)s=r.index,s-i>t&&(a=o>i?o:s,c+=`\n${e.slice(i,a)}`,i=a+1),o=s;return c+=`
+`,e.length-i>t&&o>i?c+=`${e.slice(i,o)}\n${e.slice(o+1)}`:c+=e.slice(i),c.slice(1)}function ti(e){let t=``,n=0;for(let r=0;r<e.length;n>=65536?r+=2:r++){n=Y(e,r);let i=K[n];if(i){t+=i;continue}if(J(n)){t+=e[r],n>=65536&&(t+=e[r+1]);continue}t+=Mr(n)}return t}function ni(e,t,n){let r=``;for(let i=0,a=n.items.length;i<a;i+=1){let a=Q(e,t,n.items[i],{});r!==``&&(r+=`,${e.flowSkipCommaSpace?``:` `}`),r+=a}let i=e.flowBracketPadding&&r!==``?` `:``;return`[${i}${r}${i}]`}function ri(e,t,n,r){let i=``;for(let a=0,o=n.items.length;a<o;a+=1){let o=Q(e,t+1,n.items[a],{block:!0,compact:e.seqInlineFirst,isblockseq:!0});(!r||i!==``)&&(i+=Pr(e,t)),o===``||W===o.charCodeAt(0)?i+=`-`:i+=`- `,i+=o}return i}function ii(e,t,n){let r=``,i=oi(e,n.items);for(let{key:n,value:a}of i){let i=``;r!==``&&(i+=`,${e.flowSkipCommaSpace?``:` `}`);let o=Q(e,t,n,{iskey:!0}),s=o.length>1024;s?i+=`? `:e.quoteFlowKeys&&(i+=`"`);let c=Q(e,t,a,{}),l=e.flowSkipColonSpace||c===``?``:` `;i+=`${o}${e.quoteFlowKeys&&!s?`"`:``}:${l}${c}`,r+=i}let a=e.flowBracketPadding&&r!==``?` `:``;return`{${a}${r}${a}}`}function ai(e){return e.kind===`scalar`?e.value:e}function oi(e,t){if(!e.sortKeys)return t;let n=t.slice();if(e.sortKeys===!0)n.sort((e,t)=>{let n=ai(e.key),r=ai(t.key);return n<r?-1:+(n>r)});else{let t=e.sortKeys;n.sort((e,n)=>t(ai(e.key),ai(n.key)))}return n}function si(e,t,n,r){let i=``,a=oi(e,n.items);for(let n=0,o=a.length;n<o;n+=1){let o=``;(!r||i!==``)&&(o+=Pr(e,t));let{key:s,value:c}=a[n],l=(s.kind===`mapping`||s.kind===`sequence`)&&!s.style.flow&&s.items.length!==0||s.kind===`scalar`&&(s.style.literal||s.style.folded),u=l?Q(e,t+1,s,{block:!0,compact:!0,isblockseq:!ci(e,s,t+1)}):Q(e,t+1,s,{block:!0,compact:!0,iskey:!0}),d=s.kind===`scalar`&&s.value.indexOf(`
+`)!==-1,f=l||d||u.length>1024;f&&(u&&W===u.charCodeAt(0)?o+=`?`:o+=`? `),o+=u,f&&(o+=Pr(e,t));let p=Q(e,t+1,c,{block:!0,compact:f,isblockseq:f&&!ci(e,c,t+1)}),m=s.kind===`scalar`&&s.value===``&&u!==``&&u.charCodeAt(u.length-1)!==hr&&u.charCodeAt(u.length-1)!==dr,h=!f&&(s.kind===`alias`||m)?` `:``;p===``||W===p.charCodeAt(0)?o+=`${h}:`:o+=`${h}: `,o+=p,i+=o}return i}function ci(e,t,n){return t.style.tagged||t.anchor!==void 0||e.indent<2&&n>0}function Q(e,t,n,r){var i;if(n.kind===`alias`)return`*${n.anchor}`;let{block:a=!1,iskey:o=!1,isblockseq:s=!1}=r,c=(i=r.compact)==null?!1:i,l=n.anchor!==void 0;ci(e,n,t)&&(c=!1);let u,d=n.style.tagged,f=a&&(n.kind===`mapping`||n.kind===`sequence`)&&!n.style.flow&&n.items.length!==0;if(n.kind===`mapping`)u=f?si(e,t,n,c):ii(e,t,n);else if(n.kind===`sequence`)u=f?e.seqNoIndent&&!s&&t>0?ri(e,t-1,n,c):ri(e,t,n,c):ni(e,t,n);else{let r=Fr(e,t),i=Yr(e,n,r,o,a);u=Jr(n.value,i,r),d=n.style.tagged||i!==X&&n.tag!==e.defaultScalarTagName}if(f&&c&&t>0&&e.indent>2&&(u=`${` `.repeat(e.indent-2)}${u}`),d||l){let t=[],r=d?Ar(n):null,i=l?`&${n.anchor}`:null;e.tagBeforeAnchor?(r!==null&&t.push(r),i!==null&&t.push(i)):(i!==null&&t.push(i),r!==null&&t.push(r));let a=u===``||u.charCodeAt(0)===W?``:` `;u=`${t.join(` `)}${a}${u}`}return u}function li(e){return(e.kind===`sequence`||e.kind===`mapping`)&&!e.style.flow&&e.items.length!==0&&!e.style.tagged&&e.anchor===void 0}function ui(e){let t=e;for(;(t.kind===`sequence`||t.kind===`mapping`)&&!t.style.flow&&t.items.length!==0;)t=t.kind===`sequence`?t.items[t.items.length-1]:t.items[t.items.length-1].value;if(t.kind!==`scalar`||!(t.style.literal||t.style.folded))return!1;let{value:n}=t;return n.endsWith(`
+
+`)||n===`
+`}function di(e){let t=``;for(let n of e.directives){if(n.kind===`yaml`){t+=`%YAML ${n.version}\n`;continue}let{handle:e,prefix:r}=n;t+=`%TAG ${e} ${r}\n`}return t}function fi(e,t){let n=jr(t),r=``,i=!1;for(let t=0;t<e.length;t+=1){let a=e[t],o=di(a),s=o!==``,c=a.explicitStart||s||t>0&&!i;if(r+=o,a.contents===null)c&&(r+=`---
+`);else if(c){let e=Q(n,0,a.contents,{block:!0,compact:!0}),t=e===``?``:s||li(a.contents)?`
+`:` `;r+=`---${t}${e}\n`}else r+=Q(n,0,a.contents,{block:!0,compact:!0})+`
+`;i=a.explicitEnd||a.contents!==null&&ui(a.contents),i&&(r+=`...
+`)}return r}var pi=it.withTags(y(y({},ve),{},{resolve:(e,n,r)=>{let i=ve.resolve(e,n,r);return i===t?le.resolve(e,n,r):i}}),y(y({},Ne),{},{resolve:(e,n,r)=>{let i=Ne.resolve(e,n,r);return i===t?Ce.resolve(e,n,r):i}})),mi=y(y({},kr),{},{schema:pi,skipInvalid:!1,noRefs:!1,flowLevel:-1,transform:()=>{}});function hi(e,t={}){let n=y(y({},mi),t),r=tr(e,n.schema,{noRefs:n.noRefs,skipInvalid:n.skipInvalid});return n.flowLevel>=0&&ar(r,(e,t)=>{if(!(t.depth<n.flowLevel))return e.style.flow=!0,rr}),n.transform(r),fi(r,y(y({},Ge(n,Object.keys(kr))),{},{schema:n.schema}))}var $=-1;function gi(e){return`tagStart`in e&&e.tagStart!==$?e.tagStart:`anchorStart`in e&&e.anchorStart!==$?e.anchorStart:`valueStart`in e&&e.valueStart!==$?e.valueStart:`start`in e?e.start:0}function _i(e,t){return t.tagStart===$?``:e.source.slice(t.tagStart,t.tagEnd)}function vi(e,t){return t.anchorStart===$?void 0:e.source.slice(t.anchorStart,t.anchorEnd)}function yi(e,n){var r;let{schema:i}=e,a=(r=i.implicitScalarByFirstChar.get(n.charAt(0)))==null?i.implicitScalarAnyFirstChar:r;for(let e of a)if(e.resolve(n,!1,e.tagName)!==t)return e.tagName;return i.defaultScalarTag.tagName}function bi(e,t){let n=Wt(e.source,t),r=_i(e,t),i=new V;switch(t.style){case 2:i.singleQuoted=!0;break;case 3:i.doubleQuoted=!0;break;case 4:i.literal=!0;break;case 5:i.folded=!0;break}let a;return r===``?a=t.style===1?yi(e,n):e.schema.defaultScalarTag.tagName:(i.tagged=!0,a=r),{kind:`scalar`,tag:a,style:i,anchor:vi(e,t),value:n}}function xi(e,t,n){let r=_i(e,t),i=new V;t.style===2&&(i.flow=!0);let a;return r===``?a=n:(a=r,i.tagged=!0),{tag:a,style:i,anchor:vi(e,t)}}function Si(e,t){let n=e.frames[e.frames.length-1];n.kind===`document`?n.doc.contents=t:n.kind===`sequence`?n.node.items.push(t):n.key?(n.node.items.push({key:n.key,value:t}),n.key=null):n.key=t}function Ci(e,t){let n={source:t.source,schema:t.schema,eventIndex:0,position:0,frames:[],documents:[]};for(;n.eventIndex<e.length;){let t=e[n.eventIndex++];switch(n.position=gi(t),t.type){case 1:{let e={contents:null,explicitStart:t.explicitStart,explicitEnd:t.explicitEnd,directives:t.directives};n.frames.push({kind:`document`,doc:e});break}case 4:Si(n,bi(n,t));break;case 2:{let{tag:e,style:r,anchor:i}=xi(n,t,`tag:yaml.org,2002:seq`),a={kind:`sequence`,tag:e,style:r,anchor:i,items:[]};n.frames.push({kind:`sequence`,node:a});break}case 3:{let{tag:e,style:r,anchor:i}=xi(n,t,`tag:yaml.org,2002:map`),a={kind:`mapping`,tag:e,style:r,anchor:i,items:[]};n.frames.push({kind:`mapping`,node:a,key:null});break}case 5:{let e=n.source.slice(t.anchorStart,t.anchorEnd);Si(n,{kind:`alias`,tag:``,style:new V,anchor:e});break}case 6:{let e=n.frames.pop();e.kind===`document`?n.documents.push(e.doc):Si(n,e.node);break}}}return n.documents}e.CHOMPING_CLIP=Ot,e.CHOMPING_KEEP=At,e.CHOMPING_STRIP=kt,e.COLLECTION_STYLE_BLOCK=Et,e.COLLECTION_STYLE_FLOW=Dt,e.CORE_SCHEMA=rt,e.EVENT_ALIAS=yt,e.EVENT_DOCUMENT=ht,e.EVENT_MAPPING=_t,e.EVENT_POP=bt,e.EVENT_SCALAR=vt,e.EVENT_SEQUENCE=gt,e.FAILSAFE_SCHEMA=tt,e.JSON_SCHEMA=nt,e.MERGE_KEY=n,e.NOT_RESOLVED=t,e.SCALAR_STYLE_DOUBLE_QUOTED=Ct,e.SCALAR_STYLE_FOLDED_BLOCK=Tt,e.SCALAR_STYLE_LITERAL_BLOCK=wt,e.SCALAR_STYLE_PLAIN=xt,e.SCALAR_STYLE_SINGLE_QUOTED=St,e.Schema=v,e.Style=V,e.VISIT_BREAK=nr,e.VISIT_SKIP=rr,e.YAML11_SCHEMA=it,e.YAMLException=b,e.binaryTag=Re,e.boolCoreTag=m,e.boolJsonTag=te,e.boolYaml11Tag=ie,e.constructFromEvents=ln,e.defineMappingTag=a,e.defineScalarTag=r,e.defineSequenceTag=i,e.dump=hi,e.eventsToAst=Ci,e.floatCoreTag=Ce,e.floatJsonTag=Oe,e.floatYaml11Tag=Ne,e.getScalarValue=Wt,e.intCoreTag=le,e.intJsonTag=me,e.intYaml11Tag=ve,e.jsToAst=tr,e.legacyMapTag=st,e.load=Qn,e.loadAll=Zn,e.mapTag=Je,e.mergeTag=Pe,e.nullCoreTag=c,e.nullJsonTag=l,e.nullYaml11Tag=d,e.omapTag=Ke,e.pairsTag=qe,e.parseEvents=Jn,e.present=fi,e.realMapTag=at,e.seqTag=Ue,e.setTag=Ye,e.strTag=o,e.timestampTag=He,e.visit=ar});
+//# sourceMappingURL=js-yaml.umd.min.js.map</script>
+<style>
+  :root {
+    --bg: #0f1417; --panel: #171e23; --border: #2a343b; --text: #dbe4e8;
+    --muted: #7d8f98; --accent: #4fb5c9; --tbd: #d9a441; --fixed: #5c7d63;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px;
+  }
+  header {
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  header p { margin: 0; color: var(--muted); font-size: 12.5px; }
+  select, button {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 5px; padding: 6px 10px; font-size: 13px; font-family: inherit;
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #06181c; font-weight: 600; border-color: var(--accent); }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: calc(100vh - 61px); }
+  .col { overflow-y: auto; padding: 18px 24px; }
+  .col.left { border-right: 1px solid var(--border); }
+  section { margin-bottom: 22px; }
+  section h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  }
+  .row {
+    display: grid; grid-template-columns: 1fr 200px; gap: 10px; align-items: center;
+    padding: 6px 0;
+  }
+  .row .lbl { display: flex; flex-direction: column; }
+  .row .lbl .name { font-weight: 600; }
+  .row .lbl .sub { color: var(--muted); font-size: 11.5px; margin-top: 1px; }
+  .row select { width: 100%; }
+  .row.output-row, .row.cascade-row { grid-template-columns: 1fr 260px; }
+  .output-controls, .cascade-controls { display: flex; gap: 4px; }
+  .output-controls select, .cascade-controls select { flex: 1; min-width: 0; }
+  .fixed-fact { color: var(--text); font-weight: 600; }
+  .fixed-list { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .fixed-list code { color: var(--fixed); background: none; }
+  code { background: #0a1013; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  pre#draft {
+    background: #0a1013; border: 1px solid var(--border); border-radius: 6px;
+    padding: 14px; font-size: 12.5px; line-height: 1.55; overflow-x: auto;
+    white-space: pre; min-height: 200px;
+  }
+  .tbd-token { color: var(--tbd); font-weight: 700; }
+  .summary { display: flex; gap: 18px; margin-bottom: 12px; font-size: 12.5px; }
+  .summary .stat b { font-size: 16px; display: block; }
+  .summary .stat.tbd b { color: var(--tbd); }
+  .summary .stat.done b { color: #6fbf73; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+  .note {
+    font-size: 12px; color: var(--muted); background: var(--panel);
+    border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 16px;
+  }
+  .inline-field {
+    font: inherit; font-size: 12.5px; font-family: inherit; color: var(--tbd);
+    background: #1c262c; border: 1px solid var(--tbd); border-radius: 3px;
+    padding: 0 4px; margin: 0 1px;
+  }
+  .inline-field.filled { color: #6fbf73; border-color: #6fbf73; }
+  .inline-field:focus { outline: none; border-color: var(--accent); }
+  input.inline-field { width: 9ch; }
+  select.inline-field { max-width: 22ch; }
+  .inline-field::placeholder { color: var(--muted); }
+  .inline-btn {
+    font: inherit; font-size: 10.5px; line-height: 1; cursor: pointer;
+    background: var(--panel); color: var(--muted); border: 1px solid var(--border);
+    border-radius: 3px; padding: 1px 4px; margin: 0 1px; vertical-align: middle;
+  }
+  .inline-btn:hover { color: var(--text); border-color: var(--accent); }
+  .inline-btn.default-btn:hover { color: #6fbf73; border-color: #6fbf73; }
+  .inline-btn.clear-btn:hover { color: #d9694a; border-color: #d9694a; }
+  .attr-field {
+    font: inherit; font-size: 10.5px; background: var(--panel); color: var(--muted);
+    border: 1px solid var(--border); border-radius: 3px; padding: 0 2px; margin-left: 1px;
+  }
+  .attr-field.set { color: var(--accent); border-color: var(--accent); }
+  .kin-select {
+    font: inherit; font-size: 12.5px; font-family: inherit; color: var(--text);
+    background: #1c262c; border: 1px solid var(--border); border-radius: 3px;
+    padding: 0 2px; margin-left: -4px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>FluidNC Board Mapping Wizard</h1>
+  <p>Prototype — resource-first walk (Phase A: bind board resources to roles) → draft config.yaml with TBD stubs (Phase B)</p>
+  <select id="boardPicker" style="margin-left:auto"></select>
+</header>
+
+<main>
+  <div class="col left" id="resourceCol">
+    <div class="note" id="boardNote"></div>
+  </div>
+  <div class="col right">
+    <div class="summary" id="summary"></div>
+    <div class="toolbar">
+      <button class="primary" onclick="copyDraft()">Copy</button>
+      <button onclick="downloadDraft()">Download .yaml</button>
+    </div>
+    <pre id="draft">Bind some resources on the left -- the draft updates live.</pre>
+  </div>
+</main>
+
+<script>
+/* ---------------------------------------------------------------------
+ * Embedded board files (from fluidnc-boards/boards/*.board.yaml).
+ * In a non-prototype version these would be fetched or uploaded.
+ * ------------------------------------------------------------------- */
+const BOARD_YAML = {};
+
+BOARD_YAML["6x_cnc_controller"] = `
+board:
+  id: 6x_cnc_controller
+  name: "6x CNC Controller"
+  manufacturer: "Dring Engineering Services"
+  mcu_chip: esp32
+  status: active
+stepping:
+  engines: [i2s]
+fixed_peripherals:
+  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
+  sdcard: { cs_pin: gpio.5 }
+  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 24 }
+motor_sockets:
+  sockets:
+    - label: "Motor1"
+      driver_class: external_connector
+      pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
+    - label: "Motor2"
+      driver_class: external_connector
+      pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
+    - label: "Motor3"
+      driver_class: external_connector
+      pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
+    - label: "Motor4"
+      driver_class: external_connector
+      pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
+    - label: "Motor5"
+      driver_class: external_connector
+      pins: { step_pin: i2so.18, direction_pin: i2so.17, disable_pin: i2so.16 }
+    - label: "Motor6"
+      driver_class: external_connector
+      pins: { step_pin: i2so.21, direction_pin: i2so.20, disable_pin: i2so.23 }
+generic_pins:
+  - { label: "IO2",  mcu_pin: gpio.2,  direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "5V Out (shared w/ MOSFET1)", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "MOSFET1", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "5V Out (shared w/ MOSFET2)", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "MOSFET2", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "5V Out 3", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 4", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Spindle Fwd", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: open_collector } }
+  - { label: "Spindle Rev", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: open_collector } }
+rs485_channels:
+  - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
+expansion_sockets:
+  - label: "Expansion Module Socket"
+    pins:
+      - { module_pin: "1", mcu_pin: gpio.25, direction: bidirectional }
+      - { module_pin: "2", mcu_pin: gpio.27, direction: bidirectional }
+`;
+
+BOARD_YAML["4x_cnc_controller"] = `
+board:
+  id: 4x_cnc_controller
+  name: "4x CNC Controller (Integrated ESP32 and TMC2209)"
+  manufacturer: "Dring Engineering Services"
+  mcu_chip: esp32
+  status: unverified
+stepping:
+  engines: [i2s]
+fixed_peripherals:
+  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
+  sdcard: { cs_pin: gpio.5 }
+  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 16 }
+  dedicated_uarts:
+    - { label: "TMC2209 UART", txd_pin: gpio.26, rxd_pin: gpio.2, baud: 115200, mode: "8N1" }
+motor_sockets:
+  sockets:
+    - label: "Motor1"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
+      extra: { bus: uart1, addr: 0 }
+    - label: "Motor2"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
+      extra: { bus: uart1, addr: 1 }
+    - label: "Motor3"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
+      extra: { bus: uart1, addr: 2 }
+    - label: "Motor4"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
+      extra: { bus: uart1, addr: 3 }
+generic_pins:
+  - { label: "IO32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "5V Out (shared w/ MOSFET1)", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "MOSFET1", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "5V Out (shared w/ MOSFET2)", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "MOSFET2", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "5V Out 3", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 4", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Out1", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: open_collector } }
+  - { label: "Out2", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: open_collector } }
+rs485_channels:
+  - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
+expansion_sockets:
+  - label: "Expansion Module Socket"
+    pins:
+      - { module_pin: "1", mcu_pin: gpio.25, direction: bidirectional }
+      - { module_pin: "2", mcu_pin: gpio.27, direction: bidirectional }
+`;
+
+BOARD_YAML["corgi_cnc_controller"] = `
+board:
+  id: corgi_cnc_controller
+  name: "Corgi CNC Controller"
+  manufacturer: "Dring Engineering Services"
+  mcu_chip: esp32
+  revision: "V1.1"
+  status: active
+stepping:
+  engines: [i2s]
+fixed_peripherals:
+  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
+  sdcard: { cs_pin: gpio.5 }
+  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 24 }
+motor_sockets:
+  sockets:
+    - label: "Motor1"
+      driver_class: external_connector
+      pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
+    - label: "Motor2"
+      driver_class: external_connector
+      pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
+    - label: "Motor3"
+      driver_class: external_connector
+      pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
+    - label: "Motor4"
+      driver_class: external_connector
+      pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
+    - label: "Motor5"
+      driver_class: external_connector
+      pins: { step_pin: i2so.18, direction_pin: i2so.17, disable_pin: i2so.16 }
+    - label: "Motor6"
+      driver_class: external_connector
+      pins: { step_pin: i2so.21, direction_pin: i2so.20, disable_pin: i2so.23 }
+generic_pins:
+  - { label: "IO2",  mcu_pin: gpio.2,  direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: true } }
+  - { label: "IO26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "5V Out (shared w/ MOSFET1)", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "MOSFET1", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "5V Out (shared w/ MOSFET2)", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "MOSFET2", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "5V Out 3", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 4", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 5", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: totem_pole } }
+rs485_channels:
+  - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, pins_reusable_as_generic_io: true }
+expansion_uarts:
+  - { label: "RJ12 Expansion", connector_type: "RJ12", txd_pin: gpio.27, rxd_pin: gpio.25, baud: 1000000, mode: "8N1" }
+`;
+
+BOARD_YAML["fluidnc_pen_laser_spi"] = `
+board:
+  id: fluidnc_pen_laser_spi
+  name: "FluidNC Pen/Laser CNC Controller (SPI)"
+  manufacturer: "Dring Engineering Services"
+  mcu_chip: esp32
+  status: active
+stepping:
+  engines: [rmt, timed]
+fixed_peripherals:
+  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
+  sdcard: { cs_pin: gpio.5 }
+motor_sockets:
+  shared_disable_pin: gpio.13
+  sockets:
+    - label: "X"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2130
+      pins: { step_pin: gpio.14, direction_pin: gpio.12, cs_pin: gpio.16 }
+      extra: { bus: spi }
+    - label: "Y"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2130
+      pins: { step_pin: gpio.25, direction_pin: gpio.26, cs_pin: gpio.17 }
+      extra: { bus: spi }
+    - label: "Z (pen lift)"
+      driver_class: onboard_fixed
+      fixed_motor_type: rc_servo
+      pins: { output_pin: gpio.22 }
+generic_pins:
+  - { label: "X Limit", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Y Limit", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Probe", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: raw } }
+  - { label: "5V Out 1", mcu_pin: gpio.21, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 2", mcu_pin: gpio.27, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 3", mcu_pin: gpio.2,  direction: output, output_profile: { drive_type: totem_pole } }
+`;
+
+BOARD_YAML["mks_dlc32_v2_1"] = `
+board:
+  id: mks_dlc32_v2_1
+  name: "MKS DLC32 V2.1"
+  manufacturer: "Makerbase"
+  mcu_chip: esp32
+  status: community_documented
+stepping:
+  engines: [i2s]
+fixed_peripherals:
+  spi: { miso_pin: gpio.12, mosi_pin: gpio.13, sck_pin: gpio.14 }
+  sdcard: { cs_pin: gpio.15, card_detect_pin: gpio.39 }
+  i2so: { bck_pin: gpio.16, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 8 }
+i2c_connectors:
+  - { label: "I2C", sda_pin: gpio.0, scl_pin: gpio.4 }
+motor_sockets:
+  shared_disable_pin: i2so.0
+  sockets:
+    - label: "X"
+      driver_class: stepstick_socket
+      pins: { step_pin: i2so.1, direction_pin: i2so.2 }
+    - label: "Y"
+      driver_class: stepstick_socket
+      pins: { step_pin: i2so.5, direction_pin: i2so.6 }
+    - label: "Z"
+      driver_class: stepstick_socket
+      pins: { step_pin: i2so.3, direction_pin: i2so.4 }
+generic_pins:
+  - { label: "X-", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "Y-", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "Z-", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "PROBE_PIN", mcu_pin: gpio.22, direction: input, input_profile: { conditioning: raw } }
+  - { label: "TTL (laser PWM)", mcu_pin: gpio.32, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Spindle (RPM control)", mcu_pin: gpio.32, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "LCD_CS", mcu_pin: gpio.25, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "TOUCH_CS", mcu_pin: gpio.26, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "LCD_RST", mcu_pin: gpio.27, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "LCD_RS", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: raw } }
+`;
+
+BOARD_YAML["btt_rodent_v1_0"] = `
+board:
+  id: btt_rodent_v1_0
+  name: "BigTreeTech Rodent (V1.0)"
+  manufacturer: "BigTreeTech / Rat Rig"
+  mcu_chip: esp32_bare
+  family: btt_rodent
+  revision: "V1.0"
+  status: community_documented
+stepping:
+  engines: [i2s]
+fixed_peripherals:
+  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
+  sdcard: { cs_pin: gpio.0 }
+  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 16 }
+i2c_connectors:
+  - { label: "I2C", sda_pin: gpio.27, scl_pin: gpio.26 }
+motor_sockets:
+  sockets:
+    - label: "X"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_5160
+      pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0, cs_pin: gpio.5 }
+      extra: { spi_index: 1, r_sense_ohms_hint: 0.075 }
+    - label: "Y"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_5160
+      pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
+      extra: { spi_index: 2, r_sense_ohms_hint: 0.075 }
+    - label: "Z"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_5160
+      pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
+      extra: { spi_index: 3, r_sense_ohms_hint: 0.075 }
+    - label: "E"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_5160
+      pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
+      extra: { spi_index: 4, r_sense_ohms_hint: 0.075 }
+generic_pins:
+  - { label: "E-Lim", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Z-Lim", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Y-Lim", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: raw } }
+  - { label: "X-Lim", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: raw } }
+  - { label: "E1-Lim", mcu_pin: gpio.37, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Probe", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }
+  - { label: "MOSFET1", mcu_pin: gpio.2, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
+  - { label: "MOSFET2", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
+  - { label: "MOSFET3", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
+  - { label: "Spindle PWM", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 10.0 } }
+  - { label: "SPINDLE_EN", mcu_pin: gpio.25, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
+  - { label: "DIRECTION", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
+  - { label: "SPINDLE_FB", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
+  - { label: "Status LED R", mcu_pin: i2so.3, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Status LED B", mcu_pin: i2so.11, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Status LED G", mcu_pin: i2so.14, direction: output, output_profile: { drive_type: totem_pole } }
+rs485_channels:
+  - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
+`;
+
+BOARD_YAML["btt_rodent_v1_1"] = `
+board:
+  id: btt_rodent_v1_1
+  name: "BigTreeTech Rodent (V1.1)"
+  manufacturer: "BigTreeTech / Rat Rig"
+  mcu_chip: esp32
+  family: btt_rodent
+  revision: "V1.1"
+  status: community_documented
+stepping:
+  engines: [i2s]
+fixed_peripherals:
+  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
+  sdcard: { cs_pin: gpio.0 }
+  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 16 }
+i2c_connectors:
+  - { label: "I2C", sda_pin: gpio.27, scl_pin: gpio.26 }
+motor_sockets:
+  sockets:
+    - label: "X"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_5160
+      pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0, cs_pin: gpio.5 }
+      extra: { spi_index: 1, r_sense_ohms_hint: 0.075 }
+    - label: "Y"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_5160
+      pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
+      extra: { spi_index: 2, r_sense_ohms_hint: 0.075 }
+    - label: "Z"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_5160
+      pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
+      extra: { spi_index: 3, r_sense_ohms_hint: 0.075 }
+    - label: "E"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_5160
+      pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
+      extra: { spi_index: 4, r_sense_ohms_hint: 0.075 }
+generic_pins:
+  - { label: "E-Lim", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Z-Lim", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Y-Lim", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: raw } }
+  - { label: "X-Lim", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: raw } }
+  - { label: "E1-Lim", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Probe", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }
+  - { label: "MOSFET1", mcu_pin: gpio.2, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
+  - { label: "MOSFET2", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
+  - { label: "MOSFET3", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
+  - { label: "Spindle PWM", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 10.0 } }
+  - { label: "SPINDLE_EN", mcu_pin: gpio.25, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
+  - { label: "DIRECTION", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
+  - { label: "SPINDLE_FB", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
+  - { label: "Status LED R", mcu_pin: i2so.3, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Status LED B", mcu_pin: i2so.11, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Status LED G", mcu_pin: i2so.14, direction: output, output_profile: { drive_type: totem_pole } }
+rs485_channels:
+  - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
+`;
+
+/* ---------------------------------------------------------------------
+ * MCU chip facts (mcu-chip.schema.json layer) -- embedded copies of the
+ * real project's chips/*.chip.yaml files, same reason/lockstep-update
+ * requirement as BOARD_YAML above. Only used here for gpio[].pullup/
+ * pulldown, to correctly gate the :pu/:pd pin-attribute widget by REAL
+ * per-pin hardware capability instead of the old i2so-vs-gpio heuristic
+ * (which missed e.g. the ESP32's true input-only pins, gpio.34-39, which
+ * have no internal pull resistors regardless of board). Board files
+ * intentionally do NOT restate this -- it's a chip-level fact, sourced
+ * from here, not duplicated per board. */
+const CHIP_YAML = {};
+
+CHIP_YAML["esp32"] = `
+chip_id: esp32
+gpio:
+  - { pin: 0,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 1,  input: true, output: true }
+  - { pin: 2,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 3,  input: true, output: true }
+  - { pin: 4,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 5,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 6,  reserved: true, input: false, output: false }
+  - { pin: 7,  reserved: true, input: false, output: false }
+  - { pin: 8,  reserved: true, input: false, output: false }
+  - { pin: 9,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 10, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 11, reserved: true, input: false, output: false }
+  - { pin: 12, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 13, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 14, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 15, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 16, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 17, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 18, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 19, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 21, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 22, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 23, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 25, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 26, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 27, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 32, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 33, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 34, input: true, output: false, pullup: false, pulldown: false }
+  - { pin: 35, input: true, output: false, pullup: false, pulldown: false }
+  - { pin: 36, input: true, output: false, pullup: false, pulldown: false }
+  - { pin: 37, input: false, output: false, pullup: false, pulldown: false }
+  - { pin: 38, input: false, output: false, pullup: false, pulldown: false }
+  - { pin: 39, input: true, output: false, pullup: false, pulldown: false }
+`;
+
+CHIP_YAML["esp32_bare"] = `
+chip_id: esp32_bare
+gpio:
+  - { pin: 0,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 1,  input: true, output: true }
+  - { pin: 2,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 3,  input: true, output: true }
+  - { pin: 4,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 5,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 6,  reserved: true, input: false, output: false }
+  - { pin: 7,  reserved: true, input: false, output: false }
+  - { pin: 8,  reserved: true, input: false, output: false }
+  - { pin: 9,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 10, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 11, reserved: true, input: false, output: false }
+  - { pin: 12, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 13, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 14, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 15, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 16, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 17, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 18, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 19, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 21, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 22, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 23, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 25, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 26, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 27, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 32, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 33, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 34, input: true, output: false, pullup: false, pulldown: false }
+  - { pin: 35, input: true, output: false, pullup: false, pulldown: false }
+  - { pin: 36, input: true, output: false, pullup: false, pulldown: false }
+  - { pin: 37, input: true, output: false, pullup: false, pulldown: false }
+  - { pin: 38, input: true, output: false, pullup: false, pulldown: false }
+  - { pin: 39, input: true, output: false, pullup: false, pulldown: false }
+`;
+
+/* ---------------------------------------------------------------------
+ * Role vocabularies. Real FluidNC has a larger set; this prototype covers
+ * enough of it to demonstrate the resource-first walk + TBD stubbing.
+ * ------------------------------------------------------------------- */
+const AXES = ["x","y","z","a","b","c"];
+
+/* Two-level role tree for motor sockets, built with the same generic
+ * makeInputRow/N-level-cascade mechanism as input pins: top level picks the
+ * axis, second level picks which motor slot on that axis (an axis can have
+ * one or two motors -- motor0/motor1). Leaf value is "<letter>:<slot>"
+ * (e.g. "x:motor0"), consumed directly by generateDraft()'s motor-socket
+ * loop below (updated to match this 2-segment format, dropping the old
+ * flat list's redundant "axis:" prefix). */
+const MOTOR_ROLE_TREE = Object.fromEntries(AXES.map(ax => [ax, {
+  label: `${ax.toUpperCase()} axis`,
+  children: {
+    motor0: { label: "First Motor" },
+    motor1: { label: "Second Motor" },
+  },
+}]));
+
+/* Multi-level role tree for input-capable pins. A node with no "children"
+ * is a leaf -- picking it commits a value equal to the path of keys joined
+ * by ":" (e.g. limit -> x -> neg => "limit:x:neg", control -> feed_hold =>
+ * "control:feed_hold", probe => "probe:pin"). Depth varies by branch --
+ * Limit is 3 levels deep incl. top (limit -> axis -> direction), Control
+ * and Probe are 2 (category -> specific pin), User Input is 3 (category ->
+ * digital/analog -> index) -- which is exactly why this needs a generic
+ * N-level cascade rather than the fixed 2-level mechanism used for
+ * output-capable pins. */
+const INPUT_ROLE_TREE = {
+  limit: {
+    label: "Limit",
+    children: Object.fromEntries(AXES.map(ax => [ax, {
+      label: `${ax.toUpperCase()} axis`,
+      children: {
+        neg: { label: "Negative" },
+        pos: { label: "Positive" },
+        all: { label: "(shared/all)" },
+      },
+    }])),
+  },
+  /* Probe.h defines two distinct input pins, not one: _probePin (the
+   * ordinary G38 probe) and _toolsetterPin (a second, separately-tripped
+   * input for tool-length setting) -- confirmed in the connected FluidNC
+   * source, Probe::group() (src/Probe.cpp): handler.item("pin", _probePin)
+   * and handler.item("toolsetter_pin", _toolsetterPin). Child keys here are
+   * literally the config field names, so the dispatch below needs no
+   * lookup table -- it just writes cfg.probe[<child key>] = pin. */
+  probe: {
+    label: "Probe",
+    children: {
+      pin: { label: "Probe" },
+      toolsetter_pin: { label: "Toolsetter" },
+    },
+  },
+  /* Control.cpp's constructor registers ALL of these as siblings in the
+   * one real "control:" config block (confirmed in the connected FluidNC
+   * source) -- safety_door_pin, reset_pin, feed_hold_pin, cycle_start_pin,
+   * macro0_pin..macro3_pin (4 macro buttons, not 2), fault_pin, estop_pin,
+   * homing_button_pin. Macro buttons were previously modeled as their own
+   * separate top-level UI category, which didn't match this real structure
+   * -- folded in here as second-level Control children instead. Child keys
+   * are each pin's real name minus its "_pin" suffix, so dispatch below
+   * can build the real field name generically as `${key}_pin`. */
+  control: {
+    label: "Control",
+    children: {
+      feed_hold: { label: "Feed Hold" },
+      cycle_start: { label: "Cycle Start" },
+      reset: { label: "Reset" },
+      safety_door: { label: "Safety Door" },
+      fault: { label: "Fault" },
+      estop: { label: "E-Stop" },
+      homing_button: { label: "Homing Button" },
+      macro0: { label: "Macro Button 0" },
+      macro1: { label: "Macro Button 1" },
+      macro2: { label: "Macro Button 2" },
+      macro3: { label: "Macro Button 3" },
+    },
+  },
+  /* Machine/UserInputs.cpp: a generic "user_inputs:" config block of plain
+   * digital0_pin..digital7_pin (MaxUserDigitalPin = 8, from GCode.h) and
+   * analog0_pin..analog3_pin (MaxUserAnalogPin = 4) slots, read by M66/M226
+   * gcode -- these aren't tied to any specific machine function, just raw
+   * user-assignable inputs, distinct from Limit/Probe/Control. */
+  user_input: {
+    label: "User Input",
+    children: {
+      digital: {
+        label: "Digital",
+        children: Object.fromEntries(Array.from({ length: 8 }, (_, i) => [String(i), { label: `Digital ${i}` }])),
+      },
+      analog: {
+        label: "Analog",
+        children: Object.fromEntries(Array.from({ length: 4 }, (_, i) => [String(i), { label: `Analog ${i}` }])),
+      },
+    },
+  },
+};
+
+/* Spindle types each have a different pin set (verified against FluidNC's
+ * actual Spindles/ source under FluidNC/src/Spindles/ -- read directly from
+ * the connected FluidNC checkout, not assumed or scraped): PWM has output/
+ * enable/direction; Laser subclasses PWM but its own group() deliberately
+ * calls OnOff::groupCommon() instead of OnOff::group(), dropping direction
+ * (lasers don't reverse); 10V adds forward/reverse on top of PWM's three
+ * pins (separate direction-enable lines, distinct from a single
+ * direction_pin); Relay/DAC are plain OnOff (output/enable/direction, no
+ * pwm_hz -- neither overrides OnOff::group() to add it); BESC subclasses
+ * PWM (same 3 pins + pwm_hz) and adds two of its own tunables; HBridge is
+ * structurally different again -- output_cw_pin/output_ccw_pin/enable_pin,
+ * no plain output_pin or direction_pin at all. cfgKey is each type's real
+ * registered FluidNC config key (from `SpindleFactory::InstanceBuilder<..>
+ * registration("...")` in each .cpp). stub() returns exactly the base
+ * Spindle:: tuning fields each type's real group() chain actually exposes
+ * -- e.g. Relay/DAC never get a spurious pwm_hz. NullSpindle (no pins) and
+ * PlasmaSpindle (experimental; its arc_ok_pin is an INPUT coupled to this
+ * same block, which this per-output-pin menu has no way to express yet)
+ * are deliberately left out for now rather than modeled half-right. */
+const SPINDLE_TYPES = {
+  pwm:     { label: "PWM", cfgKey: "PWM",
+             pins: [["output","Output"], ["enable","Enable"], ["direction","Direction"]],
+             stub: () => ({ pwm_hz: "TBD", spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0 }) },
+  laser:   { label: "Laser", cfgKey: "Laser",
+             pins: [["output","Output"], ["enable","Enable"]],
+             stub: () => ({ pwm_hz: "TBD", spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0 }) },
+  "10v":   { label: "0-10V", cfgKey: "10V",
+             pins: [["output","Output"], ["enable","Enable"], ["direction","Direction"], ["forward","Forward"], ["reverse","Reverse"]],
+             stub: () => ({ pwm_hz: "TBD", spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0 }) },
+  relay:   { label: "Relay (on/off)", cfgKey: "Relay",
+             pins: [["output","Output"], ["enable","Enable"], ["direction","Direction"]],
+             stub: () => ({ spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0 }) },
+  dac:     { label: "DAC", cfgKey: "DAC",
+             pins: [["output","Output"], ["enable","Enable"], ["direction","Direction"]],
+             stub: () => ({ spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0 }) },
+  besc:    { label: "BESC (RC ESC)", cfgKey: "BESC",
+             pins: [["output","Output"], ["enable","Enable"], ["direction","Direction"]],
+             stub: () => ({ pwm_hz: "TBD", spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0, min_pulse_us: "TBD", max_pulse_us: "TBD" }) },
+  hbridge: { label: "H-Bridge", cfgKey: "HBridge",
+             pins: [["output_cw","Output CW"], ["output_ccw","Output CCW"], ["enable","Enable"]],
+             stub: () => ({ pwm_hz: "TBD", spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0 }) },
+};
+
+/* Machine/UserOutputs.cpp's real, firmware-enforced counts (GCode.h:
+ * MaxUserDigitalPin = 8, MaxUserAnalogPin = 4), confirmed in the connected
+ * FluidNC source -- not an arbitrary UI choice. An earlier version of this
+ * file had DIGITAL_OUTPUT_COUNT wrong at 4; fixed here, and Analog Output
+ * added as its own category since UserOutputs::group() exposes both
+ * digitalN_pin and analogN_pin (plus analogN_hz, not yet modeled) under
+ * the same "user_outputs:" block. */
+const DIGITAL_OUTPUT_COUNT = 8;
+const ANALOG_OUTPUT_COUNT = 4;
+
+/* Generic two-step cascade lookup: given a step-1 category value, returns
+ * the step-2 [value,label] options for it, or null if that category is
+ * already a complete, non-cascading choice (coolant, unused). Spindle
+ * types and digital outputs both go through this same mechanism -- it's
+ * what keeps the primary dropdown from growing every time either set
+ * grows (a new spindle type, or wanting more digital output slots). */
+function cascadeOptionsFor(category) {
+  if (category.startsWith("spindle:")) {
+    const type = category.split(":")[1];
+    return SPINDLE_TYPES[type] ? SPINDLE_TYPES[type].pins : null;
+  }
+  if (category === "digital_output") {
+    return Array.from({ length: DIGITAL_OUTPUT_COUNT }, (_, i) => [String(i), `Output ${i}`]);
+  }
+  if (category === "analog_output") {
+    return Array.from({ length: ANALOG_OUTPUT_COUNT }, (_, i) => [String(i), `Output ${i}`]);
+  }
+  if (category === "status_output") {
+    return STATUS_OUTPUT_PINS;
+  }
+  return null;
+}
+
+/* Machine-state indicator outputs (e.g. tower lights) -- a real FluidNC
+ * feature (Status_Outputs, confirmed in the connected FluidNC source,
+ * status_outputs.cpp/h) that's independent of Limit/Probe/Control/Spindle/
+ * Coolant/user I/O. All 5 real pins, per Status_Outputs::group(): idle_pin,
+ * run_pin, hold_pin, alarm_pin, door_pin (the wiki's own example config
+ * only shows 3 of these 5). */
+const STATUS_OUTPUT_PINS = [
+  ["idle", "Idle"], ["run", "Run"], ["hold", "Hold"], ["alarm", "Alarm"], ["door", "Door"],
+];
+
+/* Top-level category options for an output-capable pin -- step 1 of the
+ * two-step menu. Spindle types and "Digital Output" are cascading
+ * categories (picking one reveals step 2); coolant is already a single
+ * flat choice per option, same as before. */
+function outputCategoryOptions() {
+  const opts = [{ value: "unused", label: "— Unused —" }];
+  Object.keys(SPINDLE_TYPES).forEach(t => opts.push({ value: `spindle:${t}`, label: `Spindle — ${SPINDLE_TYPES[t].label}` }));
+  opts.push({ value: "coolant:flood", label: "Coolant — Flood" });
+  opts.push({ value: "coolant:mist", label: "Coolant — Mist" });
+  opts.push({ value: "digital_output", label: "Digital Output" });
+  opts.push({ value: "analog_output", label: "Analog Output" });
+  opts.push({ value: "status_output", label: "Status Output" });
+  return opts;
+}
+
+/* Split a full role value into its category (step 1) and, for cascading
+ * categories, the specific sub-value chosen in step 2. */
+function roleCategory(full) {
+  if (!full || full === "unused") return "unused";
+  const parts = full.split(":");
+  if (parts[0] === "spindle") return `spindle:${parts[1]}`;
+  if (parts[0] === "digital_output") return "digital_output";
+  if (parts[0] === "analog_output") return "analog_output";
+  if (parts[0] === "status_output") return "status_output";
+  return full;
+}
+function roleSubValue(full) {
+  const parts = (full || "").split(":");
+  if (parts[0] === "spindle") return parts[2];
+  if (parts[0] === "digital_output") return parts[1];
+  if (parts[0] === "analog_output") return parts[1];
+  if (parts[0] === "status_output") return parts[1];
+  return undefined;
+}
+
+/* The model choice fully determines the resulting block's shape (the
+ * modern FluidNC form is a single ModbusVFD: block with a model: field --
+ * the old per-model top-level key like Huanyang: still works but is
+ * strictly a backwards-compatibility alias), so it's folded into the
+ * resource's role choice itself rather than asked as a separate Phase B
+ * fill-in, same pattern as fixed_motor_type dispatching a motor socket's
+ * wrapper key. Model list is every concrete VFD model implemented under
+ * FluidNC/src/Spindles/VFD/ in the bdring/FluidNC source as of this
+ * writing (confirmed against the actual repo, not from memory) -- re-check
+ * that directory if this needs to grow later. */
+function rs485RoleOptions() {
+  const models = [
+    "DanfossVLT2800", "DeltaMS300", "FolinnBD600", "H100", "H2A",
+    "Huanyang", "MollomG70", "NowForever", "SiemensV20", "YL620"
+  ];
+  return [
+    { value: "unused", label: "— Unused —" },
+    ...models.map(m => ({ value: `vfd:${m}`, label: `Modbus VFD Spindle — ${m}` }))
+  ];
+}
+
+/* Kinematics is a machine-level (not board-resource-tied) choice -- every
+ * board can, in principle, host any kinematic system, so unlike motor
+ * sockets/pins/RS485 this isn't walked from board.* facts. Confirmed
+ * against the connected FluidNC source: Kinematics::afterParse() defaults
+ * _system to a plain Cartesian when the config's "kinematics:" section (or
+ * its subordinate system name) is absent, so Cartesian-with-no-subordinate-
+ * items is the correct, real default -- not just a UI convenience. Other
+ * compiled-in systems (see src/CMakeLists.txt's Kinematics/*.cpp list;
+ * PolarArm.hx and the .cppx/.orig files alongside them are NOT compiled)
+ * each register under a specific factory name and some define their own
+ * subordinate config items via group() -- CoreXY and Midtbot genuinely
+ * have empty group() overrides (no subordinate items at all), while
+ * ParallelDelta and WallPlotter each expose a real, fixed set of geometry
+ * fields. cfgKey is each type's exact registered factory name (case-
+ * sensitive, confirmed from each .cpp's `KinematicsFactory::InstanceBuilder
+ * registration("...")` call -- note midtbot/parallel_delta are lowercase,
+ * unlike Cartesian/CoreXY/WallPlotter). stub() returns exactly the fields
+ * each type's real group() exposes, TBD-stubbed like every other role. */
+const KINEMATICS_TYPES = {
+  Cartesian:      { cfgKey: "Cartesian", label: "Cartesian (default)", stub: () => ({}) },
+  CoreXY:         { cfgKey: "CoreXY", label: "CoreXY", stub: () => ({}) },
+  midtbot:        { cfgKey: "midtbot", label: "Midtbot", stub: () => ({}) },
+  parallel_delta: { cfgKey: "parallel_delta", label: "Parallel Delta",
+                    stub: () => ({
+                      crank_mm: "TBD", base_triangle_mm: "TBD", linkage_mm: "TBD",
+                      end_effector_triangle_mm: "TBD", kinematic_segment_len_mm: "TBD",
+                      use_servos: "TBD", up_degrees: "TBD",
+                    }) },
+  WallPlotter:    { cfgKey: "WallPlotter", label: "Wall Plotter",
+                    stub: () => ({
+                      left_axis: "TBD", left_anchor_x: "TBD", left_anchor_y: "TBD",
+                      right_axis: "TBD", right_anchor_x: "TBD", right_anchor_y: "TBD",
+                      segment_length: "TBD",
+                    }) },
+};
+
+function kinematicsOptions() {
+  return Object.keys(KINEMATICS_TYPES).map(k => ({ value: k, label: KINEMATICS_TYPES[k].label }));
+}
+
+/* Confirmed against real vendor documentation (4x controller wiki's own
+ * "UARTS" section, verbatim): "UART0 is used for the USB/Serial port.
+ * UART1 is used for the TMC2209 drivers. UART2 is the only one left to the
+ * user. This means if you use it for the RS485, there are non left for
+ * pendants, display, etc." -- i.e. a board with UART-addressed onboard TMC
+ * drivers (detected via any motor socket's extra.bus === "uart1", a real
+ * board fact already recorded for such boards) has already consumed
+ * uart_num 1, so the one remaining non-USB UART for RS485/expansion is 2;
+ * a board without such drivers (6x, Corgi) defaults to 1. This is a
+ * WIZARD-level default, applied identically to whichever of RS485/
+ * expansion UART a config actually binds -- deliberately NOT arbitrated
+ * further than that, because on a TMC-UART board both would default to
+ * the same remaining number 2 and only one can really be used at once
+ * (confirmed by the 4x wiki's own commented-out RS485 example, which
+ * literally warns "Be sure pendant is not using UART 2" and uses
+ * uart_num: 2 for RS485 in that scenario) -- a genuine hardware limit (the
+ * ESP32 only has 3 UART peripherals total), not a wizard bug to engineer
+ * around. */
+function boardHasUartTmc(b) {
+  return !!(b.motor_sockets && b.motor_sockets.sockets &&
+    b.motor_sockets.sockets.some(s => s.extra && s.extra.bus === "uart1"));
+}
+function defaultSecondaryUartNum(b) {
+  return boardHasUartTmc(b) ? 2 : 1;
+}
+
+/* ---------------------------------------------------------------------
+ * State
+ * ------------------------------------------------------------------- */
+let board = null;          // parsed board object
+let bindings = {};         // resourceKey -> role value string
+let paramValues = {};      // JSON-pointer-ish path (e.g. "axes.x.steps_per_mm") -> user-entered value
+let pinAttrs = {};         // path -> { level: ""|"low"|"high", pull: ""|"pu"|"pd" }
+let kinematicsType = "Cartesian"; // selected top-level kinematics system, defaults to Cartesian
+/* Start: is another machine-level (not board-resource-tied) section, same
+ * category as Kinematics -- confirmed against the connected FluidNC source
+ * (Machine::Start, defined inline in src/Machine/MachineConfig.h): a plain
+ * Configurable with exactly 3 bool fields, no enum/factory involved:
+ * must_home/check_limits default true, deactivate_parking defaults false
+ * (MachineConfig.h's own member initializers). The section itself is
+ * optional in config.yaml (MachineConfig::afterParse() auto-instantiates a
+ * default Start() if absent), but the wizard always emits it directly into
+ * the draft (see generateDraft()'s Start block) with must_home left open
+ * TBD (a real decision) and the other two pre-populated with these same
+ * compiled-in defaults, editable inline -- no separate left-pane UI state
+ * needed for this section at all. */
+let chipGpioCaps = {};     // gpio number -> chip-file gpio fact object (see loadBoard()/pinWidgetHtml())
+let lastPlainYaml = "";    // current draft as plain text (TBD where still unanswered) -- for copy/download
+/* Per-axis homing: presence -- FluidNC's homing: sub-section is genuinely
+ * optional (an axis with no homing: entry simply can't be homed), so unlike
+ * the always-present axis fields (steps_per_mm etc.), it should NOT be
+ * pre-populated with TBD stubs for every axis by default. Same "selector
+ * lives inside the draft itself" pattern as Kinematics (see KINSELECT):
+ * ensureAxis() plants a HOMINGSELECT_<letter> sentinel as homing:'s own
+ * VALUE (unlike KINSELECT, which replaces a KEY, this replaces a VALUE --
+ * homing:'s value is what varies, not its key name -- so no colon-stripping
+ * trick is needed here; it's collected/replaced exactly like TBD/PINSLOT).
+ * Defaults to false (No homing) for every axis until the user explicitly
+ * turns it on; the final copy/download output omits the homing: key
+ * entirely for any axis left disabled, rather than emitting the sentinel
+ * or an empty/TBD block. */
+let homingEnabled = {};    // axis letter -> bool, defaults to false (falsy) if unset
+
+/* Any leaf whose key names a pin (ends in "_pin", or is exactly "pin" for
+ * probe.pin) and whose value is a real, board-derived pin reference (not
+ * the TBD sentinel, not NO_PIN -- there's nothing to attribute-tag on
+ * either of those) is eligible for FluidNC pin attributes like :low/:pu. */
+function isPinLeaf(key, value) {
+  if (typeof value !== "string") return false;
+  if (value === "TBD" || value === "NO_PIN") return false;
+  return key.endsWith("_pin") || key === "pin";
+}
+
+/* Pins feeding a fixed hardware protocol/bus -- spi:, sdcard:, i2so:, i2c:,
+ * and any uartN: block (whether from a dedicated onboard TMC bus, an
+ * RS485/VFD channel, or an expansion_uart's uart_channel) -- are not
+ * eligible for :low/:high/:pu/:pd attributes at all: the protocol itself
+ * dictates specific, fixed signal levels/timing (SPI/I2S clock polarity,
+ * UART idle-high framing at a specific baud, etc.), so there's no
+ * per-machine choice to make here, unlike a limit switch or spindle output
+ * pin. These render as plain, non-widget text in the draft. Distinct from
+ * motor_sockets/generic_pins/expansion_sockets/rs485_channels pins, which
+ * ARE real per-machine wiring choices (active-low switch, pull resistor
+ * needed, etc.) and keep their attribute widgets. */
+function isFixedProtocolPath(path) {
+  // NOTE: i2c0/i2c1/etc. (numbered, matching the real FluidNC config key --
+  // see the i2c_connectors handling in generateDraft()) intentionally IS
+  // still treated as a fixed-protocol bus here, even though whether it's
+  // used at all is now a config-author choice (no longer a fixed
+  // peripheral): once bound, its sda_pin/scl_pin are still I2C-protocol
+  // pins with fixed signal requirements, same reasoning as spi/sdcard/i2so.
+  return /^(spi|sdcard|i2so|i2c\d*)\./.test(path) || /^uart\d+\./.test(path);
+}
+
+/* ---------------------------------------------------------------------
+ * Phase B field vocabulary: how to render a widget for a given open TBD,
+ * keyed by the leaf key name. Real FluidNC has more fields than this
+ * prototype models; unknown keys fall back to a plain text box.
+ * ------------------------------------------------------------------- */
+function specForKey(key) {
+  // defaultKind: "firmware"  -- this is FluidNC's own documented default
+  //              "suggested" -- just a common/reasonable starting point,
+  //                             not a spec value -- verify for your hardware
+  // Placeholder is always just the default value itself -- no separate
+  // hand-written hint text to keep in sync.
+  const numeric = (def, defaultKind) => ({ type: "number", placeholder: String(def), default: def, defaultKind });
+  switch (key) {
+    case "soft_limits":
+      return { type: "enum", options: [["true","true — Yes"], ["false","false — No"]], default: "false", defaultKind: "firmware" };
+    // Machine::Start's 3 fields (src/Machine/MachineConfig.h) -- must_home
+    // is left with no override (an open decision), deactivate_parking/
+    // check_limits get one in generateDraft() (pre-populated, editable).
+    case "must_home":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "true", defaultKind: "firmware" };
+    case "deactivate_parking":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
+    case "check_limits":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "true", defaultKind: "firmware" };
+    // MachineConfig's 7 uncategorized top-level items (MachineConfig.cpp:
+    // 83-89 / MachineConfig.h member initializers) -- see their
+    // defaultOverrides entries in generateDraft(), which pre-populate
+    // these from the real compiled-in defaults below rather than leaving
+    // them open.
+    case "arc_tolerance_mm": return numeric(0.002, "firmware");
+    case "junction_deviation_mm": return numeric(0.01, "firmware");
+    case "verbose_errors":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "true", defaultKind: "firmware" };
+    case "report_inches":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
+    case "enable_parking_override_control":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
+    case "use_line_numbers":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
+    case "planner_blocks": return numeric(16, "firmware");
+    case "cycle":
+      return numeric(1, "suggested");
+    case "positive_direction":
+      return { type: "enum", options: [["true","true — Positive (toward max)"], ["false","false — Negative (toward min)"]], default: "false", defaultKind: "firmware" };
+    case "mpos_mm": return numeric(0, "suggested");
+    case "feed_mm_per_min": return numeric(100, "suggested");
+    case "seek_mm_per_min": return numeric(200, "suggested");
+    case "settle_ms": return numeric(500, "firmware");
+    case "seek_scaler": return numeric(1.1, "firmware");
+    case "feed_scaler": return numeric(1.1, "firmware");
+    case "microsteps":
+      return { type: "enum", options: [1,2,4,8,16,32,64,128,256].map(n => [String(n), String(n)]), default: "16", defaultKind: "suggested" };
+    case "idle_ms": return numeric(255, "firmware");
+    case "pulse_us": return numeric(4, "firmware");
+    case "dir_delay_us": return numeric(1, "firmware");
+    case "disable_delay_us": return numeric(0, "firmware");
+    case "steps_per_mm": return numeric(100, "suggested");
+    case "max_rate_mm_per_min": return numeric(5000, "suggested");
+    case "acceleration_mm_per_sec2": return numeric(100, "suggested");
+    case "max_travel_mm": return numeric(300, "suggested");
+    case "r_sense_ohms": return numeric(0.11, "suggested");
+    case "run_amps": return numeric(1.0, "suggested");
+    case "hold_amps": return numeric(0.5, "suggested");
+    case "cal_min_mm": return numeric(0, "suggested");
+    case "cal_max_mm": return numeric(30, "suggested");
+    case "pwm_hz": return numeric(5000, "firmware");
+    case "spinup_ms": case "spindown_ms": return numeric(0, "firmware");
+    case "tool_num": return numeric(0, "firmware");
+    case "speed_map": return { type: "text", placeholder: "0=0% 10000=100%", default: "0=0% 10000=100%", defaultKind: "firmware" };
+    case "addr": return numeric(0, "suggested");
+    case "modbus_id": return numeric(1, "suggested");
+    case "min_pulse_us": return numeric(900, "firmware");
+    case "max_pulse_us": return numeric(2200, "firmware");
+    case "uart_num": return numeric(2, "suggested");
+    // Only ever open TBD fields for a repurposed I2C-connector-as-UART
+    // (see i2c_connectors handling in generateDraft()) -- a dedicated
+    // expansion_uart connector's baud/mode are fixed board facts instead,
+    // never TBD. 115200/8N1 are plain common-UART conventions, not a
+    // FluidNC-specific default.
+    case "baud": return numeric(115200, "suggested");
+    case "mode": return { type: "text", placeholder: "8N1", default: "8N1", defaultKind: "suggested" };
+    // Status_Outputs' real compiled default (Status_outputs.h: int32_t
+    // _report_interval_ms = 500), confirmed against the connected FluidNC
+    // source -- also used, as a reasonable starting point, for
+    // uart_channel's field of the same name (whose own real default isn't
+    // separately verified, but 75ms from wiki examples wasn't a firmware
+    // default either).
+    case "report_interval_ms": return numeric(500, "firmware");
+    // ParallelDelta geometry -- defaults are the compiled-in member
+    // initializers in Kinematics/ParallelDelta.h, confirmed against the
+    // connected FluidNC source (a specific delta arm's real dimensions,
+    // not universal -- every real machine must override these).
+    case "crank_mm": return numeric(70.0, "firmware");
+    case "base_triangle_mm": return numeric(179.437, "firmware");
+    case "linkage_mm": return numeric(133.50, "firmware");
+    case "end_effector_triangle_mm": return numeric(86.603, "firmware");
+    case "kinematic_segment_len_mm": return numeric(1.0, "firmware");
+    case "use_servos": return { type: "enum", options: [["true","true — Yes"], ["false","false — No"]], default: "false", defaultKind: "firmware" };
+    case "up_degrees": return numeric(-30, "firmware");
+    // WallPlotter geometry -- same provenance (Kinematics/WallPlotter.h
+    // member initializers), a specific two-cord layout, not universal.
+    case "left_axis": return numeric(0, "firmware");
+    case "left_anchor_x": return numeric(-100, "firmware");
+    case "left_anchor_y": return numeric(100, "firmware");
+    case "right_axis": return numeric(1, "firmware");
+    case "right_anchor_x": return numeric(100, "firmware");
+    case "right_anchor_y": return numeric(100, "firmware");
+    case "segment_length": return numeric(10, "firmware");
+    default: return { type: "text", placeholder: "" };
+  }
+}
+
+/* Walk a freshly-cloned cfg and, in one pass, in the same order jsyaml.dump
+ * will visit it: (a) record every "TBD" slot as before, and (b) replace
+ * every real pin leaf with the sentinel "PINSLOT" (recording its original
+ * value), so the dumped text's tokens can be swapped for widgets below.
+ * This mutates `node` -- always call it on a clone, never the real cfg. */
+/* defaultOverrides: optional path -> {default, defaultKind} map, for the
+ * rare TBD field whose sensible default genuinely varies by BOARD (or even
+ * by specific motor socket), not just by field name -- e.g. r_sense_ohms
+ * is normally a generic per-driver-family guess (specForKey's plain
+ * default), but a board can document its own, verified-correct value for
+ * its own onboard chips (e.g. BTT Rodent's real 0.075 ohm sense resistor,
+ * vs. the erroneous 0.022 its own schematic/example configs show) -- see
+ * where motorBlockFor()'s tmc_5160 branch records such an override during
+ * the motor-socket loop in generateDraft(). Merged over specForKey(k)'s
+ * result so unrelated fields are unaffected. */
+function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverrides) {
+  if (!node || typeof node !== "object") return;
+  Object.keys(node).forEach(k => {
+    const v = node[k];
+    const p = path ? `${path}.${k}` : k;
+    if (v === "TBD") {
+      const override = defaultOverrides && defaultOverrides[p];
+      // NOTE: also re-derive placeholder from the override's own default --
+      // otherwise the merge below only changes spec.default/defaultKind
+      // (used by the "def" button), while the input's visible placeholder
+      // text -- what the user actually sees without clicking anything --
+      // would keep showing specForKey(k)'s generic value (e.g. 0.11 for any
+      // r_sense_ohms field) instead of the board's real, overriding one
+      // (e.g. BTT Rodent's documented 0.075), silently defeating the whole
+      // point of a board-specific override.
+      const spec = override
+        ? Object.assign({}, specForKey(k), override, { placeholder: String(override.default) })
+        : specForKey(k);
+      // A board-specific override isn't a mere suggestion the way
+      // specForKey's generic per-field guesses are -- it's a documented,
+      // verified-correct fact about THIS board's own hardware (e.g. the
+      // Rodent's real 0.075 ohm sense resistor). So unlike an ordinary
+      // TBD field (which stays open until the user clicks "def" or types a
+      // value), an overridden field is pre-filled as the actual current
+      // value immediately -- no click required -- rather than left as a
+      // placeholder the user must notice and act on. Only pre-fills if the
+      // user hasn't already set (or explicitly cleared) this exact path,
+      // so a real edit is never silently clobbered.
+      if (override && override.default !== undefined &&
+          !Object.prototype.hasOwnProperty.call(paramValues, p)) {
+        paramValues[p] = override.default;
+      }
+      paramSlots.push({ path: p, key: k, spec });
+    } else if (isPinLeaf(k, v) && !isFixedProtocolPath(p)) {
+      pinSlots.push({ path: p, key: k, basePin: v });
+      node[k] = "PINSLOT";
+    } else if (v && typeof v === "object") {
+      collectAndInjectSlots(v, p, paramSlots, pinSlots, defaultOverrides);
+    }
+  });
+}
+
+function setParam(path, key, rawValue) {
+  const spec = specForKey(key);
+  if (rawValue === "" || rawValue === undefined) {
+    delete paramValues[path];
+  } else if (spec.type === "number") {
+    const n = Number(rawValue);
+    if (Number.isNaN(n)) delete paramValues[path]; else paramValues[path] = n;
+  } else if (spec.type === "enum" && (rawValue === "true" || rawValue === "false")) {
+    paramValues[path] = rawValue === "true";
+  } else if (spec.type === "enum") {
+    const n = Number(rawValue);
+    paramValues[path] = Number.isNaN(n) ? rawValue : n;
+  } else {
+    paramValues[path] = rawValue;
+  }
+  generateDraft();
+}
+
+function setPinAttr(path, which, value) {
+  if (!pinAttrs[path]) pinAttrs[path] = { level: "", pull: "" };
+  pinAttrs[path][which] = value;
+  generateDraft();
+}
+
+function escapeAttr(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;");
+}
+
+function paramWidgetHtml(slot) {
+  const has = Object.prototype.hasOwnProperty.call(paramValues, slot.path);
+  const cls = "inline-field" + (has ? " filled" : "");
+  let html;
+  if (slot.spec.type === "enum") {
+    const cur = has ? String(paramValues[slot.path]) : "";
+    let opts = `<option value="">TBD</option>`;
+    slot.spec.options.forEach(([val, label]) => {
+      opts += `<option value="${escapeAttr(val)}"${val === cur ? " selected" : ""}>${escapeHtml(label)}</option>`;
+    });
+    html = `<select class="${cls}" data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}">${opts}</select>`;
+  } else {
+    const cur = has ? paramValues[slot.path] : "";
+    const type = slot.spec.type === "number" ? "number" : "text";
+    const step = slot.spec.type === "number" ? ` step="any"` : "";
+    html = `<input class="${cls}" type="${type}"${step} placeholder="${escapeAttr(slot.spec.placeholder || "TBD")}" value="${escapeAttr(cur)}" data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}">`;
+  }
+  if (slot.spec.default !== undefined) {
+    const kindLabel = slot.spec.defaultKind === "firmware" ? "FluidNC firmware default"
+      : slot.spec.defaultKind === "board" ? "this board's own documented/corrected value"
+      : "suggested starting value — verify for your hardware";
+    html += `<button type="button" class="inline-btn default-btn" data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}" data-default="${escapeAttr(slot.spec.default)}" title="Set ${kindLabel}: ${escapeAttr(slot.spec.default)}">def</button>`;
+  }
+  html += `<button type="button" class="inline-btn clear-btn" data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}" title="Clear (back to TBD)">✕</button>`;
+  return html;
+}
+
+/* FluidNC pin attributes: :low/:high (active level) and :pu/:pd (pull
+ * resistor) can be attached to any real pin reference. The base pin itself
+ * (a board-derived fact) is shown read-only; these two small pickers just
+ * append the optional suffixes. */
+function pinWidgetHtml(slot) {
+  const attrs = pinAttrs[slot.path] || { level: "", pull: "" };
+  const levelOpts = [["", "—"], ["low", ":low"], ["high", ":high"]];
+  const pullOpts = [["", "—"], ["pu", ":pu"], ["pd", ":pd"]];
+  // I2SO pins are outputs of an external shift register, not real GPIOs --
+  // they have no pull-up/pull-down capability at all, so no chip lookup
+  // applies to them. Real gpio.* pins: consult the board's mcu_chip file
+  // (chipGpioCaps, built in loadBoard()) for the true per-pin pullup/
+  // pulldown capability -- e.g. the ESP32's own input-only pins (34-39)
+  // have neither, a chip-level fact, not a board-level one (per explicit
+  // user direction: this should be sourced from the chip file, not
+  // restated/guessed per board).
+  let supportsPull = !slot.basePin.startsWith("i2so.");
+  if (supportsPull && slot.basePin.startsWith("gpio.")) {
+    const num = parseInt(slot.basePin.slice(5), 10);
+    const caps = chipGpioCaps[num];
+    if (caps) supportsPull = !!(caps.pullup || caps.pulldown);
+  }
+  let html = `<span class="fixed-fact">${escapeHtml(slot.basePin)}</span>`;
+  html += `<select class="attr-field${attrs.level ? " set" : ""}" data-path="${escapeAttr(slot.path)}" data-attr="level" title="Active level (:low / :high)">` +
+    levelOpts.map(([v,l]) => `<option value="${v}"${attrs.level===v?" selected":""}>${l}</option>`).join("") + `</select>`;
+  if (supportsPull) {
+    html += `<select class="attr-field${attrs.pull ? " set" : ""}" data-path="${escapeAttr(slot.path)}" data-attr="pull" title="Pull resistor (:pu / :pd)">` +
+      pullOpts.map(([v,l]) => `<option value="${v}"${attrs.pull===v?" selected":""}>${l}</option>`).join("") + `</select>`;
+  }
+  return html;
+}
+
+/* Build the inline-editable HTML for the <pre>: every "TBD" or "PINSLOT"
+ * token in the dumped YAML text is replaced, in order, by the matching
+ * widget -- editable right where it sits in the document, pre-filled if
+ * already answered, so fixing a mistake is just clicking the same spot
+ * again rather than hunting a separate list. */
+const HOMING_SENTINEL_RE = new RegExp(`^HOMINGSELECT_(${AXES.join("|")})$`);
+
+function buildInteractiveYaml(yamlText, paramSlots, pinSlots) {
+  const tokens = yamlText.split(/(TBD|PINSLOT|KINSELECT|HOMINGSELECT_[a-z]+)/);
+  let html = "";
+  let pi = 0, si = 0;
+  let stripLeadingColon = false;
+  tokens.forEach(tok => {
+    const homingMatch = tok.match(HOMING_SENTINEL_RE);
+    if (tok === "TBD") {
+      html += paramWidgetHtml(paramSlots[pi++]);
+    } else if (tok === "PINSLOT") {
+      html += pinWidgetHtml(pinSlots[si++]);
+    } else if (tok === "KINSELECT") {
+      // kinWidgetHtml() already appends its own trailing ":" as part of the
+      // label -- the very next chunk of yamlText is js-yaml's own literal
+      // ": " for this same key, which would otherwise duplicate it right
+      // after the select's arrow. Strip exactly that one leading colon
+      // from the next plain-text chunk.
+      html += kinWidgetHtml();
+      stripLeadingColon = true;
+    } else if (homingMatch) {
+      // Same KEY-replacement idea as KINSELECT (not a value-position
+      // sentinel): this axis's homing entry is keyed by
+      // HOMINGSELECT_<letter> in `cfg` itself (see ensureAxis()), whether
+      // enabled or not, so the selector always sits exactly where the real
+      // "homing:" key belongs -- a non-existent homing: section really is
+      // different from an empty one, so the interactive view shouldn't
+      // show homing: at all when disabled, only this selector. The
+      // following literal ": " (plus a literal "null" when disabled) is
+      // js-yaml's own text for this same key/value and needs stripping,
+      // same reasoning as KINSELECT.
+      html += homingWidgetHtml(homingMatch[1]);
+      stripLeadingColon = true;
+    } else {
+      html += escapeHtml(stripLeadingColon ? tok.replace(/^:(\s*null)?/, "") : tok);
+      stripLeadingColon = false;
+    }
+  });
+  return html;
+}
+
+/* Kinematics system selector -- lives INSIDE the generated draft itself
+ * (right pane), not the left pane's resource-assignment list, since it
+ * isn't a board-resource binding at all (any board can in principle host
+ * any kinematic system -- see KINEMATICS_TYPES' own declaration comment).
+ * Implemented the same way PINSLOT/TBD are: generateDraft() plants a
+ * literal "KINSELECT" sentinel as the kinematics: block's own key (see
+ * `cfg.kinematics = { KINSELECT: kt.stub() }`), which survives js-yaml's
+ * dump as plain unquoted text and gets tokenized out here exactly like any
+ * other sentinel, then replaced with a real <select>. Wired up alongside
+ * the other #draft widget classes in generateDraft(). */
+function kinWidgetHtml() {
+  // Option text is each system's real cfgKey (Cartesian/CoreXY/midtbot/
+  // parallel_delta/WallPlotter) -- i.e. exactly the section-name text that
+  // ends up in the actual key position, not KINEMATICS_TYPES' more
+  // elaborated display label (e.g. "Parallel Delta") -- so the dropdown,
+  // sitting inline where a YAML key normally goes, still reads like a
+  // real, valid config file rather than an elaborated UI description.
+  // The ":" is baked into each option's own text (not appended after
+  // </select>) so it reads "Cartesian:" BEFORE the native dropdown arrow,
+  // exactly where a real YAML key's colon belongs -- a colon placed after
+  // the closing </select> tag would render after the arrow instead, which
+  // looks wrong (a native <select>'s arrow is always the box's last visual
+  // element; nothing can be placed between the label text and the arrow
+  // except by putting it inside the option text itself).
+  let html = `<select class="kin-select">`;
+  Object.keys(KINEMATICS_TYPES).forEach(k => {
+    const cfgKey = KINEMATICS_TYPES[k].cfgKey;
+    html += `<option value="${escapeAttr(k)}"${k === kinematicsType ? " selected" : ""}>${escapeHtml(cfgKey)}:</option>`;
+  });
+  html += `</select>`;
+  return html;
+}
+
+/* Per-axis homing: presence selector -- see homingEnabled's own declaration
+ * comment. Same KEY-replacement idea as kinWidgetHtml(): this axis's own
+ * homing entry is keyed by HOMINGSELECT_<letter> in `cfg`/`liveCfg`
+ * regardless of state (see ensureAxis()), so the selector always sits
+ * exactly at the position homing:'s KEY would occupy -- when disabled, no
+ * "homing:" text appears anywhere, only this selector (a non-existent
+ * section really is different from an empty one). Only the enabled
+ * option's text bakes in a trailing ":" (matching the real "homing:" key
+ * text, before the arrow, same reasoning as kinWidgetHtml's cfgKey
+ * options) -- the disabled option deliberately has none, since "No
+ * homing" never becomes a real YAML key at all. */
+function homingWidgetHtml(letter) {
+  const enabled = !!homingEnabled[letter];
+  let html = `<select class="homing-select" data-letter="${escapeAttr(letter)}">`;
+  html += `<option value="false"${enabled ? "" : " selected"}>— No homing —</option>`;
+  html += `<option value="true"${enabled ? " selected" : ""}>homing:</option>`;
+  html += `</select>`;
+  return html;
+}
+
+function resourceKeyMotor(i) { return `motor:${i}`; }
+function resourceKeyPin(i) { return `pin:${i}`; }
+function resourceKeyExp(si, pi) { return `exp:${si}:${pi}`; }
+function resourceKeyRs485(i) { return `rs485:${i}`; }
+function resourceKeyExpUart(i) { return `expuart:${i}`; }
+function resourceKeyI2c(i) { return `i2c:${i}`; }
+
+/* ---------------------------------------------------------------------
+ * Rendering
+ * ------------------------------------------------------------------- */
+function loadBoard(id) {
+  board = jsyaml.load(BOARD_YAML[id]);
+  bindings = {};
+  paramValues = {};
+  pinAttrs = {};
+  kinematicsType = "Cartesian";
+  homingEnabled = {};
+  // Build a per-GPIO-number capability lookup from this board's referenced
+  // mcu_chip file (see pinWidgetHtml()'s use of chipGpioCaps) -- chip-level
+  // facts (pullup/pulldown support etc.) belong here, not in the board file.
+  chipGpioCaps = {};
+  const chipId = board.board && board.board.mcu_chip;
+  if (chipId && CHIP_YAML[chipId]) {
+    const chip = jsyaml.load(CHIP_YAML[chipId]);
+    (chip.gpio || []).forEach(g => { chipGpioCaps[g.pin] = g; });
+  }
+  renderResources();
+  generateDraft();
+}
+
+function renderResources() {
+  const col = document.getElementById("resourceCol");
+  col.innerHTML = "";
+
+  const note = document.createElement("div");
+  note.className = "note";
+  note.innerHTML = `<b>${board.board.name}</b> (${board.board.manufacturer}) — ` +
+    `stepping engine(s): <code>${(board.stepping.engines||[]).join(", ")}</code>. ` +
+    `Each row below is one physical board resource (from the board file). Pick the FluidNC ` +
+    `role it plays, or leave it Unused. This is Phase A — resource → role binding.`;
+  col.appendChild(note);
+
+  // Kinematics has NO left-pane row -- the left pane is pure board-resource
+  // assignment, and a kinematic system choice isn't tied to any board
+  // resource at all (any board can in principle host any kinematic
+  // system). The selector itself now lives INSIDE the generated draft (see
+  // kinWidgetHtml()/the KINSELECT sentinel in generateDraft()), right where
+  // the kinematics: block's system-name key sits, defaulting to Cartesian
+  // per FluidNC's own real default (Kinematics::afterParse()). Choosing a
+  // system with subordinate geometry items (Parallel Delta, Wall Plotter)
+  // auto-populates them as ordinary TBD fields alongside it.
+
+  // Start: has NO left-pane row either -- same reasoning as Kinematics.
+  // It's always emitted directly into the draft below with its fields
+  // already inline-editable there (see generateDraft()'s Start block):
+  // must_home is left genuinely TBD (whether homing should be required is a
+  // real decision), while deactivate_parking/check_limits are pre-populated
+  // with FluidNC's own compiled-in defaults via the same defaultOverrides
+  // mechanism used for board-specific hints -- rarely-changed settings the
+  // user need not think about, but can still edit inline if they want to.
+
+  // Fixed peripherals — informational only, not assignable.
+  if (board.fixed_peripherals) {
+    const sec = document.createElement("section");
+    sec.innerHTML = `<h2>Fixed peripherals (already known, not assignable)</h2>`;
+    const list = document.createElement("div");
+    list.className = "fixed-list";
+    const fp = board.fixed_peripherals;
+    const lines = [];
+    if (fp.spi) lines.push(`SPI bus: <code>${JSON.stringify(fp.spi)}</code>`);
+    if (fp.sdcard) lines.push(`SD card: <code>${JSON.stringify(fp.sdcard)}</code>`);
+    if (fp.i2so) lines.push(`I2SO shift register: <code>${JSON.stringify(fp.i2so)}</code>`);
+    if (fp.dedicated_uarts) fp.dedicated_uarts.forEach(u => lines.push(`Dedicated UART (${u.label}): <code>${JSON.stringify(u)}</code>`));
+    list.innerHTML = lines.join("<br>");
+    sec.appendChild(list);
+    col.appendChild(sec);
+  }
+
+  // Motor sockets
+  if (board.motor_sockets && board.motor_sockets.sockets) {
+    const sec = document.createElement("section");
+    sec.innerHTML = `<h2>Motor sockets</h2>`;
+    board.motor_sockets.sockets.forEach((s, i) => {
+      const key = resourceKeyMotor(i);
+      sec.appendChild(makeInputRow(
+        key, s.label,
+        `${s.driver_class}${s.fixed_motor_type ? " — " + s.fixed_motor_type : ""}`,
+        MOTOR_ROLE_TREE
+      ));
+    });
+    col.appendChild(sec);
+  }
+
+  // Generic pins
+  if (board.generic_pins) {
+    const sec = document.createElement("section");
+    sec.innerHTML = `<h2>Generic pins</h2>`;
+    board.generic_pins.forEach((p, i) => {
+      const key = resourceKeyPin(i);
+      const sub = `${p.mcu_pin} — ${p.direction}`;
+      sec.appendChild(p.direction === "output" ? makeOutputRow(key, p.label, sub) : makeInputRow(key, p.label, sub, INPUT_ROLE_TREE));
+    });
+    col.appendChild(sec);
+  }
+
+  // Expansion sockets
+  if (board.expansion_sockets) {
+    const sec = document.createElement("section");
+    sec.innerHTML = `<h2>Expansion socket pins</h2>`;
+    board.expansion_sockets.forEach((s, si) => {
+      (s.pins||[]).forEach((p, pi) => {
+        const key = resourceKeyExp(si, pi);
+        const name = `${s.label} — pin ${p.module_pin}`;
+        const sub = `${p.mcu_pin} — ${p.direction}`;
+        sec.appendChild(p.direction === "output" ? makeOutputRow(key, name, sub) : makeInputRow(key, name, sub, INPUT_ROLE_TREE));
+      });
+    });
+    col.appendChild(sec);
+  }
+
+  // RS485 channels -- one coupled resource (tx/rx/optional rts), one dropdown.
+  if (board.rs485_channels) {
+    const sec = document.createElement("section");
+    sec.innerHTML = `<h2>RS485 channels</h2>`;
+    board.rs485_channels.forEach((ch, i) => {
+      const key = resourceKeyRs485(i);
+      const pins = `tx=${ch.tx_pin} rx=${ch.rx_pin}` + (ch.rts_pin ? ` rts=${ch.rts_pin}` : "");
+      sec.appendChild(makeRow(key, ch.label, pins, rs485RoleOptions()));
+    });
+    col.appendChild(sec);
+  }
+
+  // Expansion UART connectors (e.g. Corgi's RJ12) -- fixed pins, the only
+  // real choice is whether to use it at all (role: "uart_channel").
+  if (board.expansion_uarts) {
+    const sec = document.createElement("section");
+    sec.innerHTML = `<h2>Expansion UART connectors</h2>`;
+    board.expansion_uarts.forEach((ex, i) => {
+      const key = resourceKeyExpUart(i);
+      const pins = `txd=${ex.txd_pin} rxd=${ex.rxd_pin}${ex.connector_type ? " (" + ex.connector_type + ")" : ""}`;
+      sec.appendChild(makeRow(key, ex.label, pins, [
+        { value: "unused", label: "— Unused —" },
+        { value: "uart_channel", label: `I/O Expansion (uart_channel, uart${defaultSecondaryUartNum(board)})` },
+      ]));
+    });
+    if (boardHasUartTmc(board) && board.rs485_channels && board.rs485_channels.length) {
+      const warn = document.createElement("div");
+      warn.className = "note";
+      warn.innerHTML = `<b>Note:</b> this board's onboard TMC drivers already use uart1, so both RS485 ` +
+        `and this expansion connector default to uart2 -- per real FluidNC board docs, only one of them ` +
+        `can actually be used in a given config file.`;
+      sec.appendChild(warn);
+    }
+    col.appendChild(sec);
+  }
+
+  // I2C connectors -- unlike spi:/i2so:, FluidNC rarely has any onboard
+  // I2C device (its only I2C-consuming feature, an OLED display, is
+  // deprecated), so a board's I2C pins are almost always just brought out
+  // to an external connector, not auto-consumed. I2C pins are also often
+  // bare GPIOs, so the same connector is frequently repurposed as a plain
+  // expansion UART instead (scl_pin -> tx, sda_pin -> rx) -- same idea as
+  // an expansion_uart connector. This is therefore bindable, not a fixed
+  // peripheral: unused / a real i2c0: bus / a generic expansion UART.
+  if (board.i2c_connectors) {
+    const sec = document.createElement("section");
+    sec.innerHTML = `<h2>I2C connectors</h2>`;
+    board.i2c_connectors.forEach((ic, i) => {
+      const key = resourceKeyI2c(i);
+      const pins = `sda=${ic.sda_pin} scl=${ic.scl_pin}`;
+      sec.appendChild(makeRow(key, ic.label, pins, [
+        { value: "unused", label: "— Unused —" },
+        { value: "i2c_bus", label: "I2C Bus (i2c0: — e.g. OLED display)" },
+        { value: "expansion_uart", label: `Expansion UART (scl=tx, sda=rx, uart${defaultSecondaryUartNum(board)})` },
+      ]));
+    });
+    col.appendChild(sec);
+  }
+}
+
+function makeRow(key, name, sub, options) {
+  const row = document.createElement("div");
+  row.className = "row";
+  const lbl = document.createElement("div");
+  lbl.className = "lbl";
+  lbl.innerHTML = `<span class="name">${name}</span><span class="sub">${sub}</span>`;
+  const sel = document.createElement("select");
+  sel.dataset.key = key;
+  options.forEach(o => {
+    const opt = document.createElement("option");
+    opt.value = o.value; opt.textContent = o.label;
+    sel.appendChild(opt);
+  });
+  sel.value = bindings[key] || "unused";
+  sel.onchange = () => { bindings[key] = sel.value; generateDraft(); };
+  row.appendChild(lbl); row.appendChild(sel);
+  return row;
+}
+
+/* Two-step row for output-capable pins: step 1 picks the category
+ * (a spindle type, or coolant/digital-output as before); step 2, only
+ * shown when step 1 is a spindle type, picks which pin within that type.
+ * This is what keeps the per-pin option list from growing every time a
+ * new spindle type (Relay, HBridge, Dac, ...) gets added to SPINDLE_TYPES
+ * -- only the (hidden-until-needed) step 2 list grows. */
+function makeOutputRow(key, name, sub) {
+  const row = document.createElement("div");
+  row.className = "row output-row";
+  const lbl = document.createElement("div");
+  lbl.className = "lbl";
+  lbl.innerHTML = `<span class="name">${name}</span><span class="sub">${sub}</span>`;
+  row.appendChild(lbl);
+
+  const controls = document.createElement("div");
+  controls.className = "output-controls";
+
+  const primary = document.createElement("select");
+  outputCategoryOptions().forEach(o => {
+    const opt = document.createElement("option");
+    opt.value = o.value; opt.textContent = o.label;
+    primary.appendChild(opt);
+  });
+
+  const secondary = document.createElement("select");
+  secondary.style.display = "none";
+
+  function refreshSecondary() {
+    const cat = primary.value;
+    const opts = cascadeOptionsFor(cat);
+    if (opts) {
+      const curSub = roleSubValue(bindings[key] || "");
+      secondary.innerHTML = "";
+      opts.forEach(([val, label]) => {
+        const opt = document.createElement("option");
+        opt.value = val; opt.textContent = label;
+        secondary.appendChild(opt);
+      });
+      secondary.value = opts.some(p => p[0] === curSub) ? curSub : opts[0][0];
+      secondary.style.display = "";
+    } else {
+      secondary.style.display = "none";
+    }
+  }
+
+  primary.value = roleCategory(bindings[key] || "unused");
+  refreshSecondary();
+
+  primary.onchange = () => {
+    const cat = primary.value;
+    if (cascadeOptionsFor(cat)) {
+      refreshSecondary();
+      bindings[key] = `${cat}:${secondary.value}`;
+    } else {
+      secondary.style.display = "none";
+      bindings[key] = cat;
+    }
+    generateDraft();
+  };
+  secondary.onchange = () => {
+    bindings[key] = `${primary.value}:${secondary.value}`;
+    generateDraft();
+  };
+
+  controls.appendChild(primary);
+  controls.appendChild(secondary);
+  row.appendChild(controls);
+  return row;
+}
+
+/* Generic N-level cascading row for input-capable pins, driven by a role
+ * tree (see INPUT_ROLE_TREE). Unlike makeOutputRow's fixed 2 selects, this
+ * renders however many <select> elements the chosen branch actually needs
+ * -- 1 for Probe, 2 for Control/Macro, 3 for Limit -- and re-renders from
+ * scratch on every change. Whenever a choice is made at some level, any
+ * deeper level is auto-filled with its first child so bindings[key] always
+ * names a complete, valid leaf value (same policy makeOutputRow uses). */
+function makeInputRow(key, name, sub, tree) {
+  const row = document.createElement("div");
+  row.className = "row cascade-row";
+  const lbl = document.createElement("div");
+  lbl.className = "lbl";
+  lbl.innerHTML = `<span class="name">${name}</span><span class="sub">${sub}</span>`;
+  row.appendChild(lbl);
+
+  const controls = document.createElement("div");
+  controls.className = "cascade-controls";
+  row.appendChild(controls);
+
+  function firstLeafPathFrom(node, segs) {
+    let n = node, path = segs.slice();
+    while (n.children) {
+      const firstKey = Object.keys(n.children)[0];
+      path.push(firstKey);
+      n = n.children[firstKey];
+    }
+    return path;
+  }
+
+  function render() {
+    controls.innerHTML = "";
+    const curPath = (bindings[key] || "unused").split(":");
+
+    const top = document.createElement("select");
+    const unusedOpt = document.createElement("option");
+    unusedOpt.value = "unused"; unusedOpt.textContent = "— Unused —";
+    top.appendChild(unusedOpt);
+    Object.keys(tree).forEach(k => {
+      const opt = document.createElement("option");
+      opt.value = k; opt.textContent = tree[k].label;
+      top.appendChild(opt);
+    });
+    const topVal = tree[curPath[0]] ? curPath[0] : "unused";
+    top.value = topVal;
+    top.onchange = () => {
+      if (top.value === "unused") {
+        bindings[key] = "unused";
+      } else {
+        bindings[key] = firstLeafPathFrom(tree[top.value], [top.value]).join(":");
+      }
+      generateDraft();
+      render();
+    };
+    controls.appendChild(top);
+    if (topVal === "unused") return;
+
+    let node = tree[topVal];
+    let pathSoFar = [topVal];
+    let level = 1;
+    while (node.children) {
+      const sel = document.createElement("select");
+      Object.keys(node.children).forEach(ck => {
+        const opt = document.createElement("option");
+        opt.value = ck; opt.textContent = node.children[ck].label;
+        sel.appendChild(opt);
+      });
+      const chosen = node.children[curPath[level]] ? curPath[level] : Object.keys(node.children)[0];
+      sel.value = chosen;
+
+      const parentNode = node, segsBefore = pathSoFar.slice();
+      sel.onchange = () => {
+        bindings[key] = firstLeafPathFrom(parentNode.children[sel.value], segsBefore.concat([sel.value])).join(":");
+        generateDraft();
+        render();
+      };
+
+      controls.appendChild(sel);
+      pathSoFar.push(chosen);
+      node = node.children[chosen];
+      level++;
+    }
+  }
+
+  render();
+  return row;
+}
+
+function countResources() {
+  let n = 0;
+  if (board.motor_sockets) n += (board.motor_sockets.sockets||[]).length;
+  n += (board.generic_pins||[]).length;
+  (board.expansion_sockets||[]).forEach(s => n += (s.pins||[]).length);
+  n += (board.rs485_channels||[]).length;
+  n += (board.expansion_uarts||[]).length;
+  n += (board.i2c_connectors||[]).length;
+  return n;
+}
+
+/* ---------------------------------------------------------------------
+ * Phase B: build the draft config.yaml from current bindings.
+ * TBD stubs are inserted only for parameters of roles that got bound —
+ * never for the universe of possible FluidNC roles.
+ * ------------------------------------------------------------------- */
+function motorBlockFor(socket) {
+  const dc = socket.driver_class;
+  if (dc === "onboard_fixed") {
+    const t = socket.fixed_motor_type;
+    if (t === "rc_servo") {
+      return { key: "rc_servo", body: {
+        output_pin: socket.pins.output_pin,
+        cal_min_mm: "TBD", cal_max_mm: "TBD"
+      }};
+    }
+    if (t === "tmc_2209") {
+      return { key: "tmc_2209", body: {
+        step_pin: socket.pins.step_pin,
+        direction_pin: socket.pins.direction_pin,
+        disable_pin: socket.pins.disable_pin,
+        uart_num: 1,
+        addr: socket.extra ? socket.extra.addr : "TBD",
+        r_sense_ohms: "TBD", run_amps: "TBD", hold_amps: "TBD", microsteps: "TBD"
+      }};
+    }
+    if (t === "tmc_2130") {
+      return { key: "tmc_2130", body: {
+        step_pin: socket.pins.step_pin,
+        direction_pin: socket.pins.direction_pin,
+        cs_pin: socket.pins.cs_pin,
+        r_sense_ohms: "TBD", run_amps: "TBD", hold_amps: "TBD", microsteps: "TBD"
+      }};
+    }
+    if (t === "tmc_5160") {
+      // FluidNC doesn't support TMC2160 by its own name -- it's functionally
+      // identical to TMC5160 as far as FluidNC's driver code is concerned
+      // (TMC5160 adds an onboard motion controller FluidNC doesn't use), so
+      // a board with real TMC2160 chips (e.g. BTT Rodent) still uses
+      // fixed_motor_type: tmc_5160. spi_index is a real, fixed board fact
+      // (this chip's fixed position in the SPI daisy chain) -- not a
+      // per-machine tuning choice -- so it comes straight from socket.extra,
+      // same pattern as tmc_2209's addr.
+      return { key: "tmc_5160", body: {
+        step_pin: socket.pins.step_pin,
+        direction_pin: socket.pins.direction_pin,
+        disable_pin: socket.pins.disable_pin || "NO_PIN",
+        cs_pin: socket.pins.cs_pin || "NO_PIN",
+        spi_index: socket.extra ? socket.extra.spi_index : "TBD",
+        r_sense_ohms: "TBD", run_amps: "TBD", hold_amps: "TBD", microsteps: "TBD"
+      }};
+    }
+    return { key: t || "onboard_fixed", body: Object.assign({}, socket.pins, { run_amps: "TBD" }) };
+  }
+  if (dc === "stepstick_socket") {
+    // Current and microstepping on a stepstick module are set by an onboard
+    // trimpot and physical jumpers -- not software-configurable, so unlike
+    // tmc_2209/tmc_2130 there are no tuning params to stub here at all.
+    const body = {
+      step_pin: socket.pins.step_pin,
+      direction_pin: socket.pins.direction_pin,
+      disable_pin: socket.pins.disable_pin || "NO_PIN"
+    };
+    return { key: "stepstick", body };
+  }
+  // external_connector
+  return { key: "standard_stepper", body: {
+    step_pin: socket.pins.step_pin,
+    direction_pin: socket.pins.direction_pin,
+    disable_pin: socket.pins.disable_pin || "NO_PIN"
+  }};
+}
+
+// Same idea as KINSELECT/KINEMATICS_TYPES: this axis's homing entry is
+// keyed by homingSentinel(letter) in `cfg` itself, whether homing is
+// enabled or not, so the selector (homingWidgetHtml()) always sits exactly
+// where the real "homing:" key belongs -- a non-existent homing: section
+// really is different from an empty one, so the wizard shouldn't ever
+// carry a real "homing" key around internally for a disabled axis, only
+// this sentinel key. The final resolved/copy-download step (see
+// generateDraft()) renames this key to the real "homing" when enabled, or
+// deletes it outright when disabled -- so config.yaml genuinely omits the
+// section rather than ever emitting an empty or placeholder one.
+function homingSentinel(letter) { return `HOMINGSELECT_${letter}`; }
+
+function ensureAxis(cfg, letter) {
+  if (!cfg.axes[letter]) {
+    cfg.axes[letter] = {
+      steps_per_mm: "TBD",
+      max_rate_mm_per_min: "TBD",
+      acceleration_mm_per_sec2: "TBD",
+      max_travel_mm: "TBD",
+      soft_limits: "TBD",
+      [homingSentinel(letter)]: homingEnabled[letter] ? {
+        cycle: "TBD",
+        positive_direction: "TBD",
+        mpos_mm: "TBD",
+        feed_mm_per_min: "TBD",
+        seek_mm_per_min: "TBD",
+        settle_ms: "TBD",
+        seek_scaler: "TBD",
+        feed_scaler: "TBD"
+      } : null
+    };
+  }
+  return cfg.axes[letter];
+}
+
+function generateDraft() {
+  const cfg = {};
+  cfg.name = "TBD";
+  cfg.board = board.board.name;
+
+  // Board-specific/pre-populated default overrides for open TBD fields --
+  // see collectAndInjectSlots' defaultOverrides param. Declared up front
+  // (rather than local to the motor-sockets loop below) since the Start:
+  // block also contributes entries to this same map.
+  const paramDefaultOverrides = {};
+
+  // Terse "# <label>" comments are produced by inserting a marker KEY
+  // (annotate(obj, targetKey, label) below), named after the exact real
+  // key it captions, into the SAME object that key belongs to -- inserted
+  // immediately before that key's first assignment, so plain JS object
+  // insertion-order (already relied on elsewhere here, e.g. uart-before-
+  // ModbusVFD ordering) places it directly above, as a SIBLING at the same
+  // indentation, never nested inside the thing it's captioning (nesting it
+  // one level deeper, e.g. right above a block's own first field, could be
+  // misread as captioning only that first field rather than the whole
+  // block). js-yaml dumps the marker as an ordinary-looking
+  // "__ANNOTATE_FOR_<key>__: <label>" line; annotateYaml() below does a
+  // dumb text pass converting every such line into "# <label>" afterward.
+  // Naming the marker after its target key (rather than a plain running
+  // counter) makes a second annotate() call for the same key idempotently
+  // UPDATE that one marker in place rather than stack a second, stale
+  // comment above it -- needed because some keys (e.g. a colliding uartN:
+  // block shared by RS485 and an expansion UART) get legitimately
+  // reassigned wholesale later in this function; the comment should track
+  // whichever binding actually won, not accumulate every past one.
+  function annotate(obj, targetKey, label) { obj[`__ANNOTATE_FOR_${targetKey}__`] = label; }
+
+  // Kinematics -- always present, defaulting to a bare Cartesian
+  // subsection (FluidNC's own real default when unspecified). No left-pane
+  // row (see renderResources()'s comment) -- the system-name key itself is
+  // a live selector INSIDE the draft, via the KINSELECT sentinel (see
+  // kinWidgetHtml()/buildInteractiveYaml()); switching systems here
+  // populates any subordinate geometry items as ordinary TBD fields. No
+  // "# <label>" annotate() comment either, same reasoning as Start: not
+  // tied to any particular board resource, so there's no "which board fact
+  // triggered this" story worth captioning.
+  const kt = KINEMATICS_TYPES[kinematicsType] || KINEMATICS_TYPES.Cartesian;
+  cfg.kinematics = { KINSELECT: kt.stub() };
+
+  // Start -- always present, no left-pane row (see comment on the section's
+  // declaration above). must_home is left genuinely open (whether homing
+  // should be required before running a program is a real per-machine
+  // decision), but deactivate_parking/check_limits are pre-populated with
+  // FluidNC's own compiled-in defaults via defaultOverrides -- settings the
+  // user need not think about (rarely changed) but can still edit inline,
+  // same mechanism as a board-specific hint like r_sense_ohms. No "# <label>"
+  // annotate() comment here -- unlike every other annotated section/pin,
+  // Start isn't associated with any particular board resource, so there's
+  // no "which board fact triggered this" fact worth captioning.
+  cfg.start = { must_home: "TBD", deactivate_parking: "TBD", check_limits: "TBD" };
+  paramDefaultOverrides["start.deactivate_parking"] = { default: false, defaultKind: "firmware" };
+  paramDefaultOverrides["start.check_limits"] = { default: true, defaultKind: "firmware" };
+
+  const engineMap = { i2s: "I2S_STREAM", rmt: "RMT", timed: "Timed", pio: "PIO" };
+  cfg.stepping = {
+    engine: engineMap[(board.stepping.engines||["rmt"])[0]] || "RMT",
+    idle_ms: "TBD", pulse_us: "TBD", dir_delay_us: "TBD", disable_delay_us: "TBD"
+  };
+
+  // Fixed peripherals: fully known facts, copied straight through, no TBD.
+  const fp = board.fixed_peripherals || {};
+  if (fp.spi) cfg.spi = fp.spi;
+  if (fp.sdcard) cfg.sdcard = Object.assign({}, fp.sdcard);
+  if (fp.i2so) cfg.i2so = { bck_pin: fp.i2so.bck_pin, data_pin: fp.i2so.data_pin, ws_pin: fp.i2so.ws_pin };
+  // NOTE: I2C is intentionally NOT handled here as a fixed peripheral --
+  // unlike spi:/i2so:, FluidNC rarely has an onboard device actually using
+  // the bus (its only I2C-consuming feature, an OLED display, is
+  // deprecated), so a board's I2C pins are a bindable resource
+  // (board.i2c_connectors), handled below alongside expansion_uarts, not
+  // auto-emitted here. (Also confirmed against the connected FluidNC
+  // source, MachineConfig.cpp's handler.sections("i2c", 0, MAX_N_I2C,
+  // ...), that the real config key is numbered i2c0:/i2c1:/etc., not a
+  // bare "i2c:" -- reflected in that emission below.)
+  (fp.dedicated_uarts||[]).forEach((u, i) => {
+    cfg[`uart${i+1}`] = { txd_pin: u.txd_pin, rxd_pin: u.rxd_pin, baud: u.baud, mode: u.mode };
+  });
+
+  cfg.axes = {};
+  if (board.motor_sockets && board.motor_sockets.shared_disable_pin) {
+    cfg.axes.shared_stepper_disable_pin = board.motor_sockets.shared_disable_pin;
+  }
+
+  // (paramDefaultOverrides declared up front, near cfg.name/-cfg.board above --
+  // populated below when a motor socket's own extra facts document a
+  // board-specific override, e.g. BTT Rodent's verified-correct
+  // r_sense_ohms, overriding the generic per-driver-family guess
+  // specForKey would otherwise suggest.)
+
+  // Phase A results -> Phase B stubbing, motor sockets
+  (board.motor_sockets ? board.motor_sockets.sockets : []).forEach((socket, i) => {
+    const role = bindings[resourceKeyMotor(i)];
+    if (!role || role === "unused") return;
+    const [letter, slot] = role.split(":");
+    if (!AXES.includes(letter)) return;
+    const axis = ensureAxis(cfg, letter);
+    const block = motorBlockFor(socket);
+    // Annotated on `axis` (a sibling of motor0:/motor1:, at the same
+    // indentation), not inside axis[slot] -- a comment nested one level
+    // deeper, right above standard_stepper:, could be misread as applying
+    // only to that first item rather than to the whole motor0:/motor1:
+    // block this connector's pins occupy.
+    annotate(axis, slot, socket.label);
+    axis[slot] = axis[slot] || {};
+    axis[slot][block.key] = block.body;
+    if (socket.extra && socket.extra.r_sense_ohms_hint != null) {
+      paramDefaultOverrides[`axes.${letter}.${slot}.${block.key}.r_sense_ohms`] = {
+        default: socket.extra.r_sense_ohms_hint,
+        defaultKind: "board",
+      };
+    }
+  });
+
+  // Generic pins + expansion pins -> limits / control / probe / spindle / coolant / digital outs
+  const allPins = [];
+  (board.generic_pins||[]).forEach((p, i) => allPins.push({ p, key: resourceKeyPin(i) }));
+  (board.expansion_sockets||[]).forEach((s, si) => (s.pins||[]).forEach((p, pi) =>
+    allPins.push({ p: { label: `${s.label}/${p.module_pin}`, mcu_pin: p.mcu_pin, direction: p.direction }, key: resourceKeyExp(si, pi) })
+  ));
+
+  let spindleBound = false;
+  cfg.control = {};
+  allPins.forEach(({ p, key }) => {
+    const role = bindings[key];
+    if (!role || role === "unused") return;
+    const pin = p.mcu_pin;
+
+    if (role.startsWith("limit:")) {
+      const [, letter, which] = role.split(":");
+      const axis = ensureAxis(cfg, letter);
+      axis.motor0 = axis.motor0 || {};
+      const field = which === "neg" ? "limit_neg_pin" : which === "pos" ? "limit_pos_pin" : "limit_all_pin";
+      annotate(axis.motor0, field, p.label);
+      axis.motor0[field] = pin;
+    } else if (role.startsWith("probe:")) {
+      // Child key is literally the real Probe:: config field name
+      // ("pin" or "toolsetter_pin") -- see Probe::group() in the
+      // connected FluidNC source.
+      const field = role.split(":")[1];
+      cfg.probe = cfg.probe || {};
+      annotate(cfg.probe, field, p.label);
+      cfg.probe[field] = pin;
+    } else if (role.startsWith("control:")) {
+      // Covers all real Control:: pins, including the 4 macro buttons
+      // and fault/estop/homing_button, which are siblings of feed_hold
+      // etc. in the actual "control:" config block.
+      const which = role.split(":")[1];
+      annotate(cfg.control, `${which}_pin`, p.label);
+      cfg.control[`${which}_pin`] = pin;
+    } else if (role.startsWith("user_input:")) {
+      // Machine::UserInputs -- generic digital0-7/analog0-3 pins under
+      // "user_inputs:", unrelated to Limit/Probe/Control.
+      const [, subtype, idx] = role.split(":");
+      cfg.user_inputs = cfg.user_inputs || {};
+      annotate(cfg.user_inputs, `${subtype}${idx}_pin`, p.label);
+      cfg.user_inputs[`${subtype}${idx}_pin`] = pin;
+    } else if (role.startsWith("spindle:")) {
+      // Spindle type picks both the top-level config key and the exact
+      // TBD tuning stub via SPINDLE_TYPES -- same dispatch-by-chosen-
+      // variant pattern used for motor sockets and RS485/VFD spindles.
+      // Each type's stub() reflects its own real config fields (e.g.
+      // Relay/DAC genuinely have no pwm_hz; BESC has two extra tunables),
+      // verified against FluidNC's actual source, not assumed uniform.
+      const [, type, which] = role.split(":");
+      const def = SPINDLE_TYPES[type];
+      const cfgKey = def ? def.cfgKey : type;
+      cfg[cfgKey] = cfg[cfgKey] || (def ? def.stub() : {});
+      annotate(cfg[cfgKey], `${which}_pin`, p.label);
+      cfg[cfgKey][`${which}_pin`] = pin;
+      spindleBound = true;
+    } else if (role.startsWith("coolant:")) {
+      cfg.coolant = cfg.coolant || {};
+      const which = role.split(":")[1];
+      annotate(cfg.coolant, `${which}_pin`, p.label);
+      cfg.coolant[`${which}_pin`] = pin;
+    } else if (role.startsWith("digital_output:")) {
+      cfg.user_outputs = cfg.user_outputs || {};
+      const n = role.split(":")[1];
+      annotate(cfg.user_outputs, `digital${n}_pin`, p.label);
+      cfg.user_outputs[`digital${n}_pin`] = pin;
+    } else if (role.startsWith("analog_output:")) {
+      cfg.user_outputs = cfg.user_outputs || {};
+      const n = role.split(":")[1];
+      annotate(cfg.user_outputs, `analog${n}_pin`, p.label);
+      cfg.user_outputs[`analog${n}_pin`] = pin;
+    } else if (role.startsWith("status_output:")) {
+      // Status_Outputs -- machine-state indicator pins (e.g. tower
+      // lights), independent of Limit/Probe/Control/Spindle/Coolant/user
+      // I/O. report_interval_ms is stubbed once per board, same as
+      // uart_channel's.
+      const which = role.split(":")[1];
+      cfg.status_outputs = cfg.status_outputs || { report_interval_ms: "TBD" };
+      annotate(cfg.status_outputs, `${which}_pin`, p.label);
+      cfg.status_outputs[`${which}_pin`] = pin;
+    }
+  });
+  if (Object.keys(cfg.control).length === 0) delete cfg.control;
+
+  // RS485 channels -> Modbus VFD spindle. Modern FluidNC form: a single
+  // ModbusVFD: block with a model: field (the old per-model top-level key,
+  // e.g. Huanyang:, still works but is strictly a backwards-compatibility
+  // alias) plus a separate uartN: block carrying the actual bus pins, same
+  // as how a dedicated TMC UART bus becomes its own uart1: block elsewhere
+  // in this file. modbus_id is set to its near-universal real value (1)
+  // rather than left open, since it almost never changes in practice.
+  // uart_num defaults to 1, or 2 on a board with UART-addressed onboard TMC
+  // drivers already on 1 (see defaultSecondaryUartNum) -- confirmed against
+  // real per-board wiki examples (6x/Corgi's own Huanyang examples use
+  // uart1; the 4x wiki's commented-out RS485 example, on a TMC-UART board,
+  // uses uart2).
+  (board.rs485_channels || []).forEach((ch, i) => {
+    const role = bindings[resourceKeyRs485(i)];
+    if (!role || role === "unused" || !role.startsWith("vfd:")) return;
+    const model = role.split(":")[1];
+    const n = defaultSecondaryUartNum(board);
+    // uartN: (the dependency) is set before ModbusVFD: (the referencer) --
+    // object key insertion order drives jsyaml.dump's output order, and
+    // conventionally a bus block is declared before the thing that uses it.
+    // Annotated on `cfg` itself, as a sibling immediately above uartN:/
+    // ModbusVFD: (same indentation as those top-level keys) -- not inside
+    // either block, where it could be misread as captioning just that
+    // block's first field (txd_pin/model) rather than the whole section.
+    const uartBlock = { txd_pin: ch.tx_pin, rxd_pin: ch.rx_pin };
+    if (ch.rts_pin) uartBlock.rts_pin = ch.rts_pin;
+    annotate(cfg, `uart${n}`, ch.label);
+    cfg[`uart${n}`] = uartBlock;
+    annotate(cfg, "ModbusVFD", ch.label);
+    cfg.ModbusVFD = {
+      model: model,
+      uart_num: n,
+      modbus_id: 1,
+      spinup_ms: "TBD",
+      spindown_ms: "TBD",
+      tool_num: "TBD"
+    };
+  });
+
+  // Expansion UART connectors (e.g. Corgi's RJ12) -> a uart_channel role.
+  // Fixed pins/baud/mode are board facts; report_interval_ms is the one
+  // genuinely open tuning param (wiki's own examples use 75ms but nothing
+  // suggests that's a hard requirement). No rts_pin/cts_pin board fact
+  // exists for this connector type (see expansion_uart schema) -- both are
+  // always written as literal NO_PIN, matching every real example seen.
+  // Shares the same uart_num default/collision policy as RS485 above --
+  // if a board's config binds both an expansion_uart AND an RS485 channel
+  // and they land on the same uart_num, this cfg[`uart${n}`] assignment
+  // will simply overwrite the earlier one, faithfully reproducing the
+  // real, accepted "only one of them is usable" limitation on such boards
+  // rather than silently working around it.
+  (board.expansion_uarts || []).forEach((ex, i) => {
+    const role = bindings[resourceKeyExpUart(i)];
+    if (!role || role === "unused" || role !== "uart_channel") return;
+    const n = defaultSecondaryUartNum(board);
+    // Same sibling-of-cfg annotation placement as RS485 above.
+    const uartBlock = {
+      txd_pin: ex.txd_pin,
+      rxd_pin: ex.rxd_pin,
+      rts_pin: "NO_PIN",
+      cts_pin: "NO_PIN",
+      baud: ex.baud,
+      mode: ex.mode,
+    };
+    annotate(cfg, `uart${n}`, ex.label);
+    cfg[`uart${n}`] = uartBlock;
+    annotate(cfg, `uart_channel${n}`, ex.label);
+    cfg[`uart_channel${n}`] = { report_interval_ms: "TBD", uart_num: n };
+  });
+
+  // I2C connectors -> either a real i2c0: bus (e.g. the deprecated OLED
+  // display, FluidNC's only I2C-consuming feature) or, since I2C pins are
+  // often bare GPIOs, repurposed entirely as a generic expansion UART
+  // (scl_pin -> txd_pin, sda_pin -> rxd_pin) -- same uart_channel shape as
+  // an expansion_uart connector, since the far end is equally an external,
+  // config-author-visible device rather than anything onboard. Unlike a
+  // dedicated expansion_uart connector, this repurposed bus has no fixed
+  // baud/mode board fact (I2C pins don't imply a specific UART protocol),
+  // so those are left as open TBD params instead of copied from the board.
+  (board.i2c_connectors || []).forEach((ic, i) => {
+    const role = bindings[resourceKeyI2c(i)];
+    if (!role || role === "unused") return;
+    if (role === "i2c_bus") {
+      annotate(cfg, "i2c0", ic.label);
+      cfg.i2c0 = { sda_pin: ic.sda_pin, scl_pin: ic.scl_pin };
+    } else if (role === "expansion_uart") {
+      const n = defaultSecondaryUartNum(board);
+      const uartBlock = {
+        txd_pin: ic.scl_pin,
+        rxd_pin: ic.sda_pin,
+        rts_pin: "NO_PIN",
+        cts_pin: "NO_PIN",
+        baud: "TBD",
+        mode: "TBD",
+      };
+      annotate(cfg, `uart${n}`, ic.label);
+      cfg[`uart${n}`] = uartBlock;
+      annotate(cfg, `uart_channel${n}`, ic.label);
+      cfg[`uart_channel${n}`] = { report_interval_ms: "TBD", uart_num: n };
+    }
+  });
+
+  // Uncategorized top-level items -- confirmed against the connected
+  // FluidNC source (MachineConfig.cpp:83-89, MachineConfig::group()'s tail
+  // end, after every named handler.section(...) call): 7 loose fields set
+  // directly on MachineConfig itself, not part of any named sub-section
+  // (Start/Kinematics/etc.), and not tied to any board resource -- so, like
+  // Start/Kinematics, no annotate() comment either. Placed last in the
+  // generated file since they're genuinely uncategorized. All 7 are
+  // pre-populated with FluidNC's own compiled-in defaults (rarely changed),
+  // editable inline -- same defaultOverrides mechanism as Start's
+  // deactivate_parking/check_limits, not left as open TBDs.
+  cfg.arc_tolerance_mm = "TBD";
+  cfg.junction_deviation_mm = "TBD";
+  cfg.verbose_errors = "TBD";
+  cfg.report_inches = "TBD";
+  cfg.enable_parking_override_control = "TBD";
+  cfg.use_line_numbers = "TBD";
+  cfg.planner_blocks = "TBD";
+  paramDefaultOverrides["arc_tolerance_mm"] = { default: 0.002, defaultKind: "firmware" };
+  paramDefaultOverrides["junction_deviation_mm"] = { default: 0.01, defaultKind: "firmware" };
+  paramDefaultOverrides["verbose_errors"] = { default: true, defaultKind: "firmware" };
+  paramDefaultOverrides["report_inches"] = { default: false, defaultKind: "firmware" };
+  paramDefaultOverrides["enable_parking_override_control"] = { default: false, defaultKind: "firmware" };
+  paramDefaultOverrides["use_line_numbers"] = { default: false, defaultKind: "firmware" };
+  paramDefaultOverrides["planner_blocks"] = { default: 16, defaultKind: "firmware" };
+
+  // Work on a clone for the interactive view: it gets its pin leaves
+  // overwritten with a "PINSLOT" sentinel (so we can splice in attribute
+  // widgets at those positions) while every "TBD" slot is left untouched
+  // and simply collected, exactly as before. `cfg` itself stays pristine.
+  const liveCfg = JSON.parse(JSON.stringify(cfg));
+  const paramSlots = [];
+  const pinSlots = [];
+  collectAndInjectSlots(liveCfg, "", paramSlots, pinSlots, paramDefaultOverrides);
+
+  const yamlText = dequoteAxisKeys(annotateYaml(jsyaml.dump(liveCfg, { lineWidth: -1, noRefs: true })));
+  const unresolved = paramSlots.filter(s => !Object.prototype.hasOwnProperty.call(paramValues, s.path)).length;
+
+  document.getElementById("summary").innerHTML = `
+    <div class="stat done"><b>${Object.values(bindings).filter(v=>v&&v!=="unused").length}</b>resource(s) bound</div>
+    <div class="stat"><b>${countResources()}</b>total resources</div>
+    <div class="stat tbd"><b>${unresolved}</b>remaining TBD (open params)</div>
+  `;
+
+  document.getElementById("draft").innerHTML = buildInteractiveYaml(yamlText, paramSlots, pinSlots);
+  document.querySelectorAll("#draft .inline-field").forEach(el => {
+    el.onchange = () => setParam(el.dataset.path, el.dataset.key, el.value);
+  });
+  document.querySelectorAll("#draft .default-btn").forEach(btn => {
+    btn.onclick = () => setParam(btn.dataset.path, btn.dataset.key, btn.dataset.default);
+  });
+  document.querySelectorAll("#draft .clear-btn").forEach(btn => {
+    btn.onclick = () => setParam(btn.dataset.path, btn.dataset.key, "");
+  });
+  document.querySelectorAll("#draft .attr-field").forEach(el => {
+    el.onchange = () => setPinAttr(el.dataset.path, el.dataset.attr, el.value);
+  });
+  document.querySelectorAll("#draft .kin-select").forEach(el => {
+    el.onchange = () => { kinematicsType = el.value; generateDraft(); };
+  });
+  document.querySelectorAll("#draft .homing-select").forEach(el => {
+    el.onchange = () => { homingEnabled[el.dataset.letter] = el.value === "true"; generateDraft(); };
+  });
+
+  // Plain-text version (real values where answered, literal TBD where not,
+  // pin attributes appended where set) for Copy/Download -- the <pre>
+  // itself now holds live form widgets, so its textContent isn't usable.
+  const resolved = JSON.parse(JSON.stringify(cfg));
+  function setAtPath(path, value) {
+    const segs = path.split(".");
+    let node = resolved;
+    for (let i = 0; i < segs.length - 1; i++) node = node[segs[i]];
+    node[segs[segs.length - 1]] = value;
+  }
+  paramSlots.forEach(({ path }) => {
+    if (Object.prototype.hasOwnProperty.call(paramValues, path)) setAtPath(path, paramValues[path]);
+  });
+  pinSlots.forEach(({ path, basePin }) => {
+    const attrs = pinAttrs[path];
+    if (!attrs) return;
+    const suffix = (attrs.level ? `:${attrs.level}` : "") + (attrs.pull ? `:${attrs.pull}` : "");
+    if (suffix) setAtPath(path, basePin + suffix);
+  });
+  // Undo the KINSELECT sentinel now that every subordinate-field path
+  // referencing it (e.g. "kinematics.KINSELECT.crank_mm") has already been
+  // resolved above -- cfg.kinematics's real key is always the selected
+  // system's actual cfgKey (Cartesian/CoreXY/etc.), never the literal
+  // sentinel text itself.
+  if (resolved.kinematics && Object.prototype.hasOwnProperty.call(resolved.kinematics, "KINSELECT")) {
+    resolved.kinematics = { [kt.cfgKey]: resolved.kinematics.KINSELECT };
+  }
+  // homing: is genuinely optional -- `cfg`/`resolved` never carry a real
+  // "homing" key for a disabled axis at all, only the HOMINGSELECT_<letter>
+  // sentinel key (see ensureAxis()/homingSentinel()). Rename that sentinel
+  // to the real "homing" key when enabled (keeping its TBD-resolved
+  // fields); delete it outright when disabled, so config.yaml genuinely
+  // has no homing: section for that axis -- not an empty one, not a
+  // placeholder.
+  Object.keys(resolved.axes || {}).forEach(letter => {
+    const ax = resolved.axes[letter];
+    if (!ax || typeof ax !== "object") return;
+    const sentinelKey = homingSentinel(letter);
+    if (!Object.prototype.hasOwnProperty.call(ax, sentinelKey)) return;
+    if (homingEnabled[letter]) ax.homing = ax[sentinelKey];
+    delete ax[sentinelKey];
+  });
+  lastPlainYaml = dequoteAxisKeys(annotateYaml(jsyaml.dump(resolved, { lineWidth: -1, noRefs: true })));
+}
+
+/* js-yaml (correctly, per the YAML 1.1 spec it follows) quotes a bare
+ * mapping key equal to a "y"/"n"/"on"/"off"/etc. bool-like word, to avoid
+ * ambiguity with an actual boolean -- which is why the Y axis alone comes
+ * out as 'y': while every other axis letter doesn't. FluidNC's own config
+ * files/docs never quote axis names this way, so this strips the quotes
+ * js-yaml adds specifically around AXES letters used as mapping keys
+ * (leaving any other, unrelated quoting js-yaml does untouched). */
+function dequoteAxisKeys(text) {
+  return AXES.reduce((t, ax) => t.replace(new RegExp(`^(\\s*)(['"])${ax}\\2:`, "gm"), `$1${ax}:`), text);
+}
+
+/* Converts every "__ANNOTATE_FOR_<key>__: <label>" line js-yaml dumped
+ * (see annotate() above) into a "# <label>" comment on the same line,
+ * preserving whatever indentation js-yaml gave it -- since each marker was
+ * inserted as an ordinary SIBLING key immediately before the one real key
+ * it's meant to caption (never nested inside it), this lands the comment
+ * directly above that key at the same nesting level, whether that's a
+ * whole aggregate block (a motor socket's motor0:/motor1:, an RS485/
+ * expansion UART's uartN:/uart_channelN:/ModbusVFD:) or a single pin field
+ * (a limit/probe/control/user_input/spindle/coolant/digital-output pin) --
+ * each marker is tied to exactly one resource, so there's never a multi-
+ * label line to join. Strips a layer of quotes if js-yaml quoted the
+ * label. */
+function annotateYaml(text) {
+  return text.split("\n").map(line => {
+    const m = /^(\s*)__ANNOTATE_FOR_[A-Za-z0-9_]+__:\s*(.*)$/.exec(line);
+    if (!m) return line;
+    let label = m[2].trim();
+    if ((label.startsWith("'") && label.endsWith("'")) || (label.startsWith('"') && label.endsWith('"'))) {
+      label = label.slice(1, -1);
+    }
+    return `${m[1]}# ${label}`;
+  }).join("\n");
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function copyDraft() {
+  navigator.clipboard.writeText(lastPlainYaml);
+}
+
+function downloadDraft() {
+  const blob = new Blob([lastPlainYaml], { type: "text/yaml" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${board.board.id}.config.yaml`;
+  a.click();
+}
+
+/* ---------------------------------------------------------------------
+ * Boot
+ * ------------------------------------------------------------------- */
+const picker = document.getElementById("boardPicker");
+Object.keys(BOARD_YAML).forEach(id => {
+  const o = document.createElement("option");
+  o.value = id; o.textContent = id;
+  picker.appendChild(o);
+});
+picker.onchange = () => loadBoard(picker.value);
+loadBoard(Object.keys(BOARD_YAML)[0]);
+</script>
+</body>
+</html>
