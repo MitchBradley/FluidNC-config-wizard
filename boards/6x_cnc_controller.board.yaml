@@ -13,40 +13,46 @@ fixed_peripherals:
 motor_sockets:
   sockets:
     - label: "Motor1"
+      generic_name: Driver1
       driver_class: external_connector
       pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
     - label: "Motor2"
+      generic_name: Driver2
       driver_class: external_connector
       pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
     - label: "Motor3"
+      generic_name: Driver3
       driver_class: external_connector
       pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
     - label: "Motor4"
+      generic_name: Driver4
       driver_class: external_connector
       pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
     - label: "Motor5"
+      generic_name: Driver5
       driver_class: external_connector
       pins: { step_pin: i2so.18, direction_pin: i2so.17, disable_pin: i2so.16 }
     - label: "Motor6"
+      generic_name: Driver6
       driver_class: external_connector
       pins: { step_pin: i2so.21, direction_pin: i2so.20, disable_pin: i2so.23 }
 generic_pins:
-  - { label: "IO2",  mcu_pin: gpio.2,  direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "5V Out (shared w/ MOSFET1)", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "MOSFET1", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side } }
-  - { label: "5V Out (shared w/ MOSFET2)", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "MOSFET2", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side } }
-  - { label: "5V Out 3", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "5V Out 4", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "Spindle Fwd", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: open_collector } }
-  - { label: "Spindle Rev", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: open_collector } }
+  - { label: "IO2",  generic_name: "In2", mcu_pin: gpio.2,  direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO26", generic_name: "In26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO32", generic_name: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO33", generic_name: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO34", generic_name: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO35", generic_name: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO36", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO39", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "5V Out (shared w/ MOSFET1)", generic_name: "5V Out4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "MOSFET1", generic_name: "FET4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "5V Out (shared w/ MOSFET2)", generic_name: "5V Out12", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "MOSFET2", generic_name: "FET12", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "5V Out 3", generic_name: "5V Out13", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 4", generic_name: "5V Out14", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Spindle Fwd", generic_name: "Spindle Out15", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: open_collector } }
+  - { label: "Spindle Rev", generic_name: "Spindle Out14", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: open_collector } }
 rs485_channels:
   - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
 expansion_sockets:

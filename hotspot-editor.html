@@ -147,11 +147,14 @@
  * Prototype hotspot editor for the FluidNC config wizard's eventual
  * "click on a picture of the board" embellishment. Standalone from the
  * wizard itself -- this tool's only job is producing a small sidecar file
- * (board_id + image + a list of {labels[], x%, y%, w%, h%} rectangles)
+ * (board_id + image + a list of {generic_names[], x%, y%, w%, h%} rectangles)
  * that a future clickable-board UI would consume, keyed by the SAME
- * resource labels already used in a real board.yaml file (motor_sockets,
- * generic_pins, rs485_channels, expansion_uarts, etc.) -- this tool does
- * NOT invent new labels, it only positions existing ones.
+ * normalized generic_name vocabulary a real board.yaml file's resources
+ * carry (motor_sockets, generic_pins, rs485_channels, expansion_uarts,
+ * etc. -- see board.schema.json's generic_name field), NOT the board's own
+ * vendor label -- this tool does not invent new identifiers, it only
+ * positions existing ones (falling back to a resource's vendor label only
+ * when it has no generic_name yet, same as the wizard's own gname()).
  *
  * Design notes:
  * - Rectangles are stored as percentages of the image's natural box, not
@@ -200,9 +203,21 @@ const BOARD_YAML_SECTION_TYPES = {
   i2c_connectors: "i2c_connector",
 };
 
+// Prefers each entry's generic_name (see board.schema.json/gname() in the
+// wizard itself) over its vendor label -- hotspots.yaml is authored in
+// generic-name vocabulary (board-agnostic, normalized), not the board's own
+// silkscreen/vendor text, so that's what this tool should offer to check
+// off and place. Falls back to label when an entry has no generic_name yet
+// (an older/not-yet-updated board.yaml, or a resource type generic_name
+// rules haven't been pinned down for), same fallback gname() itself uses.
 function extractLabelsFromBoardYaml(text) {
   const out = [];
   let section = null;
+  let pendingLabel = null; // block-style entries put label: on its own line, generic_name: (if any) on the next -- held until we know whether one follows
+  function flushPending() {
+    if (pendingLabel !== null) out.push(pendingLabel);
+    pendingLabel = null;
+  }
   text.split("\n").forEach(raw => {
     if (!raw.trim()) return;
     if (/^\S/.test(raw)) {
@@ -210,21 +225,41 @@ function extractLabelsFromBoardYaml(text) {
       // our recognized resource sections or (any other top-level key, e.g.
       // "board:"/"fixed_peripherals:"/"stepping:") leaves whichever section
       // we were in.
+      flushPending();
       const m = raw.match(/^([A-Za-z0-9_]+):/);
       section = m && BOARD_YAML_SECTION_TYPES[m[1]] ? m[1] : null;
       return;
     }
     if (!section) return;
+    const gm = raw.match(/generic_name:\s*"([^"]*)"|generic_name:\s*'([^']*)'|generic_name:\s*([^\s,}]+)/);
+    if (gm && pendingLabel) {
+      // This line's generic_name belongs to the still-pending entry from
+      // the label: line just above it (block-style board.yaml entries).
+      pendingLabel.label = gm[1] ?? gm[2] ?? gm[3];
+      flushPending();
+      return;
+    }
     const lm = raw.match(/label:\s*"([^"]*)"|label:\s*'([^']*)'|label:\s*([^\s,}]+)/);
     if (!lm) return;
-    const label = lm[1] ?? lm[2] ?? lm[3];
+    flushPending();
+    const vendorLabel = lm[1] ?? lm[2] ?? lm[3];
     let type = BOARD_YAML_SECTION_TYPES[section];
     if (section === "generic_pins") {
       const dm = raw.match(/direction:\s*(input|output)/);
       if (dm) type += ` (${dm[1]})`;
     }
-    out.push({ label, type });
+    // Flow-style single-line entries (`- { label: "X", generic_name: "Y", ... }`)
+    // have generic_name on the SAME line as label -- check for it here;
+    // block-style entries (generic_name on its own following line) are
+    // resolved above via pendingLabel on the next iteration.
+    const sameLineGm = raw.match(/generic_name:\s*"([^"]*)"|generic_name:\s*'([^']*)'|generic_name:\s*([^\s,}]+)/);
+    if (sameLineGm) {
+      out.push({ label: sameLineGm[1] ?? sameLineGm[2] ?? sameLineGm[3], type });
+    } else {
+      pendingLabel = { label: vendorLabel, type }; // may get overwritten by a following generic_name: line
+    }
   });
+  flushPending();
   return out;
 }
 
@@ -629,7 +664,7 @@ function renderOutput() {
   y += `hotspots:\n`;
   if (hotspots.length === 0) y += `  []\n`;
   hotspots.forEach(h => {
-    y += `  - labels: [${h.labels.map(l => JSON.stringify(l)).join(", ")}]\n`;
+    y += `  - generic_names: [${h.labels.map(l => JSON.stringify(l)).join(", ")}]\n`;
     // rect and label_rect share the same {x,y,w,h} object shape, deliberately.
     y += `    rect: {x: ${h.rect.x.toFixed(2)}, y: ${h.rect.y.toFixed(2)}, w: ${h.rect.w.toFixed(2)}, h: ${h.rect.h.toFixed(2)}}\n`;
     if (h.labelRect) {
@@ -666,7 +701,12 @@ function parseHotspotsYaml(text) {
     if ((m = line.match(/^board_id:\s*(\S+)/))) { boardId = m[1]; return; }
     if ((m = line.match(/^image:\s*(\S+)/))) { image = m[1]; return; }
     if (line === "hotspots:" || line === "[]") return;
-    if ((m = line.match(/^-\s*labels:\s*\[(.*)\]/))) {
+    // "generic_names:" is the current key; "labels:" is accepted too for
+    // backward compat with files exported before this tool (and the
+    // wizard's own hotspots.yaml consumption) switched from vendor-label
+    // vocabulary to generic-name vocabulary -- see PROGRESS.md. Either way
+    // the values loaded here ARE generic names once re-saved.
+    if ((m = line.match(/^-\s*(?:generic_names|labels):\s*\[(.*)\]/))) {
       const labels = [];
       const re = /"((?:[^"\\]|\\.)*)"/g;
       let lm;
@@ -675,7 +715,7 @@ function parseHotspotsYaml(text) {
       parsed.push(current);
       return;
     }
-    if (!current) return; // stray line before any "- labels:" block -- ignore
+    if (!current) return; // stray line before any "- generic_names:" block -- ignore
     if ((m = line.match(/^rect:\s*\{x:\s*([-\d.]+),\s*y:\s*([-\d.]+),\s*w:\s*([-\d.]+),\s*h:\s*([-\d.]+)\}/))) {
       current.rect = { x: parseFloat(m[1]), y: parseFloat(m[2]), w: parseFloat(m[3]), h: parseFloat(m[4]) };
       return;

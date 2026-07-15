@@ -13,23 +13,26 @@ motor_sockets:
   shared_disable_pin: gpio.13
   sockets:
     - label: "X"
+      generic_name: Motor1
       driver_class: onboard_fixed
       fixed_motor_type: tmc_2130
       pins: { step_pin: gpio.14, direction_pin: gpio.12, cs_pin: gpio.16 }
       extra: { bus: spi }
     - label: "Y"
+      generic_name: Motor2
       driver_class: onboard_fixed
       fixed_motor_type: tmc_2130
       pins: { step_pin: gpio.25, direction_pin: gpio.26, cs_pin: gpio.17 }
       extra: { bus: spi }
     - label: "Z (pen lift)"
+      generic_name: Motor3
       driver_class: onboard_fixed
       fixed_motor_type: rc_servo
       pins: { output_pin: gpio.22 }
 generic_pins:
-  - { label: "X Limit", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Y Limit", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Probe", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: raw } }
-  - { label: "5V Out 1", mcu_pin: gpio.21, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "5V Out 2", mcu_pin: gpio.27, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "5V Out 3", mcu_pin: gpio.2,  direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "X Limit", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Y Limit", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Probe", generic_name: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: raw } }
+  - { label: "5V Out 1", generic_name: "5V Out21", mcu_pin: gpio.21, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 2", generic_name: "5V Out27", mcu_pin: gpio.27, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 3", generic_name: "5V Out2", mcu_pin: gpio.2,  direction: output, output_profile: { drive_type: totem_pole } }

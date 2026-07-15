@@ -44,23 +44,29 @@ fixed_peripherals:
 
 motor_sockets:
   sockets:
-    - label: "Motor1"
+    - label: "Motor Driver Signals - i2so.1,2,0"
+      generic_name: Driver1
       driver_class: external_connector
       pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
       notes: "Wiki: 'Any motor output can be used for any axis or motor number... labeled Motor1 through motor6, just for reference.' Identical I2SO wiring to the 6x controller's Motor1."
-    - label: "Motor2"
+    - label: "Motor Driver Signals - i2so.4,5,7"
+      generic_name: Driver2
       driver_class: external_connector
       pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
-    - label: "Motor3"
+    - label: "Motor Driver Signals - i2so.9,10,8"
+      generic_name: Driver3
       driver_class: external_connector
       pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
-    - label: "Motor4"
+    - label: "Motor Driver Signals - i2so.12,13,15"
+      generic_name: Driver4
       driver_class: external_connector
       pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
-    - label: "Motor5"
+    - label: "Motor Driver Signals - i2so.17,18,16"
+      generic_name: Driver5
       driver_class: external_connector
       pins: { step_pin: i2so.18, direction_pin: i2so.17, disable_pin: i2so.16 }
-    - label: "Motor6"
+    - label: "Motor Driver Signals - i2so.20,21,23"
+      generic_name: Driver6
       driver_class: external_connector
       pins: { step_pin: i2so.21, direction_pin: i2so.20, disable_pin: i2so.23 }
 
@@ -73,47 +79,54 @@ generic_pins:
   # the inputs have external pullup resistors except for gpio.2" (singular)
   # -- 6x's own wiki text calls out TWO exceptions (gpio.2 AND gpio.26).
   # Recorded per this board's own stated fact, not copied from 6x.
-  - { label: "In2",  mcu_pin: gpio.2,  direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: true } }
-  - { label: "In26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+  - { label: "Inputs - gpio.2",  generic_name: "In2", mcu_pin: gpio.2,  direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: true } }
+  - { label: "Inputs - gpio.26", generic_name: "In26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+  - { label: "Inputs - gpio.32", generic_name: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+  - { label: "Inputs - gpio.33", generic_name: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+  - { label: "Inputs - gpio.34", generic_name: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+  - { label: "Inputs - gpio.35", generic_name: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+  - { label: "Inputs - gpio.36", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+  - { label: "Inputs - gpio.39", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
 
   # 4-channel 5V logic-level output bank (74AHCT125 buffer, same chip as
   # 6x/4x: ~8-10mA typical/channel, 25mA/channel absolute max, 50mA total for
   # all 4). gpio.4/gpio.12 double as the 2 onboard MOSFETs (second entry
   # each, same mcu_pin, per this schema's no-pin-uniqueness design).
-  - label: "5V Out4"
+  - label: "5V Outputs - gpio.4"
+    generic_name: "5V Out4"
     mcu_pin: gpio.4
     direction: output
     output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 }
-  - label: "FET2"
+  - label: "FET2 - gpio.4"
+    generic_name: "FET4"
     mcu_pin: gpio.4
     direction: output
     output_profile: { drive_type: mosfet_low_side, voltage_max: 12.0, current_max_a: 3.0 }
     notes: "3A continuous, 5A peak. Switches VMot (12V only on this board) to ground. Built-in flyback diode."
-  - label: "5V Out12"
+  - label: "5V Outputs - gpio.12"
+    generic_name: "5V Out12"
     mcu_pin: gpio.12
     direction: output
     output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 }
-  - label: "FET1"
+  - label: "FET1 - gpio.12"
+    generic_name: "FET12"
     mcu_pin: gpio.12
     direction: output
     output_profile: { drive_type: mosfet_low_side, voltage_max: 12.0, current_max_a: 3.0 }
     notes: "3A continuous, 5A peak. Switches VMot (12V only on this board) to ground. Built-in flyback diode."
-  - label: "5V Out13"
+  - label: "5V Outputs - gpio.13"
+    generic_name: "5V Out13"
     mcu_pin: gpio.13
     direction: output
     output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 }
     notes: "Confirmed via wiki's own PWM/10V example config usage (output_pin)."
-  - label: "5V Out14"
+  - label: "5V Outputs - gpio.14"
+    generic_name: "5V Out14"
     mcu_pin: gpio.14
     direction: output
     output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 }
-  - label: "Spindle Out1"
+  - label: "0-10V - 2 gpio.14"
+    generic_name: "Spindle Out15"
     mcu_pin: gpio.15
     direction: output
     output_profile: { drive_type: open_collector }
@@ -123,7 +136,8 @@ generic_pins:
       and the plain 5V-ish digital output role. Voltage/current rating
       for this specific opto-isolated path not confirmed in available
       documentation -- should be checked against schematic.
-  - label: "Spindle Out2"
+  - label: "0-10V - 1 gpio.14"
+    generic_name: "Spindle Out14"
     mcu_pin: gpio.14
     direction: output
     output_profile: { drive_type: open_collector }
@@ -134,7 +148,8 @@ generic_pins:
       opto-isolated path not confirmed in available documentation --
       should be checked against schematic.
 
-  - label: "Spindle 10V"
+  - label: "0-10V - 10v gpio.13"
+    generic_name: "Spindle 10V"
     mcu_pin: gpio.13
     direction: output
     output_profile: { drive_type: totem_pole, voltage_max: 10.0 }
@@ -142,7 +157,8 @@ generic_pins:
       Analog output for a digitally-controlled VFD's 10V speed control.
 
 rs485_channels:
-  - label: "RS485"
+  - label: "RS485 - A,B,G"
+    generic_name: "RS485"
     tx_pin: gpio.15
     rx_pin: gpio.16
     pins_reusable_as_generic_io: true
@@ -161,8 +177,9 @@ rs485_channels:
       on this board to conflict with).
 
 expansion_uarts:
-  - label: "RJ12 Expansion"
-    connector_type: "RJ12"
+  - label: "Expander"
+    generic_name: "Expander"
+    connector_type: "RJ12 Expander"
     txd_pin: gpio.27
     rxd_pin: gpio.25
     baud: 1000000

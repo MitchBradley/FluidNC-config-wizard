@@ -59,7 +59,14 @@
   button { cursor: pointer; }
   button:hover { border-color: var(--accent); }
   button.primary { background: var(--accent); color: #06181c; font-weight: 600; border-color: var(--accent); }
-  main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: calc(100vh - 61px); }
+  /* Draft (right) column is sized to just fit ~60 monospace characters
+     (see pre#draft's width: 50ch below) via the "max-content" track --
+     rather than a fraction of the window, since the point is a fixed
+     comfortable reading width for YAML text, not proportional scaling.
+     The resource-picker column takes whatever's left (1fr). See the
+     matching 3-column version renderHotspotPane() sets below when a
+     hotspot photo pane is also present. */
+  main { display: grid; grid-template-columns: 1fr max-content; gap: 0; height: calc(100vh - 61px); }
   /* Widened by renderHotspotPane() (JS, inline style) to 3 columns only
      when the loaded board has a hotspots/<id>.hotspots.yaml file -- most
      boards don't yet, so this stays the default 2-column layout for those. */
@@ -108,6 +115,12 @@
     background: #0a1013; border: 1px solid var(--border); border-radius: 6px;
     padding: 14px; font-size: 12.5px; line-height: 1.55; overflow-x: auto;
     white-space: pre; min-height: 200px;
+    /* Explicit monospace stack -- needed so the "ch" unit below (which
+       resolves against THIS element's own font, since width is set here)
+       reliably means "60 monospace character widths" rather than
+       whatever <pre>'s UA-default font happens to be per browser. */
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    width: 50ch; max-width: 100%; box-sizing: content-box;
   }
   .tbd-token { color: var(--tbd); font-weight: 700; }
   .summary { display: flex; gap: 18px; margin-bottom: 12px; font-size: 12.5px; }
@@ -760,6 +773,8 @@ let resourcePins = {};
 // this map to resolve an otherwise-ambiguous pin with confidence, when the
 // file being imported is (or resembles) one this tool itself produced.
 let resourceLabels = {};
+let resourceGenericNames = {}; // resourceKey -> normalized generic_name, see computeResourcePins()
+let genericNameToVendorLabel = {}; // reverse of the above, for hover text only
 let lastPlainYaml = "";    // current draft as plain text (TBD where still unanswered) -- for copy/download
 /* Per-axis homing: presence -- FluidNC's homing: sub-section is genuinely
  * optional (an axis with no homing: entry simply can't be homed), so unlike
@@ -1338,13 +1353,33 @@ async function loadBoard(id) {
 function computeResourcePins() {
   resourcePins = {};
   resourceLabels = {};
+  // resourceKey -> generic_name (see gname()), same universe of keys as
+  // resourceLabels/resourcePins -- this is the vocabulary hotspots.yaml
+  // itself is now authored in (its "generic_names" arrays are generic
+  // names, not vendor labels -- a hotspots file is meant to be
+  // board-agnostic-legible, and vendor silkscreen text varies wildly/
+  // verbosely board to board, e.g. Corgi's "Motor Driver Signals -
+  // i2so.1,2,0"). Used for BOTH display (the hotspot corner chip shows
+  // hotspots.yaml's generic_names verbatim, no lookup needed) and matching
+  // (getRowRoleInfo()/jumpToGenericNames()/wireHotspotHoverLinks() all key
+  // off this, not resourceLabels). genericNameToVendorLabel is the
+  // reverse, used only to populate the "generic (vendor)" hover text
+  // refreshHotspotStates() builds, same format the left-pane rows' own
+  // hover title uses.
+  resourceGenericNames = {};
+  genericNameToVendorLabel = {};
+  function record(key, label, generic) {
+    resourceLabels[key] = label;
+    resourceGenericNames[key] = generic;
+    genericNameToVendorLabel[generic] = label;
+  }
   (board.motor_sockets && board.motor_sockets.sockets || []).forEach((s, i) => {
     resourcePins[resourceKeyMotor(i)] = Object.values(s.pins || {});
-    resourceLabels[resourceKeyMotor(i)] = s.label;
+    record(resourceKeyMotor(i), s.label, gname(s));
   });
   (board.generic_pins || []).forEach((p, i) => {
     resourcePins[resourceKeyPin(i)] = [p.mcu_pin];
-    resourceLabels[resourceKeyPin(i)] = p.label;
+    record(resourceKeyPin(i), p.label, gname(p));
   });
   (board.expansion_sockets || []).forEach((s, si) => {
     (s.pins || []).forEach((p, pi) => {
@@ -1352,21 +1387,23 @@ function computeResourcePins() {
       // Matches the exact label string generateDraft()'s allPins walk
       // builds for this same resource (`${s.label}/${p.module_pin}`) --
       // must stay identical so a comment hint scraped from an exported
-      // file's "# <label>" line matches this map's value exactly.
-      resourceLabels[resourceKeyExp(si, pi)] = `${s.label}/${p.module_pin}`;
+      // file's "# <label>" line matches this map's value exactly. Generic
+      // name for a per-pin expansion-socket resource follows the same
+      // composite shape, built from the socket's own gname().
+      record(resourceKeyExp(si, pi), `${s.label}/${p.module_pin}`, `${gname(s)}/${p.module_pin}`);
     });
   });
   (board.rs485_channels || []).forEach((ch, i) => {
     resourcePins[resourceKeyRs485(i)] = [ch.tx_pin, ch.rx_pin, ch.rts_pin].filter(Boolean);
-    resourceLabels[resourceKeyRs485(i)] = ch.label;
+    record(resourceKeyRs485(i), ch.label, gname(ch));
   });
   (board.expansion_uarts || []).forEach((ex, i) => {
     resourcePins[resourceKeyExpUart(i)] = [ex.txd_pin, ex.rxd_pin].filter(Boolean);
-    resourceLabels[resourceKeyExpUart(i)] = ex.label;
+    record(resourceKeyExpUart(i), ex.label, gname(ex));
   });
   (board.i2c_connectors || []).forEach((ic, i) => {
     resourcePins[resourceKeyI2c(i)] = [ic.sda_pin, ic.scl_pin].filter(Boolean);
-    resourceLabels[resourceKeyI2c(i)] = ic.label;
+    record(resourceKeyI2c(i), ic.label, gname(ic));
   });
 }
 
@@ -1586,11 +1623,11 @@ function renderHotspotPane() {
   const col = document.getElementById("hotspotCol");
   if (!hotspotData) {
     col.style.display = "none";
-    mainEl.style.gridTemplateColumns = "1fr 1fr";
+    mainEl.style.gridTemplateColumns = "1fr max-content";
     col.innerHTML = "";
     return;
   }
-  mainEl.style.gridTemplateColumns = "320px 1fr 1fr";
+  mainEl.style.gridTemplateColumns = "320px 1fr max-content";
   col.style.display = "";
   col.innerHTML = `<div class="note">Click a highlighted region to jump to its row on the left. (Prototype — board photos/hotspots only exist for the Corgi board so far.)</div>
     <div id="hotspotImgWrap">
@@ -1605,13 +1642,21 @@ function renderHotspotPane() {
     el.style.top = h.rect.y + "%";
     el.style.width = h.rect.w + "%";
     el.style.height = h.rect.h + "%";
-    el.dataset.labels = JSON.stringify(h.labels);
-    el.onclick = () => jumpToLabels(h.labels, el);
+    el.dataset.genericNames = JSON.stringify(h.generic_names);
+    el.onclick = () => jumpToGenericNames(h.generic_names, el);
     // Connector's own name always shows in the connector box's corner --
-    // unconditional, regardless of whether a label_rect exists.
+    // unconditional, regardless of whether a label_rect exists. hotspots.yaml
+    // records these as "generic_names" (see computeResourcePins()'
+    // resourceGenericNames comment) -- shown verbatim, no lookup needed.
+    // The board's own vendor label(s) are available on hover for anyone who
+    // wants to cross-reference the silkscreen/vendor documentation term.
+    // el.title (the hover tooltip, "generic (vendor)" per name, plus any
+    // assigned role) is set/kept live by refreshHotspotStates() below, not
+    // here -- same single source of truth the assigned/unassigned coloring
+    // already uses, so it never needs a separate initial value.
     const labelSpan = document.createElement("span");
     labelSpan.className = "hotspot-label";
-    labelSpan.textContent = h.labels.join(", ");
+    labelSpan.textContent = h.generic_names.join(", ");
     el.appendChild(labelSpan);
     overlay.appendChild(el);
     if (h.label_rect) {
@@ -1624,7 +1669,7 @@ function renderHotspotPane() {
       // since the assigned role can change on every binding edit.
       const roleSpan = document.createElement("span");
       roleSpan.className = "hotspot-role-label" + (h.label_orientation === "vertical" ? " vertical" : "");
-      roleSpan.dataset.labels = JSON.stringify(h.labels);
+      roleSpan.dataset.genericNames = JSON.stringify(h.generic_names);
       roleSpan.style.left = h.label_rect.x + "%";
       roleSpan.style.top = h.label_rect.y + "%";
       roleSpan.style.width = h.label_rect.w + "%";
@@ -1646,9 +1691,15 @@ function renderHotspotPane() {
  * the not-yet-assigned value (see makeRow/makeOutputRow/makeInputRow) --
  * any select that's hidden (style.display "none", e.g. an output row's
  * unused secondary picker) or has no options yet is skipped. */
-function getRowRoleInfo(label) {
-  const row = Array.from(document.querySelectorAll("#resourceCol .row"))
-    .find(r => r.querySelector(".name") && r.querySelector(".name").textContent === label);
+function getRowRoleInfo(genericName) {
+  // Matched via resourceGenericNames -- hotspots.yaml's own
+  // "generic_names" arrays are written in this same vocabulary (see
+  // computeResourcePins()' resourceGenericNames comment), same as what a
+  // row's displayed ".name" text now shows, so this now lines up directly
+  // rather than needing resourceLabels (the vendor label) as an
+  // intermediary.
+  const key = Object.keys(resourceGenericNames).find(k => resourceGenericNames[k] === genericName);
+  const row = key ? Array.from(document.querySelectorAll("#resourceCol .row")).find(r => r.dataset.resourceKey === key) : null;
   if (!row) return { row: null, assigned: false, roleText: "" };
   const selects = Array.from(row.querySelectorAll("select")).filter(s => s.style.display !== "none" && s.options.length);
   if (!selects.length) return { row, assigned: false, roleText: "" };
@@ -1667,21 +1718,27 @@ function getRowRoleInfo(label) {
 function refreshHotspotStates() {
   if (!hotspotData) return;
   document.querySelectorAll("#hotspotOverlay .hotspot-rect").forEach(el => {
-    let hlabels = [];
-    try { hlabels = JSON.parse(el.dataset.labels || "[]"); } catch (e) {}
-    const infos = hlabels.map(getRowRoleInfo);
+    let genericNames = [];
+    try { genericNames = JSON.parse(el.dataset.genericNames || "[]"); } catch (e) {}
+    const infos = genericNames.map(getRowRoleInfo);
     const assigned = infos.some(i => i.assigned);
     el.classList.toggle("assigned", assigned);
-    el.title = hlabels.map((label, i) => infos[i].assigned ? `${label}: ${infos[i].roleText}` : label).join("\n");
+    // vendor label in parens when it differs -- same "generic (vendor)"
+    // format used by the left-pane rows' own hover title, see makeRow()/etc.
+    el.title = genericNames.map((generic, i) => {
+      const vendor = genericNameToVendorLabel[generic];
+      const base = (!vendor || vendor === generic) ? generic : `${generic} (${vendor})`;
+      return infos[i].assigned ? `${base}: ${infos[i].roleText}` : base;
+    }).join("\n");
   });
   // Populate/hide each hotspot's separate role label (only exists for
   // hotspots with an editor-authored label_rect -- see renderHotspotPane()).
   // Empty when nothing's assigned yet: :empty { display:none } in CSS hides
   // the box entirely rather than showing a blank chip over the photo.
   document.querySelectorAll("#hotspotOverlay .hotspot-role-label").forEach(el => {
-    let hlabels = [];
-    try { hlabels = JSON.parse(el.dataset.labels || "[]"); } catch (e) {}
-    const infos = hlabels.map(getRowRoleInfo);
+    let genericNames = [];
+    try { genericNames = JSON.parse(el.dataset.genericNames || "[]"); } catch (e) {}
+    const infos = genericNames.map(getRowRoleInfo);
     const roleText = infos.filter(i => i.assigned).map(i => i.roleText).join(" / ");
     el.textContent = roleText;
   });
@@ -1702,13 +1759,16 @@ function clearHotspotSelection() {
   document.querySelectorAll("#resourceCol .row.hotspot-target").forEach(e => e.classList.remove("hotspot-target"));
 }
 
-function jumpToLabels(labelList, hotspotEl) {
+function jumpToGenericNames(genericNameList, hotspotEl) {
   clearHotspotSelection();
   if (hotspotEl) hotspotEl.classList.add("active");
   const rows = Array.from(document.querySelectorAll("#resourceCol .row"));
   let first = null;
-  labelList.forEach(label => {
-    const row = rows.find(r => r.querySelector(".name") && r.querySelector(".name").textContent === label);
+  genericNameList.forEach(generic => {
+    // See getRowRoleInfo()'s comment -- genericNameList is hotspots.yaml's
+    // own "generic_names" vocabulary, matched via resourceGenericNames.
+    const key = Object.keys(resourceGenericNames).find(k => resourceGenericNames[k] === generic);
+    const row = key ? rows.find(r => r.dataset.resourceKey === key) : null;
     if (row) {
       row.classList.add("hotspot-target");
       if (!first) first = row;
@@ -1719,9 +1779,10 @@ function jumpToLabels(labelList, hotspotEl) {
 
 /* Same selection, the other direction: clicking a left-pane resource row
  * activates + scrolls to its matching hotspot(s) on the photo, same
- * magenta .active/.hotspot-target state jumpToLabels() sets, just started
- * from the opposite end. Wired alongside the hover link below (same
- * matches array), since both need the identical row<->rect correspondence. */
+ * magenta .active/.hotspot-target state jumpToGenericNames() sets, just
+ * started from the opposite end. Wired alongside the hover link below
+ * (same matches array), since both need the identical row<->rect
+ * correspondence. */
 function selectFromRow(row, matches) {
   clearHotspotSelection();
   matches.forEach(el => el.classList.add("active"));
@@ -1731,20 +1792,22 @@ function selectFromRow(row, matches) {
 
 /* Bidirectional link, the other direction: hovering a left-pane resource
  * row highlights its matching hotspot(s) on the photo (if any exist for
- * this board/label) -- reinforces "this row is that physical connector"
- * without requiring a click. Wired once per board load, right after both
- * #resourceCol and the hotspot pane are built. */
+ * this board/generic name) -- reinforces "this row is that physical
+ * connector" without requiring a click. Wired once per board load, right
+ * after both #resourceCol and the hotspot pane are built. */
 function wireHotspotHoverLinks() {
   if (!hotspotData) return;
   const rects = Array.from(document.querySelectorAll("#hotspotOverlay .hotspot-rect"));
   document.querySelectorAll("#resourceCol .row").forEach(row => {
-    const nameEl = row.querySelector(".name");
-    if (!nameEl) return;
-    const label = nameEl.textContent;
+    // See getRowRoleInfo()'s comment -- generic name via
+    // resourceGenericNames, matching hotspots.yaml's own vocabulary (and,
+    // incidentally, the row's own displayed text).
+    const generic = resourceGenericNames[row.dataset.resourceKey];
+    if (!generic) return;
     const matches = rects.filter(el => {
-      let hlabels = [];
-      try { hlabels = JSON.parse(el.dataset.labels || "[]"); } catch (e) {}
-      return hlabels.includes(label);
+      let genericNames = [];
+      try { genericNames = JSON.parse(el.dataset.genericNames || "[]"); } catch (e) {}
+      return genericNames.includes(generic);
     });
     if (!matches.length) return;
     row.addEventListener("mouseenter", () => matches.forEach(el => el.classList.add("hover")));
@@ -1755,6 +1818,19 @@ function wireHotspotHoverLinks() {
     // just adds the same magenta selection state on top.
     row.addEventListener("click", () => selectFromRow(row, matches));
   });
+}
+
+// Normalized, vendor-independent display name for a board resource (see
+// board.schema.json's generic_name field / board.yaml authoring rules) --
+// falls back to the board's own vendor label when generic_name hasn't been
+// pinned down yet for that connector. Used only for what the wizard SHOWS
+// the user (row text, hotspot corner chips); resourceLabels (the vendor
+// label) is untouched and still drives the "# <label>" annotation comments
+// written into the generated config.yaml and the config.yaml importer's
+// comment-hint matching -- those need the board's own documented term, not
+// the normalized one.
+function gname(entry) {
+  return (entry && entry.generic_name) || (entry && entry.label) || "";
 }
 
 function renderResources() {
@@ -1812,9 +1888,9 @@ function renderResources() {
     board.motor_sockets.sockets.forEach((s, i) => {
       const key = resourceKeyMotor(i);
       sec.appendChild(makeInputRow(
-        key, s.label,
+        key, gname(s),
         `${s.driver_class}${s.fixed_motor_type ? " — " + s.fixed_motor_type : ""}`,
-        MOTOR_ROLE_TREE
+        MOTOR_ROLE_TREE, s.label
       ));
     });
     col.appendChild(sec);
@@ -1827,7 +1903,10 @@ function renderResources() {
     board.generic_pins.forEach((p, i) => {
       const key = resourceKeyPin(i);
       const sub = `${p.mcu_pin} — ${p.direction}`;
-      sec.appendChild(p.direction === "output" ? makeOutputRow(key, p.label, sub) : makeInputRow(key, p.label, sub, INPUT_ROLE_TREE));
+      const name = gname(p);
+      sec.appendChild(p.direction === "output"
+        ? makeOutputRow(key, name, sub, p.label)
+        : makeInputRow(key, name, sub, INPUT_ROLE_TREE, p.label));
     });
     col.appendChild(sec);
   }
@@ -1839,9 +1918,12 @@ function renderResources() {
     board.expansion_sockets.forEach((s, si) => {
       (s.pins||[]).forEach((p, pi) => {
         const key = resourceKeyExp(si, pi);
-        const name = `${s.label} — pin ${p.module_pin}`;
+        const name = `${gname(s)} — pin ${p.module_pin}`;
+        const vendorName = `${s.label} — pin ${p.module_pin}`;
         const sub = `${p.mcu_pin} — ${p.direction}`;
-        sec.appendChild(p.direction === "output" ? makeOutputRow(key, name, sub) : makeInputRow(key, name, sub, INPUT_ROLE_TREE));
+        sec.appendChild(p.direction === "output"
+          ? makeOutputRow(key, name, sub, vendorName)
+          : makeInputRow(key, name, sub, INPUT_ROLE_TREE, vendorName));
       });
     });
     col.appendChild(sec);
@@ -1854,7 +1936,7 @@ function renderResources() {
     board.rs485_channels.forEach((ch, i) => {
       const key = resourceKeyRs485(i);
       const pins = `tx=${ch.tx_pin} rx=${ch.rx_pin}` + (ch.rts_pin ? ` rts=${ch.rts_pin}` : "");
-      sec.appendChild(makeRow(key, ch.label, pins, rs485RoleOptions()));
+      sec.appendChild(makeRow(key, gname(ch), pins, rs485RoleOptions(), ch.label));
     });
     col.appendChild(sec);
   }
@@ -1867,10 +1949,10 @@ function renderResources() {
     board.expansion_uarts.forEach((ex, i) => {
       const key = resourceKeyExpUart(i);
       const pins = `txd=${ex.txd_pin} rxd=${ex.rxd_pin}${ex.connector_type ? " (" + ex.connector_type + ")" : ""}`;
-      sec.appendChild(makeRow(key, ex.label, pins, [
+      sec.appendChild(makeRow(key, gname(ex), pins, [
         { value: "unused", label: "— Unused —" },
         { value: "uart_channel", label: `I/O Expansion (uart_channel, uart${defaultSecondaryUartNum(board)})` },
-      ]));
+      ], ex.label));
     });
     if (boardHasUartTmc(board) && board.rs485_channels && board.rs485_channels.length) {
       const warn = document.createElement("div");
@@ -1897,23 +1979,24 @@ function renderResources() {
     board.i2c_connectors.forEach((ic, i) => {
       const key = resourceKeyI2c(i);
       const pins = `sda=${ic.sda_pin} scl=${ic.scl_pin}`;
-      sec.appendChild(makeRow(key, ic.label, pins, [
+      sec.appendChild(makeRow(key, gname(ic), pins, [
         { value: "unused", label: "— Unused —" },
         { value: "i2c_bus", label: "I2C Bus (i2c0: — e.g. OLED display)" },
         { value: "expansion_uart", label: `Expansion UART (scl=tx, sda=rx, uart${defaultSecondaryUartNum(board)})` },
-      ]));
+      ], ic.label));
     });
     col.appendChild(sec);
   }
 }
 
-function makeRow(key, name, sub, options) {
+function makeRow(key, name, sub, options, vendorLabel) {
   const row = document.createElement("div");
   row.className = "row";
   row.dataset.resourceKey = key;
   const lbl = document.createElement("div");
   lbl.className = "lbl";
   lbl.innerHTML = `<span class="name">${name}</span><span class="sub">${sub}</span>`;
+  if (vendorLabel && vendorLabel !== name) lbl.title = `${name} (${vendorLabel})`;
   const sel = document.createElement("select");
   sel.dataset.key = key;
   options.forEach(o => {
@@ -1938,13 +2021,14 @@ function makeRow(key, name, sub, options) {
  * This is what keeps the per-pin option list from growing every time a
  * new spindle type (Relay, HBridge, Dac, ...) gets added to SPINDLE_TYPES
  * -- only the (hidden-until-needed) step 2 list grows. */
-function makeOutputRow(key, name, sub) {
+function makeOutputRow(key, name, sub, vendorLabel) {
   const row = document.createElement("div");
   row.className = "row output-row";
   row.dataset.resourceKey = key;
   const lbl = document.createElement("div");
   lbl.className = "lbl";
   lbl.innerHTML = `<span class="name">${name}</span><span class="sub">${sub}</span>`;
+  if (vendorLabel && vendorLabel !== name) lbl.title = `${name} (${vendorLabel})`;
   row.appendChild(lbl);
 
   const controls = document.createElement("div");
@@ -2037,13 +2121,14 @@ function makeOutputRow(key, name, sub) {
  * scratch on every change. Whenever a choice is made at some level, any
  * deeper level is auto-filled with its first child so bindings[key] always
  * names a complete, valid leaf value (same policy makeOutputRow uses). */
-function makeInputRow(key, name, sub, tree) {
+function makeInputRow(key, name, sub, tree, vendorLabel) {
   const row = document.createElement("div");
   row.className = "row cascade-row";
   row.dataset.resourceKey = key;
   const lbl = document.createElement("div");
   lbl.className = "lbl";
   lbl.innerHTML = `<span class="name">${name}</span><span class="sub">${sub}</span>`;
+  if (vendorLabel && vendorLabel !== name) lbl.title = `${name} (${vendorLabel})`;
   row.appendChild(lbl);
 
   const controls = document.createElement("div");
@@ -2346,9 +2431,18 @@ function generateDraft() {
   };
 
   // Fixed peripherals: fully known facts, copied straight through, no TBD.
+  // Picked field-by-field (not a raw copy of the board.yaml object) since
+  // board.schema.json's fixed_peripherals $defs allow board-authoring-only
+  // fields FluidNC's own config schema has no such key for at all -- e.g.
+  // notes: (a human-readable annotation for whoever's reading the board.yaml
+  // source, not a real config.yaml key) -- a bare Object.assign/direct
+  // reference would silently carry that straight into the generated config.
   const fp = board.fixed_peripherals || {};
-  if (fp.spi) cfg.spi = fp.spi;
-  if (fp.sdcard) cfg.sdcard = Object.assign({}, fp.sdcard);
+  if (fp.spi) cfg.spi = { miso_pin: fp.spi.miso_pin, mosi_pin: fp.spi.mosi_pin, sck_pin: fp.spi.sck_pin };
+  if (fp.sdcard) {
+    cfg.sdcard = { cs_pin: fp.sdcard.cs_pin };
+    if (fp.sdcard.card_detect_pin) cfg.sdcard.card_detect_pin = fp.sdcard.card_detect_pin;
+  }
   if (fp.i2so) cfg.i2so = { bck_pin: fp.i2so.bck_pin, data_pin: fp.i2so.data_pin, ws_pin: fp.i2so.ws_pin };
   // NOTE: I2C is intentionally NOT handled here as a fixed peripheral --
   // unlike spi:/i2so:, FluidNC rarely has an onboard device actually using

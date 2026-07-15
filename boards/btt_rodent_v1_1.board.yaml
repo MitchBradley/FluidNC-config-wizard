@@ -17,41 +17,45 @@ i2c_connectors:
 motor_sockets:
   sockets:
     - label: "X"
+      generic_name: Motor1
       driver_class: onboard_fixed
       fixed_motor_type: tmc_5160
       pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0, cs_pin: gpio.5 }
       extra: { spi_index: 1, r_sense_ohms_hint: 0.075 }
     - label: "Y"
+      generic_name: Motor2
       driver_class: onboard_fixed
       fixed_motor_type: tmc_5160
       pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
       extra: { spi_index: 2, r_sense_ohms_hint: 0.075 }
     - label: "Z"
+      generic_name: Motor3
       driver_class: onboard_fixed
       fixed_motor_type: tmc_5160
       pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
       extra: { spi_index: 3, r_sense_ohms_hint: 0.075 }
     - label: "E"
+      generic_name: Motor4
       driver_class: onboard_fixed
       fixed_motor_type: tmc_5160
       pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
       extra: { spi_index: 4, r_sense_ohms_hint: 0.075 }
 generic_pins:
-  - { label: "E-Lim", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Z-Lim", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Y-Lim", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: raw } }
-  - { label: "X-Lim", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: raw } }
-  - { label: "E1-Lim", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Probe", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }
-  - { label: "MOSFET1", mcu_pin: gpio.2, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
-  - { label: "MOSFET2", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
-  - { label: "MOSFET3", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
-  - { label: "Spindle PWM", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 10.0 } }
-  - { label: "SPINDLE_EN", mcu_pin: gpio.25, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
-  - { label: "DIRECTION", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
-  - { label: "SPINDLE_FB", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
-  - { label: "Status LED R", mcu_pin: i2so.3, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "Status LED B", mcu_pin: i2so.11, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "Status LED G", mcu_pin: i2so.14, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "E-Lim", generic_name: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Z-Lim", generic_name: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Y-Lim", generic_name: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: raw } }
+  - { label: "X-Lim", generic_name: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: raw } }
+  - { label: "E1-Lim", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Probe", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }
+  - { label: "MOSFET1", generic_name: "FET2", mcu_pin: gpio.2, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
+  - { label: "MOSFET2", generic_name: "FET4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
+  - { label: "MOSFET3", generic_name: "FET12", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
+  - { label: "Spindle PWM", generic_name: "Spindle 10V", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 10.0 } }
+  - { label: "SPINDLE_EN", generic_name: "Spindle Out25", mcu_pin: gpio.25, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
+  - { label: "DIRECTION", generic_name: "DIRECTION", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
+  - { label: "SPINDLE_FB", generic_name: "Spindle Out14", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
+  - { label: "Status LED R", generic_name: "Status LED R", mcu_pin: i2so.3, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Status LED B", generic_name: "Status LED B", mcu_pin: i2so.11, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Status LED G", generic_name: "Status LED G", mcu_pin: i2so.14, direction: output, output_profile: { drive_type: totem_pole } }
 rs485_channels:
   - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
