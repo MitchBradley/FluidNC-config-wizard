@@ -86,7 +86,7 @@ generic_pins:
   # 6x/4x: ~8-10mA typical/channel, 25mA/channel absolute max, 50mA total for
   # all 4). gpio.4/gpio.12 double as the 2 onboard MOSFETs (second entry
   # each, same mcu_pin, per this schema's no-pin-uniqueness design).
-  - label: "5V Out4)"
+  - label: "5V Out4"
     mcu_pin: gpio.4
     direction: output
     output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 }
@@ -95,7 +95,7 @@ generic_pins:
     direction: output
     output_profile: { drive_type: mosfet_low_side, voltage_max: 12.0, current_max_a: 3.0 }
     notes: "3A continuous, 5A peak. Switches VMot (12V only on this board) to ground. Built-in flyback diode."
-  - label: "5V Out12)"
+  - label: "5V Out12"
     mcu_pin: gpio.12
     direction: output
     output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 }
