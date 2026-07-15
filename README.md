@@ -11,8 +11,21 @@ anything it generates against your board's real documentation before flashing.
 
 ## Try it
 
-Open **[index.html](./index.html)** directly, or via GitHub Pages once enabled
-for this repo (Settings -> Pages -> Deploy from branch `main` / root).
+**Via GitHub Pages** (recommended): once enabled for this repo (Settings ->
+Pages -> Deploy from branch `main` / root), just open the published URL.
+
+**Running it locally:** board/chip/hotspot data lives in real sidecar files
+(`boards/*.board.yaml`, `chips/*.chip.yaml`, `hotspots/*.hotspots.yaml`)
+that the page fetches at runtime -- browsers block `fetch()` of local files
+when a page is opened directly via a `file://` URL, so double-clicking
+`index.html` won't work. Serve this folder over HTTP instead, e.g. from a
+terminal in this folder:
+
+```
+python3 -m http.server 8000
+```
+
+then open `http://localhost:8000/index.html`.
 
 Nothing is saved anywhere -- it's a static page with no backend. Use the
 Copy/Download buttons to keep a draft; reloading the page starts over.

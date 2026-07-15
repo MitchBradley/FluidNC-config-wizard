@@ -1,0 +1,182 @@
+board:
+  id: corgi_cnc_controller
+  name: "Corgi CNC Controller"
+  manufacturer: "Dring Engineering Services"
+  mcu_chip: esp32
+  revision: "V1.1"
+  status: active
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/hardware/official/corgi"
+  purchase_url: "https://www.elecrow.com/corgi-esp32-6-axis-cnc-controller-for-fluidnc.html"
+  notes: >
+    Wiki's own framing: "This controller is similar to the 6x controller...
+    It incorporates a lot of suggestions from 6x users." Confirmed: identical
+    motor socket I2SO wiring and identical 8-input GPIO set to the 6x
+    controller. Real differences from 6x: RS485 is now fully isolated with
+    automatic direction control (no rts_pin at all, unlike 6x/4x's MAX3485
+    circuit), gpio.2 is the ONLY input needing external :pu (6x's doc also
+    calls out gpio.26), and this board adds a first-of-its-kind (in this
+    schema) dedicated RJ12 expansion connector -- a fixed UART intended to be
+    written into config.yaml as a uartN:/uart_channelN: pair, not consumed
+    entirely internally like a TMC UART bus. Main voltage is 12V only
+    (reverse-protected); USB can power the ESP32 alone for setup, but 0-10V,
+    MOSFETs and pendants need main power.
+
+stepping:
+  engines: [i2s]
+  notes: "Same reasoning as 6x/4x -- motor pins are I2SO-based, so RMT/Timed are not physically possible. Wiki's own example config uses I2S_static; functionally identical to I2S_STREAM per FluidNC (see stepping.engines' own general note in other board files)."
+
+fixed_peripherals:
+  spi:
+    miso_pin: gpio.19
+    mosi_pin: gpio.23
+    sck_pin: gpio.18
+  sdcard:
+    cs_pin: gpio.5
+    notes: "Wiki's own example config explicitly sets card_detect_pin: NO_PIN -- this board has no physical card-detect wire, not merely an unconfirmed one."
+  i2so:
+    bck_pin: gpio.22
+    data_pin: gpio.21
+    ws_pin: gpio.17
+    pin_count: 24
+    notes: "Inferred from highest I2SO index used by the 6 motor sockets (I2SO.23), identical reasoning/value to the 6x controller (same motor wiring)."
+
+motor_sockets:
+  sockets:
+    - label: "Motor1"
+      driver_class: external_connector
+      pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
+      notes: "Wiki: 'Any motor output can be used for any axis or motor number... labeled Motor1 through motor6, just for reference.' Identical I2SO wiring to the 6x controller's Motor1."
+    - label: "Motor2"
+      driver_class: external_connector
+      pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
+    - label: "Motor3"
+      driver_class: external_connector
+      pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
+    - label: "Motor4"
+      driver_class: external_connector
+      pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
+    - label: "Motor5"
+      driver_class: external_connector
+      pins: { step_pin: i2so.18, direction_pin: i2so.17, disable_pin: i2so.16 }
+    - label: "Motor6"
+      driver_class: external_connector
+      pins: { step_pin: i2so.21, direction_pin: i2so.20, disable_pin: i2so.23 }
+
+generic_pins:
+  # 8 inputs (3-pin JST XH: gnd, signal, switched Vcc selectable 5V/12V via
+  # a single board-wide jumper). Confirmed via wiki's own example config,
+  # which assigns exactly these 8 gpios across the 6 axes + probe +
+  # toolsetter -- the identical GPIO set used by the 6x controller's 8
+  # inputs. IMPORTANT DIFFERENCE FROM 6x: Corgi's own wiki text says "All of
+  # the inputs have external pullup resistors except for gpio.2" (singular)
+  # -- 6x's own wiki text calls out TWO exceptions (gpio.2 AND gpio.26).
+  # Recorded per this board's own stated fact, not copied from 6x.
+  - { label: "In2",  mcu_pin: gpio.2,  direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: true } }
+  - { label: "In26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+  - { label: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+  - { label: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+  - { label: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+  - { label: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+  - { label: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+  - { label: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
+
+  # 4-channel 5V logic-level output bank (74AHCT125 buffer, same chip as
+  # 6x/4x: ~8-10mA typical/channel, 25mA/channel absolute max, 50mA total for
+  # all 4). gpio.4/gpio.12 double as the 2 onboard MOSFETs (second entry
+  # each, same mcu_pin, per this schema's no-pin-uniqueness design).
+  - label: "5V Out4)"
+    mcu_pin: gpio.4
+    direction: output
+    output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 }
+  - label: "FET2"
+    mcu_pin: gpio.4
+    direction: output
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 12.0, current_max_a: 3.0 }
+    notes: "3A continuous, 5A peak. Switches VMot (12V only on this board) to ground. Built-in flyback diode."
+  - label: "5V Out12)"
+    mcu_pin: gpio.12
+    direction: output
+    output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 }
+  - label: "FET1"
+    mcu_pin: gpio.12
+    direction: output
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 12.0, current_max_a: 3.0 }
+    notes: "3A continuous, 5A peak. Switches VMot (12V only on this board) to ground. Built-in flyback diode."
+  - label: "5V Out13"
+    mcu_pin: gpio.13
+    direction: output
+    output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 }
+    notes: "Confirmed via wiki's own PWM/10V example config usage (output_pin)."
+  - label: "5V Out14"
+    mcu_pin: gpio.14
+    direction: output
+    output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 }
+  - label: "Spindle Out1"
+    mcu_pin: gpio.15
+    direction: output
+    output_profile: { drive_type: open_collector }
+    notes: >
+      Optocoupled open-collector output for a digitally-controlled VFD's
+      forward-run input. Shares gpio.15 with the RS485 channel's tx_pin
+      and the plain 5V-ish digital output role. Voltage/current rating
+      for this specific opto-isolated path not confirmed in available
+      documentation -- should be checked against schematic.
+  - label: "Spindle Out2"
+    mcu_pin: gpio.14
+    direction: output
+    output_profile: { drive_type: open_collector }
+    notes: >
+      Optocoupled open-collector output for a digitally-controlled VFD's
+      reverse-run input. Shares gpio.14 with the RS485 channel's rts_pin
+      and "5V Out14". Voltage/current rating for this specific
+      opto-isolated path not confirmed in available documentation --
+      should be checked against schematic.
+
+  - label: "Spindle 10V"
+    mcu_pin: gpio.13
+    direction: output
+    output_profile: { drive_type: totem_pole, voltage_max: 10.0 }
+    notes: >
+      Analog output for a digitally-controlled VFD's 10V speed control.
+
+rs485_channels:
+  - label: "RS485"
+    tx_pin: gpio.15
+    rx_pin: gpio.16
+    pins_reusable_as_generic_io: true
+    notes: >
+      Wiki, verbatim: "The RS485 circuit is fully isolated. It also has
+      automatic direction control, so only 2 I/O are required (TX and RX)"
+      and, in the RS485 section itself: "It also has automatic direction
+      control, so it does NOT use an rts_pin." This is a genuine hardware
+      difference from the 6x/4x controllers' MAX3485 circuits, which
+      require rts_pin -- deliberately no rts_pin field here, not an
+      oversight. tx_pin (gpio.15) is confirmed reusable as a plain 5V output
+      via the wiki's own 10V example (forward_pin: gpio.15); rx_pin
+      (gpio.16) has no confirmed alternate use in available documentation.
+      Suitable for a FluidNC VFD (Modbus) spindle. Wiki's own Huanyang
+      example uses uart1 for this bus (no onboard UART-addressed TMC drivers
+      on this board to conflict with).
+
+expansion_uarts:
+  - label: "RJ12 Expansion"
+    connector_type: "RJ12"
+    txd_pin: gpio.27
+    rxd_pin: gpio.25
+    baud: 1000000
+    mode: "8N1"
+    notes: >
+      Wiki: "Built in RJ12 for pendants and expanders" (FluidDial, Airedale).
+      First board in this schema with a dedicated expansion UART connector
+      distinct from the generic bidirectional-pin expansion_sockets used by
+      6x/4x -- this connector's pins are fixed and always meant to be
+      written into config.yaml as a uartN:/uart_channelN: pair (per the
+      wiki's own example config), never consumed silently like a TMC UART
+      bus. No rts_pin/cts_pin -- confirmed via the wiki's own example, which
+      writes both as literal NO_PIN. This board has no onboard UART-
+      addressed TMC drivers, so the wizard's default uart_num for this
+      connector is 1 (see rs485_channels.notes for the resulting real,
+      accepted conflict on boards that DO have such drivers, e.g. the 4x
+      controller).

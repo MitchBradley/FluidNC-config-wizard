@@ -1,0 +1,35 @@
+board:
+  id: fluidnc_pen_laser_spi
+  name: "FluidNC Pen/Laser CNC Controller (SPI)"
+  manufacturer: "Dring Engineering Services"
+  mcu_chip: esp32
+  status: active
+stepping:
+  engines: [rmt, timed]
+fixed_peripherals:
+  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
+  sdcard: { cs_pin: gpio.5 }
+motor_sockets:
+  shared_disable_pin: gpio.13
+  sockets:
+    - label: "X"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2130
+      pins: { step_pin: gpio.14, direction_pin: gpio.12, cs_pin: gpio.16 }
+      extra: { bus: spi }
+    - label: "Y"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2130
+      pins: { step_pin: gpio.25, direction_pin: gpio.26, cs_pin: gpio.17 }
+      extra: { bus: spi }
+    - label: "Z (pen lift)"
+      driver_class: onboard_fixed
+      fixed_motor_type: rc_servo
+      pins: { output_pin: gpio.22 }
+generic_pins:
+  - { label: "X Limit", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Y Limit", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Probe", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: raw } }
+  - { label: "5V Out 1", mcu_pin: gpio.21, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 2", mcu_pin: gpio.27, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 3", mcu_pin: gpio.2,  direction: output, output_profile: { drive_type: totem_pole } }

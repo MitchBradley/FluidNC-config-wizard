@@ -1,0 +1,36 @@
+chip_id: esp32
+gpio:
+  - { pin: 0,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 1,  input: true, output: true }
+  - { pin: 2,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 3,  input: true, output: true }
+  - { pin: 4,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 5,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 6,  reserved: true, input: false, output: false }
+  - { pin: 7,  reserved: true, input: false, output: false }
+  - { pin: 8,  reserved: true, input: false, output: false }
+  - { pin: 9,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 10, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 11, reserved: true, input: false, output: false }
+  - { pin: 12, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 13, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 14, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 15, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 16, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 17, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 18, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 19, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 21, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 22, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 23, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 25, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 26, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 27, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 32, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 33, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 34, input: true, output: false, pullup: false, pulldown: false }
+  - { pin: 35, input: true, output: false, pullup: false, pulldown: false }
+  - { pin: 36, input: true, output: false, pullup: false, pulldown: false }
+  - { pin: 37, input: false, output: false, pullup: false, pulldown: false }
+  - { pin: 38, input: false, output: false, pullup: false, pulldown: false }
+  - { pin: 39, input: true, output: false, pullup: false, pulldown: false }

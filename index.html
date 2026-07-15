@@ -39,7 +39,7 @@
 <style>
   :root {
     --bg: #0f1417; --panel: #171e23; --border: #2a343b; --text: #dbe4e8;
-    --muted: #7d8f98; --accent: #4fb5c9; --tbd: #d9a441; --fixed: #5c7d63;
+    --muted: #7d8f98; --accent: #4fb5c9; --tbd: #d9a441; --fixed: #5c7d63; --danger: #e0616b;
   }
   * { box-sizing: border-box; }
   body {
@@ -60,6 +60,9 @@
   button:hover { border-color: var(--accent); }
   button.primary { background: var(--accent); color: #06181c; font-weight: 600; border-color: var(--accent); }
   main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: calc(100vh - 61px); }
+  /* Widened by renderHotspotPane() (JS, inline style) to 3 columns only
+     when the loaded board has a hotspots/<id>.hotspots.yaml file -- most
+     boards don't yet, so this stays the default 2-column layout for those. */
   .col { overflow-y: auto; padding: 18px 24px; }
   .col.left { border-right: 1px solid var(--border); }
   section { margin-bottom: 22px; }
@@ -74,10 +77,29 @@
   .row .lbl { display: flex; flex-direction: column; }
   .row .lbl .name { font-weight: 600; }
   .row .lbl .sub { color: var(--muted); font-size: 11.5px; margin-top: 1px; }
+  .row.gpio-conflict select { opacity: 0.5; cursor: not-allowed; }
   .row select { width: 100%; }
   .row.output-row, .row.cascade-row { grid-template-columns: 1fr 260px; }
   .output-controls, .cascade-controls { display: flex; gap: 4px; }
   .output-controls select, .cascade-controls select { flex: 1; min-width: 0; }
+  /* Each row's selector(s) live inside a small positioned wrapper (.ctrl-wrap
+     for a single-select row, or the existing .output-controls/.cascade-
+     controls for the two multi-select row types) so .conflict-note --
+     appended as a child of that SAME wrapper, not the row as a whole -- can
+     use inset:0 to cover exactly the selector portion of the row and
+     nothing else (never the name/sub text on the left). See
+     refreshGpioConflicts(). Opaque background so the selector underneath is
+     fully hidden, not just dimmed; only ever shown on an UNASSIGNED
+     resource, disappears (selector reappears) the instant the conflicting
+     resource reverts to Unused. */
+  .ctrl-wrap { position: relative; }
+  .output-controls, .cascade-controls { position: relative; }
+  .conflict-note {
+    display: none; position: absolute; inset: 0;
+    align-items: center; padding: 0 8px;
+    background: var(--panel); color: var(--danger); font-size: 11.5px; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 5px;
+  }
   .fixed-fact { color: var(--text); font-weight: 600; }
   .fixed-list { font-size: 12px; color: var(--muted); line-height: 1.6; }
   .fixed-list code { color: var(--fixed); background: none; }
@@ -125,6 +147,76 @@
     background: #1c262c; border: 1px solid var(--border); border-radius: 3px;
     padding: 0 2px; margin-left: -4px;
   }
+  /* section-select sits at the true left margin (a top-level key, like
+     start:/stepping:), same as kin-select above -- the browser's default
+     <select> box adds a few px of left padding/border that a plain text
+     key doesn't have, so without this it visually reads as indented one
+     level even though the underlying YAML key is at column 0. */
+  .section-select {
+    font: inherit; font-size: 12.5px; font-family: inherit; color: var(--text);
+    background: #1c262c; border: 1px solid var(--border); border-radius: 3px;
+    padding: 0 2px; margin-left: -4px;
+  }
+  .col.hotspot { border-right: 1px solid var(--border); }
+  #hotspotImgWrap { position: relative; display: inline-block; max-width: 100%; }
+  #hotspotImgWrap img { max-width: 100%; display: block; user-select: none; -webkit-user-drag: none; }
+  #hotspotOverlay { position: absolute; inset: 0; }
+  /* Color encodes binding state, not just hover: yellow (--tbd, same color
+     the rest of the wizard already uses for "open/TBD") for a connector
+     with no role assigned yet, green for one that does -- refreshed live
+     on every generateDraft() (see refreshHotspotStates()), not just at
+     board-load time. Magenta is reserved exclusively for "this is the one
+     you just clicked" (.active), so it always reads as a distinct
+     selection state, never confusable with the assigned/unassigned color. */
+  .hotspot-rect {
+    position: absolute; box-sizing: border-box; cursor: pointer;
+    border: 3px solid var(--tbd); background: rgba(217,165,60,.14);
+    transition: background .15s, border-color .15s;
+  }
+  .hotspot-rect.assigned { border-color: #6fbf73; background: rgba(111,191,115,.16); }
+  .hotspot-rect:hover, .hotspot-rect.hover { background: rgba(217,165,60,.34); }
+  .hotspot-rect.assigned:hover, .hotspot-rect.assigned.hover { background: rgba(111,191,115,.34); }
+  .hotspot-rect.active { border-color: #e63cc8 !important; background: rgba(230,60,200,.30) !important; }
+  /* Resource name shown right inside the box. Deliberately allowed to
+     overflow (no truncation/ellipsis/font shrinking yet -- long labels on
+     small connectors will spill past the box edges for now, a known,
+     accepted rough spot to revisit later) rather than hiding any of the
+     text. A dark backing chip keeps it legible over any of the box's
+     yellow/green/magenta fill states. pointer-events: none so it never
+     steals the click/hover that's meant for the rect itself. */
+  .hotspot-label {
+    position: absolute; top: 2px; left: 2px; z-index: 2; pointer-events: none;
+    font-size: 10px; line-height: 1.3; color: #f2f6f8; background: rgba(10,16,19,.72);
+    padding: 1px 4px; border-radius: 2px; white-space: nowrap; overflow: visible;
+  }
+  /* The connector's OWN name (e.g. "Motor1") always shows as the corner
+     chip above (.hotspot-label, unconditional). .hotspot-role-label is a
+     different thing: the FluidNC ROLE that's been assigned to that
+     connector (e.g. "X Motor" / "Limit X-"), shown only once a hotspot has
+     an editor-authored label_rect AND the connector is actually bound to
+     something -- positioned at that separate rect (same %-of-image space
+     as the connector box, not nested inside it) rather than the connector
+     box's own corner, since small/crowded connectors often have no room
+     for both their own name and the assigned role. Text content/visibility
+     is refreshed live by refreshHotspotStates(), same as the connector
+     box's assigned/unassigned coloring. label_orientation: "vertical"
+     rotates the text to read bottom-to-top; still allowed to overflow past
+     the rect for now (same "fix later" stance as the corner chip). */
+  .hotspot-role-label {
+    position: absolute; z-index: 2; pointer-events: none; padding: 1px 4px;
+    font-size: 10px; line-height: 1.25; color: #f2f6f8; background: rgba(10,16,19,.72);
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%; text-align: center; white-space: normal;
+    word-break: break-word; overflow: visible; box-sizing: border-box;
+    border-radius: 2px;
+  }
+  .hotspot-role-label.vertical {
+    writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg);
+  }
+  .hotspot-role-label:empty { display: none; }
+  .row.hotspot-target {
+    background: rgba(230,60,200,.16); outline: 2px solid #e63cc8; outline-offset: 2px; border-radius: 6px;
+  }
 </style>
 </head>
 <body>
@@ -133,11 +225,19 @@
   <h1>FluidNC Board Mapping Wizard</h1>
   <p>Prototype — resource-first walk (Phase A: bind board resources to roles) → draft config.yaml with TBD stubs (Phase B)</p>
   <select id="boardPicker" style="margin-left:auto"></select>
+  <button onclick="document.getElementById('configFileInput').click()">Load config.yaml…</button>
+  <input type="file" id="configFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
 </header>
 
 <main>
   <div class="col left" id="resourceCol">
     <div class="note" id="boardNote"></div>
+    <div class="note" id="importReport" style="display:none"></div>
+  </div>
+  <div class="col hotspot" id="hotspotCol" style="display:none">
+    <!-- Populated by renderHotspotPane() only when hotspots/<id>.hotspots.yaml
+         exists for the loaded board (currently just Corgi, as a prototype)
+         -- hidden and excluded from the grid entirely otherwise. -->
   </div>
   <div class="col right">
     <div class="summary" id="summary"></div>
@@ -151,628 +251,253 @@
 
 <script>
 /* ---------------------------------------------------------------------
- * Embedded board files (from fluidnc-boards/boards/*.board.yaml).
- * In a non-prototype version these would be fetched or uploaded.
+ * Board/chip/hotspot data now lives in real sidecar files, fetched at
+ * runtime, instead of being embedded as JS string literals in this file.
+ * This trades away the ability to preview the wizard in an environment
+ * that can't fetch relative files (e.g. pasted into a chat sidebar) for a
+ * shape that actually matches the real project layout (fluidnc-boards'
+ * boards/*.board.yaml, chips/*.chip.yaml) and lets board/hotspot data be
+ * edited without touching this file at all.
+ *
+ * IMPORTANT: fetch() of relative files is blocked by the browser's CORS
+ * policy when this page is opened directly via a file:// URL (Chrome
+ * included) -- there's no way around that from the page itself. To run
+ * this locally, serve the folder over HTTP, e.g. from a terminal in this
+ * folder: `python3 -m http.server 8000`, then open
+ * http://localhost:8000/index.html. It also works as-is once pushed to
+ * GitHub Pages, since that serves over real HTTP(S).
+ *
+ * BOARD_IDS is a manifest, not a directory listing -- fetch() can't
+ * enumerate a folder's contents, so the wizard needs to be told which
+ * board files exist. Keep this in sync with boards/*.board.yaml.
  * ------------------------------------------------------------------- */
-const BOARD_YAML = {};
+const BOARD_IDS = [
+  "6x_cnc_controller", "4x_cnc_controller", "corgi_cnc_controller",
+  "fluidnc_pen_laser_spi", "mks_dlc32_v2_1", "btt_rodent_v1_0", "btt_rodent_v1_1",
+];
 
-BOARD_YAML["6x_cnc_controller"] = `
-board:
-  id: 6x_cnc_controller
-  name: "6x CNC Controller"
-  manufacturer: "Dring Engineering Services"
-  mcu_chip: esp32
-  status: active
-stepping:
-  engines: [i2s]
-fixed_peripherals:
-  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
-  sdcard: { cs_pin: gpio.5 }
-  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 24 }
-motor_sockets:
-  sockets:
-    - label: "Motor1"
-      driver_class: external_connector
-      pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
-    - label: "Motor2"
-      driver_class: external_connector
-      pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
-    - label: "Motor3"
-      driver_class: external_connector
-      pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
-    - label: "Motor4"
-      driver_class: external_connector
-      pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
-    - label: "Motor5"
-      driver_class: external_connector
-      pins: { step_pin: i2so.18, direction_pin: i2so.17, disable_pin: i2so.16 }
-    - label: "Motor6"
-      driver_class: external_connector
-      pins: { step_pin: i2so.21, direction_pin: i2so.20, disable_pin: i2so.23 }
-generic_pins:
-  - { label: "IO2",  mcu_pin: gpio.2,  direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "5V Out (shared w/ MOSFET1)", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "MOSFET1", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side } }
-  - { label: "5V Out (shared w/ MOSFET2)", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "MOSFET2", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side } }
-  - { label: "5V Out 3", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "5V Out 4", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "Spindle Fwd", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: open_collector } }
-  - { label: "Spindle Rev", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: open_collector } }
-rs485_channels:
-  - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
-expansion_sockets:
-  - label: "Expansion Module Socket"
-    pins:
-      - { module_pin: "1", mcu_pin: gpio.25, direction: bidirectional }
-      - { module_pin: "2", mcu_pin: gpio.27, direction: bidirectional }
-`;
+async function fetchYamlText(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+  return res.text();
+}
 
-BOARD_YAML["4x_cnc_controller"] = `
-board:
-  id: 4x_cnc_controller
-  name: "4x CNC Controller (Integrated ESP32 and TMC2209)"
-  manufacturer: "Dring Engineering Services"
-  mcu_chip: esp32
-  status: unverified
-stepping:
-  engines: [i2s]
-fixed_peripherals:
-  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
-  sdcard: { cs_pin: gpio.5 }
-  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 16 }
-  dedicated_uarts:
-    - { label: "TMC2209 UART", txd_pin: gpio.26, rxd_pin: gpio.2, baud: 115200, mode: "8N1" }
-motor_sockets:
-  sockets:
-    - label: "Motor1"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_2209
-      pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
-      extra: { bus: uart1, addr: 0 }
-    - label: "Motor2"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_2209
-      pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
-      extra: { bus: uart1, addr: 1 }
-    - label: "Motor3"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_2209
-      pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
-      extra: { bus: uart1, addr: 2 }
-    - label: "Motor4"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_2209
-      pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
-      extra: { bus: uart1, addr: 3 }
-generic_pins:
-  - { label: "IO32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "5V Out (shared w/ MOSFET1)", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "MOSFET1", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side } }
-  - { label: "5V Out (shared w/ MOSFET2)", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "MOSFET2", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side } }
-  - { label: "5V Out 3", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "5V Out 4", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "Out1", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: open_collector } }
-  - { label: "Out2", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: open_collector } }
-rs485_channels:
-  - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
-expansion_sockets:
-  - label: "Expansion Module Socket"
-    pins:
-      - { module_pin: "1", mcu_pin: gpio.25, direction: bidirectional }
-      - { module_pin: "2", mcu_pin: gpio.27, direction: bidirectional }
-`;
+// Returns null (not a throw) for optional per-board files -- a missing
+// hotspots file is expected for every board except Corgi so far, and
+// should silently fall back to no hotspot pane, not break board loading.
+async function fetchYamlTextOptional(path) {
+  try {
+    const res = await fetch(path);
+    if (!res.ok) return null;
+    return await res.text();
+  } catch (e) {
+    return null;
+  }
+}
 
-BOARD_YAML["corgi_cnc_controller"] = `
-board:
-  id: corgi_cnc_controller
-  name: "Corgi CNC Controller"
-  manufacturer: "Dring Engineering Services"
-  mcu_chip: esp32
-  revision: "V1.1"
-  status: active
-stepping:
-  engines: [i2s]
-fixed_peripherals:
-  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
-  sdcard: { cs_pin: gpio.5 }
-  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 24 }
-motor_sockets:
-  sockets:
-    - label: "Motor1"
-      driver_class: external_connector
-      pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
-    - label: "Motor2"
-      driver_class: external_connector
-      pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
-    - label: "Motor3"
-      driver_class: external_connector
-      pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
-    - label: "Motor4"
-      driver_class: external_connector
-      pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
-    - label: "Motor5"
-      driver_class: external_connector
-      pins: { step_pin: i2so.18, direction_pin: i2so.17, disable_pin: i2so.16 }
-    - label: "Motor6"
-      driver_class: external_connector
-      pins: { step_pin: i2so.21, direction_pin: i2so.20, disable_pin: i2so.23 }
-generic_pins:
-  - { label: "IO2",  mcu_pin: gpio.2,  direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: true } }
-  - { label: "IO26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "5V Out (shared w/ MOSFET1)", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "MOSFET1", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side } }
-  - { label: "5V Out (shared w/ MOSFET2)", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "MOSFET2", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side } }
-  - { label: "5V Out 3", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "5V Out 4", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "5V Out 5", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: totem_pole } }
-rs485_channels:
-  - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, pins_reusable_as_generic_io: true }
-expansion_uarts:
-  - { label: "RJ12 Expansion", connector_type: "RJ12", txd_pin: gpio.27, rxd_pin: gpio.25, baud: 1000000, mode: "8N1" }
-`;
-
-BOARD_YAML["fluidnc_pen_laser_spi"] = `
-board:
-  id: fluidnc_pen_laser_spi
-  name: "FluidNC Pen/Laser CNC Controller (SPI)"
-  manufacturer: "Dring Engineering Services"
-  mcu_chip: esp32
-  status: active
-stepping:
-  engines: [rmt, timed]
-fixed_peripherals:
-  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
-  sdcard: { cs_pin: gpio.5 }
-motor_sockets:
-  shared_disable_pin: gpio.13
-  sockets:
-    - label: "X"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_2130
-      pins: { step_pin: gpio.14, direction_pin: gpio.12, cs_pin: gpio.16 }
-      extra: { bus: spi }
-    - label: "Y"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_2130
-      pins: { step_pin: gpio.25, direction_pin: gpio.26, cs_pin: gpio.17 }
-      extra: { bus: spi }
-    - label: "Z (pen lift)"
-      driver_class: onboard_fixed
-      fixed_motor_type: rc_servo
-      pins: { output_pin: gpio.22 }
-generic_pins:
-  - { label: "X Limit", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Y Limit", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Probe", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: raw } }
-  - { label: "5V Out 1", mcu_pin: gpio.21, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "5V Out 2", mcu_pin: gpio.27, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "5V Out 3", mcu_pin: gpio.2,  direction: output, output_profile: { drive_type: totem_pole } }
-`;
-
-BOARD_YAML["mks_dlc32_v2_1"] = `
-board:
-  id: mks_dlc32_v2_1
-  name: "MKS DLC32 V2.1"
-  manufacturer: "Makerbase"
-  mcu_chip: esp32
-  status: community_documented
-stepping:
-  engines: [i2s]
-fixed_peripherals:
-  spi: { miso_pin: gpio.12, mosi_pin: gpio.13, sck_pin: gpio.14 }
-  sdcard: { cs_pin: gpio.15, card_detect_pin: gpio.39 }
-  i2so: { bck_pin: gpio.16, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 8 }
-i2c_connectors:
-  - { label: "I2C", sda_pin: gpio.0, scl_pin: gpio.4 }
-motor_sockets:
-  shared_disable_pin: i2so.0
-  sockets:
-    - label: "X"
-      driver_class: stepstick_socket
-      pins: { step_pin: i2so.1, direction_pin: i2so.2 }
-    - label: "Y"
-      driver_class: stepstick_socket
-      pins: { step_pin: i2so.5, direction_pin: i2so.6 }
-    - label: "Z"
-      driver_class: stepstick_socket
-      pins: { step_pin: i2so.3, direction_pin: i2so.4 }
-generic_pins:
-  - { label: "X-", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: rc_filtered } }
-  - { label: "Y-", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: rc_filtered } }
-  - { label: "Z-", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: rc_filtered } }
-  - { label: "PROBE_PIN", mcu_pin: gpio.22, direction: input, input_profile: { conditioning: raw } }
-  - { label: "TTL (laser PWM)", mcu_pin: gpio.32, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "Spindle (RPM control)", mcu_pin: gpio.32, direction: output, output_profile: { drive_type: mosfet_low_side } }
-  - { label: "LCD_CS", mcu_pin: gpio.25, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "TOUCH_CS", mcu_pin: gpio.26, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "LCD_RST", mcu_pin: gpio.27, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "LCD_RS", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: raw } }
-`;
-
-BOARD_YAML["btt_rodent_v1_0"] = `
-board:
-  id: btt_rodent_v1_0
-  name: "BigTreeTech Rodent (V1.0)"
-  manufacturer: "BigTreeTech / Rat Rig"
-  mcu_chip: esp32_bare
-  family: btt_rodent
-  revision: "V1.0"
-  status: community_documented
-stepping:
-  engines: [i2s]
-fixed_peripherals:
-  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
-  sdcard: { cs_pin: gpio.0 }
-  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 16 }
-i2c_connectors:
-  - { label: "I2C", sda_pin: gpio.27, scl_pin: gpio.26 }
-motor_sockets:
-  sockets:
-    - label: "X"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_5160
-      pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0, cs_pin: gpio.5 }
-      extra: { spi_index: 1, r_sense_ohms_hint: 0.075 }
-    - label: "Y"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_5160
-      pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
-      extra: { spi_index: 2, r_sense_ohms_hint: 0.075 }
-    - label: "Z"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_5160
-      pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
-      extra: { spi_index: 3, r_sense_ohms_hint: 0.075 }
-    - label: "E"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_5160
-      pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
-      extra: { spi_index: 4, r_sense_ohms_hint: 0.075 }
-generic_pins:
-  - { label: "E-Lim", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Z-Lim", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Y-Lim", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: raw } }
-  - { label: "X-Lim", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: raw } }
-  - { label: "E1-Lim", mcu_pin: gpio.37, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Probe", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }
-  - { label: "MOSFET1", mcu_pin: gpio.2, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
-  - { label: "MOSFET2", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
-  - { label: "MOSFET3", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
-  - { label: "Spindle PWM", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 10.0 } }
-  - { label: "SPINDLE_EN", mcu_pin: gpio.25, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
-  - { label: "DIRECTION", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
-  - { label: "SPINDLE_FB", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
-  - { label: "Status LED R", mcu_pin: i2so.3, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "Status LED B", mcu_pin: i2so.11, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "Status LED G", mcu_pin: i2so.14, direction: output, output_profile: { drive_type: totem_pole } }
-rs485_channels:
-  - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
-`;
-
-BOARD_YAML["btt_rodent_v1_1"] = `
-board:
-  id: btt_rodent_v1_1
-  name: "BigTreeTech Rodent (V1.1)"
-  manufacturer: "BigTreeTech / Rat Rig"
-  mcu_chip: esp32
-  family: btt_rodent
-  revision: "V1.1"
-  status: community_documented
-stepping:
-  engines: [i2s]
-fixed_peripherals:
-  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
-  sdcard: { cs_pin: gpio.0 }
-  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 16 }
-i2c_connectors:
-  - { label: "I2C", sda_pin: gpio.27, scl_pin: gpio.26 }
-motor_sockets:
-  sockets:
-    - label: "X"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_5160
-      pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0, cs_pin: gpio.5 }
-      extra: { spi_index: 1, r_sense_ohms_hint: 0.075 }
-    - label: "Y"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_5160
-      pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
-      extra: { spi_index: 2, r_sense_ohms_hint: 0.075 }
-    - label: "Z"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_5160
-      pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
-      extra: { spi_index: 3, r_sense_ohms_hint: 0.075 }
-    - label: "E"
-      driver_class: onboard_fixed
-      fixed_motor_type: tmc_5160
-      pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
-      extra: { spi_index: 4, r_sense_ohms_hint: 0.075 }
-generic_pins:
-  - { label: "E-Lim", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Z-Lim", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Y-Lim", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: raw } }
-  - { label: "X-Lim", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: raw } }
-  - { label: "E1-Lim", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Probe", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }
-  - { label: "MOSFET1", mcu_pin: gpio.2, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
-  - { label: "MOSFET2", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
-  - { label: "MOSFET3", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
-  - { label: "Spindle PWM", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 10.0 } }
-  - { label: "SPINDLE_EN", mcu_pin: gpio.25, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
-  - { label: "DIRECTION", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
-  - { label: "SPINDLE_FB", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
-  - { label: "Status LED R", mcu_pin: i2so.3, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "Status LED B", mcu_pin: i2so.11, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "Status LED G", mcu_pin: i2so.14, direction: output, output_profile: { drive_type: totem_pole } }
-rs485_channels:
-  - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
-`;
-
-/* ---------------------------------------------------------------------
- * MCU chip facts (mcu-chip.schema.json layer) -- embedded copies of the
- * real project's chips/*.chip.yaml files, same reason/lockstep-update
- * requirement as BOARD_YAML above. Only used here for gpio[].pullup/
- * pulldown, to correctly gate the :pu/:pd pin-attribute widget by REAL
- * per-pin hardware capability instead of the old i2so-vs-gpio heuristic
- * (which missed e.g. the ESP32's true input-only pins, gpio.34-39, which
- * have no internal pull resistors regardless of board). Board files
- * intentionally do NOT restate this -- it's a chip-level fact, sourced
- * from here, not duplicated per board. */
-const CHIP_YAML = {};
-
-CHIP_YAML["esp32"] = `
-chip_id: esp32
-gpio:
-  - { pin: 0,  input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 1,  input: true, output: true }
-  - { pin: 2,  input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 3,  input: true, output: true }
-  - { pin: 4,  input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 5,  input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 6,  reserved: true, input: false, output: false }
-  - { pin: 7,  reserved: true, input: false, output: false }
-  - { pin: 8,  reserved: true, input: false, output: false }
-  - { pin: 9,  input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 10, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 11, reserved: true, input: false, output: false }
-  - { pin: 12, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 13, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 14, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 15, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 16, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 17, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 18, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 19, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 21, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 22, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 23, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 25, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 26, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 27, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 32, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 33, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 34, input: true, output: false, pullup: false, pulldown: false }
-  - { pin: 35, input: true, output: false, pullup: false, pulldown: false }
-  - { pin: 36, input: true, output: false, pullup: false, pulldown: false }
-  - { pin: 37, input: false, output: false, pullup: false, pulldown: false }
-  - { pin: 38, input: false, output: false, pullup: false, pulldown: false }
-  - { pin: 39, input: true, output: false, pullup: false, pulldown: false }
-`;
-
-CHIP_YAML["esp32_bare"] = `
-chip_id: esp32_bare
-gpio:
-  - { pin: 0,  input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 1,  input: true, output: true }
-  - { pin: 2,  input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 3,  input: true, output: true }
-  - { pin: 4,  input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 5,  input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 6,  reserved: true, input: false, output: false }
-  - { pin: 7,  reserved: true, input: false, output: false }
-  - { pin: 8,  reserved: true, input: false, output: false }
-  - { pin: 9,  input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 10, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 11, reserved: true, input: false, output: false }
-  - { pin: 12, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 13, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 14, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 15, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 16, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 17, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 18, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 19, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 21, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 22, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 23, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 25, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 26, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 27, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 32, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 33, input: true, output: true, pullup: true, pulldown: true }
-  - { pin: 34, input: true, output: false, pullup: false, pulldown: false }
-  - { pin: 35, input: true, output: false, pullup: false, pulldown: false }
-  - { pin: 36, input: true, output: false, pullup: false, pulldown: false }
-  - { pin: 37, input: true, output: false, pullup: false, pulldown: false }
-  - { pin: 38, input: true, output: false, pullup: false, pulldown: false }
-  - { pin: 39, input: true, output: false, pullup: false, pulldown: false }
-`;
 
 /* ---------------------------------------------------------------------
  * Role vocabularies. Real FluidNC has a larger set; this prototype covers
  * enough of it to demonstrate the resource-first walk + TBD stubbing.
  * ------------------------------------------------------------------- */
-const AXES = ["x","y","z","a","b","c"];
+/* AXES / MOTOR_ROLE_TREE / INPUT_ROLE_TREE / SPINDLE_TYPES /
+ * DIGITAL_OUTPUT_COUNT / ANALOG_OUTPUT_COUNT are derived at boot directly
+ * from FluidNC's own authoritative fluidnc-config-schema.json (a versioned
+ * copy lives at schema/fluidnc-config-schema.json in this repo, fetched
+ * once -- see loadRoleData() below), rather than from a hand-generated
+ * role-data.yaml sidecar. There used to be a two-step pipeline here (a
+ * Python script read the schema and wrote role-data.yaml, which the wizard
+ * then fetched) -- collapsed into one step per feedback ("consider doing
+ * the work at runtime in javascript so there is no need for a cached role
+ * file"): the exact same derivation logic now runs live in the browser
+ * every time the page loads, so there's no intermediate artifact that can
+ * go stale by someone forgetting to re-run a generator.
+ *
+ * What's still hand-authored here (the schema has no concept of these --
+ * they're UI vocabulary, not config-file structure): AXES, MOTOR_LABELS,
+ * LIMIT_DIRECTIONS (axis/motor-as-a-selectable-thing is a wizard UI
+ * grouping choice, not a schema concept), SPINDLE_LABELS + the few
+ * *_LABEL_OVERRIDES maps (display text the schema doesn't carry), and
+ * STATUS_OUTPUT_PINS (fluidnc-config-schema.json has NO status_outputs
+ * section at all, despite it being a real registered config key --
+ * confirmed in the connected FluidNC source, Status_outputs.cpp's own
+ * ConfigurableModuleFactory::InstanceBuilder<Status_Outputs>
+ * registration("status_outputs") -- this looks like a genuine gap in the
+ * schema itself; loadRoleData() below checks for it every load and
+ * console.warns if it's ever added, so this comment doesn't silently go
+ * stale).
+ *
+ * What's still hardcoded LOGIC, not data at all: the tree-CONSTRUCTION
+ * shape below (e.g. "build one Limit branch per axis, each with a
+ * motor0/motor1 level under it") and generateDraft()'s per-role dispatch
+ * (which config.yaml field(s) a given leaf path writes to) -- tied to
+ * FluidNC's config schema, not expressible as passive data without
+ * inventing a schema language. */
+const AXES = ["x", "y", "z", "a", "b", "c"];
+const MOTOR_LABELS = { motor0: "First Motor", motor1: "Second Motor" };
+const LIMIT_DIRECTIONS = { neg: "Negative", pos: "Positive", all: "(shared/all)" };
+const SPINDLE_LABELS = {
+  pwm: "PWM", laser: "Laser", "10v": "0-10V", relay: "Relay (on/off)",
+  dac: "DAC", besc: "BESC (RC ESC)", hbridge: "H-Bridge",
+};
+const CONTROL_LABEL_OVERRIDES = {
+  estop: "E-Stop", macro0: "Macro Button 0", macro1: "Macro Button 1",
+  macro2: "Macro Button 2", macro3: "Macro Button 3",
+};
+const PROBE_LABEL_OVERRIDES = { pin: "Probe", toolsetter_pin: "Toolsetter" };
+const SPINDLE_PIN_LABEL_OVERRIDES = { output_cw: "Output CW", output_ccw: "Output CCW" };
+const COMMON_TUNING_FIELDS = new Set([
+  "tool_num", "speed_map", "off_on_alarm", "atc", "m6_macro", "s0_with_disable",
+  "disable_with_s0", "spinup_ms", "spindown_ms", "pwm_hz", "min_pulse_us", "max_pulse_us",
+]);
+const STUB_FIELD_LITERALS = { tool_num: 0 }; // every other stub field -> "TBD"
+const STATUS_OUTPUT_PINS = [
+  ["idle", "Idle"], ["run", "Run"], ["hold", "Hold"], ["alarm", "Alarm"], ["door", "Door"],
+];
 
-/* Two-level role tree for motor sockets, built with the same generic
- * makeInputRow/N-level-cascade mechanism as input pins: top level picks the
- * axis, second level picks which motor slot on that axis (an axis can have
- * one or two motors -- motor0/motor1). Leaf value is "<letter>:<slot>"
- * (e.g. "x:motor0"), consumed directly by generateDraft()'s motor-socket
- * loop below (updated to match this 2-segment format, dropping the old
- * flat list's redundant "axis:" prefix). */
+function titleLabel(fieldKey) {
+  return fieldKey.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+}
+function stripPinSuffix(key) {
+  return key.endsWith("_pin") ? key.slice(0, -4) : key;
+}
+
+// MOTOR_ROLE_TREE and INPUT_ROLE_TREE.limit depend only on the
+// hand-authored vocabulary above (no schema fetch needed), so they're built
+// synchronously here rather than inside loadRoleData().
 const MOTOR_ROLE_TREE = Object.fromEntries(AXES.map(ax => [ax, {
   label: `${ax.toUpperCase()} axis`,
-  children: {
-    motor0: { label: "First Motor" },
-    motor1: { label: "Second Motor" },
-  },
+  children: Object.fromEntries(Object.keys(MOTOR_LABELS).map(m => [m, { label: MOTOR_LABELS[m] }])),
 }]));
 
-/* Multi-level role tree for input-capable pins. A node with no "children"
- * is a leaf -- picking it commits a value equal to the path of keys joined
- * by ":" (e.g. limit -> x -> neg => "limit:x:neg", control -> feed_hold =>
- * "control:feed_hold", probe => "probe:pin"). Depth varies by branch --
- * Limit is 3 levels deep incl. top (limit -> axis -> direction), Control
- * and Probe are 2 (category -> specific pin), User Input is 3 (category ->
- * digital/analog -> index) -- which is exactly why this needs a generic
- * N-level cascade rather than the fixed 2-level mechanism used for
- * output-capable pins. */
-const INPUT_ROLE_TREE = {
-  limit: {
+function buildLimitBranch() {
+  return {
     label: "Limit",
     children: Object.fromEntries(AXES.map(ax => [ax, {
       label: `${ax.toUpperCase()} axis`,
-      children: {
-        neg: { label: "Negative" },
-        pos: { label: "Positive" },
-        all: { label: "(shared/all)" },
-      },
+      children: Object.fromEntries(Object.keys(MOTOR_LABELS).map(m => [m, {
+        label: MOTOR_LABELS[m],
+        children: Object.fromEntries(Object.keys(LIMIT_DIRECTIONS).map(dir => [dir, { label: LIMIT_DIRECTIONS[dir] }])),
+      }])),
     }])),
-  },
-  /* Probe.h defines two distinct input pins, not one: _probePin (the
-   * ordinary G38 probe) and _toolsetterPin (a second, separately-tripped
-   * input for tool-length setting) -- confirmed in the connected FluidNC
-   * source, Probe::group() (src/Probe.cpp): handler.item("pin", _probePin)
-   * and handler.item("toolsetter_pin", _toolsetterPin). Child keys here are
-   * literally the config field names, so the dispatch below needs no
-   * lookup table -- it just writes cfg.probe[<child key>] = pin. */
-  probe: {
-    label: "Probe",
-    children: {
-      pin: { label: "Probe" },
-      toolsetter_pin: { label: "Toolsetter" },
-    },
-  },
-  /* Control.cpp's constructor registers ALL of these as siblings in the
-   * one real "control:" config block (confirmed in the connected FluidNC
-   * source) -- safety_door_pin, reset_pin, feed_hold_pin, cycle_start_pin,
-   * macro0_pin..macro3_pin (4 macro buttons, not 2), fault_pin, estop_pin,
-   * homing_button_pin. Macro buttons were previously modeled as their own
-   * separate top-level UI category, which didn't match this real structure
-   * -- folded in here as second-level Control children instead. Child keys
-   * are each pin's real name minus its "_pin" suffix, so dispatch below
-   * can build the real field name generically as `${key}_pin`. */
-  control: {
-    label: "Control",
-    children: {
-      feed_hold: { label: "Feed Hold" },
-      cycle_start: { label: "Cycle Start" },
-      reset: { label: "Reset" },
-      safety_door: { label: "Safety Door" },
-      fault: { label: "Fault" },
-      estop: { label: "E-Stop" },
-      homing_button: { label: "Homing Button" },
-      macro0: { label: "Macro Button 0" },
-      macro1: { label: "Macro Button 1" },
-      macro2: { label: "Macro Button 2" },
-      macro3: { label: "Macro Button 3" },
-    },
-  },
-  /* Machine/UserInputs.cpp: a generic "user_inputs:" config block of plain
-   * digital0_pin..digital7_pin (MaxUserDigitalPin = 8, from GCode.h) and
-   * analog0_pin..analog3_pin (MaxUserAnalogPin = 4) slots, read by M66/M226
-   * gcode -- these aren't tied to any specific machine function, just raw
-   * user-assignable inputs, distinct from Limit/Probe/Control. */
-  user_input: {
+  };
+}
+
+/* Everything below DOES need the fetched schema: which pins Probe/Control
+ * actually expose, how many User Input/Output slots exist, and each
+ * spindle type's real pin set + tuning-field list. Mirrors
+ * generate_role_data.py's logic exactly (that script is retired now that
+ * this runs live, but its header comment has the fuller rationale for each
+ * choice below if it's ever useful to consult in FluidNC-config-wizard's
+ * git history). */
+function buildControlTree(schema) {
+  const props = schema.$defs.controlSection.properties;
+  const children = {};
+  Object.keys(props).forEach(fullKey => {
+    const key = stripPinSuffix(fullKey);
+    children[key] = { label: CONTROL_LABEL_OVERRIDES[key] || titleLabel(key) };
+  });
+  return { label: "Control", children };
+}
+
+function buildProbeTree(schema) {
+  const props = schema.$defs.probeSection.properties;
+  const children = {};
+  ["pin", "toolsetter_pin"].forEach(fullKey => {
+    if (fullKey in props) children[fullKey] = { label: PROBE_LABEL_OVERRIDES[fullKey] };
+  });
+  return { label: "Probe", children };
+}
+
+function countSlots(props, prefix) {
+  return Object.keys(props).filter(k => k.startsWith(prefix) && k.endsWith("_pin")).length;
+}
+
+function buildUserInputTree(schema) {
+  const props = schema.$defs.userInputsSection.properties;
+  const digitalCount = countSlots(props, "digital");
+  const analogCount = countSlots(props, "analog");
+  return {
     label: "User Input",
     children: {
       digital: {
         label: "Digital",
-        children: Object.fromEntries(Array.from({ length: 8 }, (_, i) => [String(i), { label: `Digital ${i}` }])),
+        children: Object.fromEntries(Array.from({ length: digitalCount }, (_, i) => [String(i), { label: `Digital ${i}` }])),
       },
       analog: {
         label: "Analog",
-        children: Object.fromEntries(Array.from({ length: 4 }, (_, i) => [String(i), { label: `Analog ${i}` }])),
+        children: Object.fromEntries(Array.from({ length: analogCount }, (_, i) => [String(i), { label: `Analog ${i}` }])),
       },
     },
-  },
-};
+  };
+}
 
-/* Spindle types each have a different pin set (verified against FluidNC's
- * actual Spindles/ source under FluidNC/src/Spindles/ -- read directly from
- * the connected FluidNC checkout, not assumed or scraped): PWM has output/
- * enable/direction; Laser subclasses PWM but its own group() deliberately
- * calls OnOff::groupCommon() instead of OnOff::group(), dropping direction
- * (lasers don't reverse); 10V adds forward/reverse on top of PWM's three
- * pins (separate direction-enable lines, distinct from a single
- * direction_pin); Relay/DAC are plain OnOff (output/enable/direction, no
- * pwm_hz -- neither overrides OnOff::group() to add it); BESC subclasses
- * PWM (same 3 pins + pwm_hz) and adds two of its own tunables; HBridge is
- * structurally different again -- output_cw_pin/output_ccw_pin/enable_pin,
- * no plain output_pin or direction_pin at all. cfgKey is each type's real
- * registered FluidNC config key (from `SpindleFactory::InstanceBuilder<..>
- * registration("...")` in each .cpp). stub() returns exactly the base
- * Spindle:: tuning fields each type's real group() chain actually exposes
- * -- e.g. Relay/DAC never get a spurious pwm_hz. NullSpindle (no pins) and
- * PlasmaSpindle (experimental; its arc_ok_pin is an INPUT coupled to this
- * same block, which this per-output-pin menu has no way to express yet)
- * are deliberately left out for now rather than modeled half-right. */
-const SPINDLE_TYPES = {
-  pwm:     { label: "PWM", cfgKey: "PWM",
-             pins: [["output","Output"], ["enable","Enable"], ["direction","Direction"]],
-             stub: () => ({ pwm_hz: "TBD", spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0 }) },
-  laser:   { label: "Laser", cfgKey: "Laser",
-             pins: [["output","Output"], ["enable","Enable"]],
-             stub: () => ({ pwm_hz: "TBD", spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0 }) },
-  "10v":   { label: "0-10V", cfgKey: "10V",
-             pins: [["output","Output"], ["enable","Enable"], ["direction","Direction"], ["forward","Forward"], ["reverse","Reverse"]],
-             stub: () => ({ pwm_hz: "TBD", spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0 }) },
-  relay:   { label: "Relay (on/off)", cfgKey: "Relay",
-             pins: [["output","Output"], ["enable","Enable"], ["direction","Direction"]],
-             stub: () => ({ spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0 }) },
-  dac:     { label: "DAC", cfgKey: "DAC",
-             pins: [["output","Output"], ["enable","Enable"], ["direction","Direction"]],
-             stub: () => ({ spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0 }) },
-  besc:    { label: "BESC (RC ESC)", cfgKey: "BESC",
-             pins: [["output","Output"], ["enable","Enable"], ["direction","Direction"]],
-             stub: () => ({ pwm_hz: "TBD", spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0, min_pulse_us: "TBD", max_pulse_us: "TBD" }) },
-  hbridge: { label: "H-Bridge", cfgKey: "HBridge",
-             pins: [["output_cw","Output CW"], ["output_ccw","Output CCW"], ["enable","Enable"]],
-             stub: () => ({ pwm_hz: "TBD", spinup_ms: "TBD", spindown_ms: "TBD", speed_map: "TBD", tool_num: 0 }) },
-};
+function buildSpindleTypes(schema) {
+  const defs = schema.$defs;
+  const result = {};
+  Object.keys(defs).forEach(defName => {
+    if (!defName.startsWith("spindle_")) return;
+    const cfgKey = defName.slice("spindle_".length);
+    const typeId = cfgKey.toLowerCase();
+    if (!(typeId in SPINDLE_LABELS)) return; // OnOff / PlasmaSpindle / NoSpindle / ModbusVFD -- unmodeled by design
+    const props = defs[defName].properties || {};
+    const pins = [];
+    const stubFields = [];
+    Object.keys(props).forEach(fullKey => {
+      if (fullKey.endsWith("_pin")) {
+        const key = stripPinSuffix(fullKey);
+        pins.push([key, SPINDLE_PIN_LABEL_OVERRIDES[key] || titleLabel(key)]);
+      } else if (COMMON_TUNING_FIELDS.has(fullKey)) {
+        stubFields.push([fullKey, fullKey in STUB_FIELD_LITERALS ? STUB_FIELD_LITERALS[fullKey] : "TBD"]);
+      }
+    });
+    result[typeId] = {
+      label: SPINDLE_LABELS[typeId],
+      cfgKey,
+      pins,
+      stub: () => Object.fromEntries(stubFields),
+    };
+  });
+  // Stable, deliberate dropdown order (schema $defs order isn't what we want in the UI).
+  const order = ["pwm", "laser", "10v", "relay", "dac", "besc", "hbridge"];
+  const ordered = {};
+  order.forEach(t => { if (result[t]) ordered[t] = result[t]; });
+  return ordered;
+}
 
-/* Machine/UserOutputs.cpp's real, firmware-enforced counts (GCode.h:
- * MaxUserDigitalPin = 8, MaxUserAnalogPin = 4), confirmed in the connected
- * FluidNC source -- not an arbitrary UI choice. An earlier version of this
- * file had DIGITAL_OUTPUT_COUNT wrong at 4; fixed here, and Analog Output
- * added as its own category since UserOutputs::group() exposes both
- * digitalN_pin and analogN_pin (plus analogN_hz, not yet modeled) under
- * the same "user_outputs:" block. */
-const DIGITAL_OUTPUT_COUNT = 8;
-const ANALOG_OUTPUT_COUNT = 4;
+function checkSchemaForKnownGaps(schema) {
+  if (!("status_outputs" in (schema.properties || {}))) {
+    console.warn(
+      "fluidnc-config-schema.json has no status_outputs section (STATUS_OUTPUT_PINS stays " +
+      "hand-authored against the FluidNC source directly) -- if this ever appears, the schema " +
+      "gap noted in this file's comments has been fixed and STATUS_OUTPUT_PINS could move to " +
+      "schema-derived too."
+    );
+  }
+  // (userOutputsSection's analogN_hz fields used to have no wizard UI
+  // counterpart -- fixed by specForKey()'s analogN_hz case + generateDraft()'s
+  // analog_output dispatch stubbing it as an open TBD, so there's nothing
+  // left to warn about here.)
+}
+
+let INPUT_ROLE_TREE, SPINDLE_TYPES, DIGITAL_OUTPUT_COUNT, ANALOG_OUTPUT_COUNT;
+
+async function loadRoleData() {
+  const schemaText = await fetchYamlText("schema/fluidnc-config-schema.json");
+  const schema = JSON.parse(schemaText);
+
+  checkSchemaForKnownGaps(schema);
+
+  INPUT_ROLE_TREE = {
+    limit: buildLimitBranch(),
+    probe: buildProbeTree(schema),
+    control: buildControlTree(schema),
+    user_input: buildUserInputTree(schema),
+  };
+  SPINDLE_TYPES = buildSpindleTypes(schema);
+  DIGITAL_OUTPUT_COUNT = countSlots(schema.$defs.userOutputsSection.properties, "digital");
+  ANALOG_OUTPUT_COUNT = countSlots(schema.$defs.userOutputsSection.properties, "analog");
+}
 
 /* Generic two-step cascade lookup: given a step-1 category value, returns
  * the step-2 [value,label] options for it, or null if that category is
@@ -796,16 +521,6 @@ function cascadeOptionsFor(category) {
   }
   return null;
 }
-
-/* Machine-state indicator outputs (e.g. tower lights) -- a real FluidNC
- * feature (Status_Outputs, confirmed in the connected FluidNC source,
- * status_outputs.cpp/h) that's independent of Limit/Probe/Control/Spindle/
- * Coolant/user I/O. All 5 real pins, per Status_Outputs::group(): idle_pin,
- * run_pin, hold_pin, alarm_pin, door_pin (the wiki's own example config
- * only shows 3 of these 5). */
-const STATUS_OUTPUT_PINS = [
-  ["idle", "Idle"], ["run", "Run"], ["hold", "Hold"], ["alarm", "Alarm"], ["door", "Door"],
-];
 
 /* Top-level category options for an output-capable pin -- step 1 of the
  * two-step menu. Spindle types and "Digital Output" are cascading
@@ -903,6 +618,64 @@ function kinematicsOptions() {
   return Object.keys(KINEMATICS_TYPES).map(k => ({ value: k, label: KINEMATICS_TYPES[k].label }));
 }
 
+/* Optional top-level sections with no board-resource correlation at all
+ * (no pins, nothing to bind on the left pane) -- Parking, Macros, OLED,
+ * ATC Manual. Same "selector lives inside the draft itself" pattern as
+ * Homing (see homingEnabled/ensureAxis()/homingWidgetHtml()): each gets a
+ * sectionSentinel(key) planted as its own KEY in `cfg` (see generateDraft()
+ * below), which a <select> replaces in the interactive view -- when
+ * disabled, no trace of the real section key appears anywhere, not even an
+ * empty block (a genuinely absent section is different from an empty one).
+ * Field lists/defaults confirmed against fluidnc-config-schema.json's
+ * macrosSection/parkingSection/oledSection/atc_manual $defs.
+ *
+ * atc_manual is referenced BY NAME from a spindle's own `atc:` field (see
+ * SPINDLE_TYPES' stub_fields, specForKey's "atc" case) -- enabling this
+ * section doesn't automatically fill that field in for you; the user still
+ * has to type the literal string "atc_manual" into whichever spindle's atc:
+ * field wants to reference it (same "click def, or type your own" pattern
+ * as every other open text field, not a special-cased link between the two).
+ *
+ * "Perhaps others" beyond these four: extenders: is deprecated (not worth
+ * adding a first-class toggle for a feature under active removal); every
+ * other genuinely optional top-level section this schema knows about
+ * (control/coolant/probe/user_outputs/user_inputs/spindle types/
+ * status_outputs) IS resource-bound and already has its own left-pane
+ * row(s) instead. */
+const OPTIONAL_SECTIONS = {
+  parking: {
+    label: "Parking",
+    stub: () => ({
+      enable: "TBD", axis: "TBD", target_mpos_mm: "TBD", rate_mm_per_min: "TBD",
+      pullout_distance_mm: "TBD", pullout_rate_mm_per_min: "TBD",
+    }),
+  },
+  macros: {
+    label: "Macros",
+    stub: () => ({
+      startup_line0: "TBD", startup_line1: "TBD",
+      macro0: "TBD", macro1: "TBD", macro2: "TBD", macro3: "TBD",
+      after_homing: "TBD", after_reset: "TBD", after_unlock: "TBD",
+    }),
+  },
+  oled: {
+    label: "OLED",
+    stub: () => ({
+      report_interval_ms: "TBD", i2c_num: "TBD", i2c_address: "TBD",
+      width: "TBD", height: "TBD", flip: "TBD", mirror: "TBD", radio_delay_ms: "TBD",
+    }),
+  },
+  atc_manual: {
+    label: "ATC Manual",
+    stub: () => ({
+      safe_z_mpos_mm: "TBD", probe_seek_rate_mm_per_min: "TBD", probe_feed_rate_mm_per_min: "TBD",
+      change_mpos_mm: "TBD", ets_mpos_mm: "TBD", ets_rapid_z_mpos_mm: "TBD",
+    }),
+  },
+};
+function sectionSentinel(key) { return `SECTIONSELECT_${key}`; }
+let sectionEnabled = {};   // section key -> bool, defaults to false (falsy) if unset
+
 /* Confirmed against real vendor documentation (4x controller wiki's own
  * "UARTS" section, verbatim): "UART0 is used for the USB/Serial port.
  * UART1 is used for the TMC2209 drivers. UART2 is the only one left to the
@@ -950,6 +723,26 @@ let kinematicsType = "Cartesian"; // selected top-level kinematics system, defau
  * compiled-in defaults, editable inline -- no separate left-pane UI state
  * needed for this section at all. */
 let chipGpioCaps = {};     // gpio number -> chip-file gpio fact object (see loadBoard()/pinWidgetHtml())
+let hotspotData = null;    // parsed hotspots/<id>.hotspots.yaml, or null if this board has no photo hotspots yet
+// resourceKey -> [pin, pin, ...] -- every MCU pin string (e.g. "gpio.4",
+// "i2so.2") a given resource physically occupies, regardless of which role
+// (if any) it's currently bound to. Static per board load (see
+// computeResourcePins(), called from loadBoard()); used by
+// refreshGpioConflicts() to detect two DIFFERENT resources that share a
+// physical pin -- the real-world case this exists for is a board's own
+// documented dual-purpose connector (e.g. Corgi's gpio.4 is both a plain
+// "5V Out (shared w/ MOSFET1)" pin and a "MOSFET1" driver pin -- same wire,
+// two resource entries, pick one).
+let resourcePins = {};
+// resourceKey -> the board's own human label for it (socket.label/pin.label/
+// etc.) -- same universe of keys as resourcePins, populated alongside it in
+// computeResourcePins(). Used by the config.yaml importer to disambiguate a
+// pin shared by multiple resources: generateDraft()'s own annotate() calls
+// write this exact label into a "# <label>" comment above the pin in
+// exported files, so a loaded file's comments can be matched back against
+// this map to resolve an otherwise-ambiguous pin with confidence, when the
+// file being imported is (or resembles) one this tool itself produced.
+let resourceLabels = {};
 let lastPlainYaml = "";    // current draft as plain text (TBD where still unanswered) -- for copy/download
 /* Per-axis homing: presence -- FluidNC's homing: sub-section is genuinely
  * optional (an axis with no homing: entry simply can't be homed), so unlike
@@ -1009,6 +802,11 @@ function specForKey(key) {
   // Placeholder is always just the default value itself -- no separate
   // hand-written hint text to keep in sync.
   const numeric = (def, defaultKind) => ({ type: "number", placeholder: String(def), default: def, defaultKind });
+  // analog0_hz..analogN_hz (userOutputsSection, N driven by ANALOG_OUTPUT_COUNT)
+  // -- per-channel analog output PWM frequency, real schema default 5000,
+  // range 1-20000000. Matched by pattern rather than one case per index
+  // since the count itself comes from the schema, not a fixed literal here.
+  if (/^analog\d+_hz$/.test(key)) return numeric(5000, "firmware");
   switch (key) {
     case "soft_limits":
       return { type: "enum", options: [["true","true — Yes"], ["false","false — No"]], default: "false", defaultKind: "firmware" };
@@ -1066,6 +864,26 @@ function specForKey(key) {
     case "spinup_ms": case "spindown_ms": return numeric(0, "firmware");
     case "tool_num": return numeric(0, "firmware");
     case "speed_map": return { type: "text", placeholder: "0=0% 10000=100%", default: "0=0% 10000=100%", defaultKind: "firmware" };
+    // Common to every SPINDLE_TYPES entry (see COMMON_TUNING_FIELDS in
+    // buildSpindleTypes()) -- real schema defaults confirmed against
+    // fluidnc-config-schema.json's spindle_* $defs, off_on_alarm/
+    // s0_with_disable/disable_with_s0's "default" keys.
+    case "off_on_alarm":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
+    case "s0_with_disable":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "true", defaultKind: "firmware" };
+    case "disable_with_s0":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
+    // atc: string, no "default" key in the schema at all (unlike the 3
+    // booleans above) -- absence just means "no ATC block used", so an
+    // empty string is the natural, if not schema-confirmed, starting
+    // point; marked "suggested" rather than "firmware" to be honest that
+    // this isn't a documented default the way the booleans are.
+    case "atc": return { type: "text", placeholder: "", default: "", defaultKind: "suggested" };
+    // m6_macro: macroLine's own schema description says explicitly that
+    // an empty string (or an absent key) both mean "do nothing" -- a real,
+    // spec-documented default, not just a placeholder guess.
+    case "m6_macro": return { type: "text", placeholder: "", default: "", defaultKind: "firmware" };
     case "addr": return numeric(0, "suggested");
     case "modbus_id": return numeric(1, "suggested");
     case "min_pulse_us": return numeric(900, "firmware");
@@ -1105,6 +923,47 @@ function specForKey(key) {
     case "right_anchor_x": return numeric(100, "firmware");
     case "right_anchor_y": return numeric(100, "firmware");
     case "segment_length": return numeric(10, "firmware");
+    // Parking (parkingSection $def, Machine/Parking.h member initializers) --
+    // real compiled-in defaults confirmed against the connected FluidNC
+    // source.
+    case "enable":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
+    case "axis":
+      return { type: "enum", options: [["x","x"],["y","y"],["z","z"],["a","a"],["b","b"],["c","c"]], default: "z", defaultKind: "firmware" };
+    case "target_mpos_mm": return numeric(-5.0, "firmware");
+    case "rate_mm_per_min": return numeric(800.0, "firmware");
+    case "pullout_distance_mm": return numeric(5.0, "firmware");
+    case "pullout_rate_mm_per_min": return numeric(250.0, "firmware");
+    // Macros (macrosSection $def) -- every field is a macroLine, same
+    // "empty string / absent key both mean do nothing" schema-documented
+    // default as m6_macro above.
+    case "startup_line0": case "startup_line1":
+    case "macro0": case "macro1": case "macro2": case "macro3":
+    case "after_homing": case "after_reset": case "after_unlock":
+      return { type: "text", placeholder: "", default: "", defaultKind: "firmware" };
+    // OLED (oledSection $def) -- real compiled-in defaults confirmed
+    // against the connected FluidNC source (report_interval_ms already
+    // has its own case above, shared with uart_channel).
+    case "i2c_num": return numeric(0, "firmware");
+    case "i2c_address": return numeric(60, "firmware");
+    case "width": return numeric(64, "firmware");
+    case "height": return numeric(48, "firmware");
+    case "flip":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "true", defaultKind: "firmware" };
+    case "mirror":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
+    case "radio_delay_ms": return numeric(0, "firmware");
+    // ATC Manual ($defs.atc_manual) -- real compiled-in defaults confirmed
+    // against the connected FluidNC source. change_mpos_mm/ets_mpos_mm are
+    // floatArray (space-separated "x y z", no brackets/commas) and are
+    // deliberately left with NO default -- genuinely machine-specific, per
+    // the schema's own field description.
+    case "safe_z_mpos_mm": return numeric(50.0, "firmware");
+    case "probe_seek_rate_mm_per_min": return numeric(200.0, "firmware");
+    case "probe_feed_rate_mm_per_min": return numeric(80.0, "firmware");
+    case "ets_rapid_z_mpos_mm": return numeric(0.0, "firmware");
+    case "change_mpos_mm": case "ets_mpos_mm":
+      return { type: "text", placeholder: "0.0 0.0 0.0" };
     default: return { type: "text", placeholder: "" };
   }
 }
@@ -1166,6 +1025,21 @@ function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverride
   });
 }
 
+// Distinct from setParam(): the "def" button always means "apply this
+// field's known default value," even when that default IS the empty
+// string (e.g. atc/m6_macro -- a real, meaningful value here, "no ATC
+// block"/"do nothing", not "unset"). setParam() itself treats an empty
+// rawValue as "clear back to TBD" (the right behavior for a user manually
+// blanking a text input), so reusing it for the default button would
+// silently no-op on any field whose default happens to be "". Goes
+// straight to paramValues instead of through that ambiguous convention.
+function setParamDefault(path, key) {
+  const spec = specForKey(key);
+  if (spec.default === undefined) return;
+  paramValues[path] = spec.default;
+  generateDraft();
+}
+
 function setParam(path, key, rawValue) {
   const spec = specForKey(key);
   if (rawValue === "" || rawValue === undefined) {
@@ -1209,7 +1083,14 @@ function paramWidgetHtml(slot) {
     const cur = has ? paramValues[slot.path] : "";
     const type = slot.spec.type === "number" ? "number" : "text";
     const step = slot.spec.type === "number" ? ` step="any"` : "";
-    html = `<input class="${cls}" type="${type}"${step} placeholder="${escapeAttr(slot.spec.placeholder || "TBD")}" value="${escapeAttr(cur)}" data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}">`;
+    // Once answered (has === true), the "TBD" placeholder is dropped
+    // entirely rather than just recolored -- an empty, answered field
+    // (e.g. atc/m6_macro's real "" default) would otherwise still show
+    // "TBD" as ghost text, indistinguishable at a glance from a genuinely
+    // still-open field despite the border/text color already having
+    // changed. Only ever shown for a real UNANSWERED field.
+    const placeholder = has ? "" : (slot.spec.placeholder || "TBD");
+    html = `<input class="${cls}" type="${type}"${step} placeholder="${escapeAttr(placeholder)}" value="${escapeAttr(cur)}" data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}">`;
   }
   if (slot.spec.default !== undefined) {
     const kindLabel = slot.spec.defaultKind === "firmware" ? "FluidNC firmware default"
@@ -1259,14 +1140,16 @@ function pinWidgetHtml(slot) {
  * already answered, so fixing a mistake is just clicking the same spot
  * again rather than hunting a separate list. */
 const HOMING_SENTINEL_RE = new RegExp(`^HOMINGSELECT_(${AXES.join("|")})$`);
+const SECTION_SENTINEL_RE = new RegExp(`^SECTIONSELECT_(${Object.keys(OPTIONAL_SECTIONS).join("|")})$`);
 
 function buildInteractiveYaml(yamlText, paramSlots, pinSlots) {
-  const tokens = yamlText.split(/(TBD|PINSLOT|KINSELECT|HOMINGSELECT_[a-z]+)/);
+  const tokens = yamlText.split(/(TBD|PINSLOT|KINSELECT|HOMINGSELECT_[a-z]+|SECTIONSELECT_[a-z_]+)/);
   let html = "";
   let pi = 0, si = 0;
   let stripLeadingColon = false;
   tokens.forEach(tok => {
     const homingMatch = tok.match(HOMING_SENTINEL_RE);
+    const sectionMatch = tok.match(SECTION_SENTINEL_RE);
     if (tok === "TBD") {
       html += paramWidgetHtml(paramSlots[pi++]);
     } else if (tok === "PINSLOT") {
@@ -1291,6 +1174,13 @@ function buildInteractiveYaml(yamlText, paramSlots, pinSlots) {
       // js-yaml's own text for this same key/value and needs stripping,
       // same reasoning as KINSELECT.
       html += homingWidgetHtml(homingMatch[1]);
+      stripLeadingColon = true;
+    } else if (sectionMatch) {
+      // Same idea again, one level up: SECTIONSELECT_<key> is the sentinel
+      // KEY for one of OPTIONAL_SECTIONS (parking/macros/oled/atc_manual),
+      // planted by generateDraft() regardless of enabled state -- see
+      // OPTIONAL_SECTIONS' own declaration comment.
+      html += sectionWidgetHtml(sectionMatch[1]);
       stripLeadingColon = true;
     } else {
       html += escapeHtml(stripLeadingColon ? tok.replace(/^:(\s*null)?/, "") : tok);
@@ -1353,6 +1243,21 @@ function homingWidgetHtml(letter) {
   return html;
 }
 
+/* Optional-section presence selector -- see OPTIONAL_SECTIONS' own
+ * declaration comment. Same pattern as homingWidgetHtml() one level up
+ * (top-level key instead of a per-axis one): sectionSentinel(key) sits
+ * exactly where the real section key (parking:/macros:/oled:/atc_manual:)
+ * would go, so disabling it leaves no trace of that key at all. */
+function sectionWidgetHtml(key) {
+  const enabled = !!sectionEnabled[key];
+  const def = OPTIONAL_SECTIONS[key];
+  let html = `<select class="section-select" data-section="${escapeAttr(key)}">`;
+  html += `<option value="false"${enabled ? "" : " selected"}>— ${escapeHtml(def.label)}: not included —</option>`;
+  html += `<option value="true"${enabled ? " selected" : ""}>${escapeHtml(key)}:</option>`;
+  html += `</select>`;
+  return html;
+}
+
 function resourceKeyMotor(i) { return `motor:${i}`; }
 function resourceKeyPin(i) { return `pin:${i}`; }
 function resourceKeyExp(si, pi) { return `exp:${si}:${pi}`; }
@@ -1363,24 +1268,476 @@ function resourceKeyI2c(i) { return `i2c:${i}`; }
 /* ---------------------------------------------------------------------
  * Rendering
  * ------------------------------------------------------------------- */
-function loadBoard(id) {
-  board = jsyaml.load(BOARD_YAML[id]);
+async function loadBoard(id) {
+  let boardText;
+  try {
+    boardText = await fetchYamlText(`boards/${id}.board.yaml`);
+  } catch (e) {
+    // #boardNote only exists in the pane's initial placeholder markup --
+    // renderResources() below replaces #resourceCol's entire innerHTML on
+    // every successful load, so #boardNote is gone after the first one.
+    // #resourceCol itself is never replaced (it's the element renderResources()
+    // writes INTO), so that's the stable place to report a load failure,
+    // whether this is the very first load or a later one that failed.
+    document.getElementById("resourceCol").innerHTML = `<div class="note">` +
+      `Couldn't load boards/${escapeAttr(id)}.board.yaml (${escapeAttr(e.message)}). If you opened this page via a ` +
+      `file:// URL, browsers block fetch() of local files -- serve this folder over HTTP instead ` +
+      `(e.g. "python3 -m http.server" from a terminal here, then open http://localhost:8000/index.html).</div>`;
+    return;
+  }
+  board = jsyaml.load(boardText);
   bindings = {};
   paramValues = {};
   pinAttrs = {};
   kinematicsType = "Cartesian";
   homingEnabled = {};
+  sectionEnabled = {};
   // Build a per-GPIO-number capability lookup from this board's referenced
   // mcu_chip file (see pinWidgetHtml()'s use of chipGpioCaps) -- chip-level
   // facts (pullup/pulldown support etc.) belong here, not in the board file.
   chipGpioCaps = {};
   const chipId = board.board && board.board.mcu_chip;
-  if (chipId && CHIP_YAML[chipId]) {
-    const chip = jsyaml.load(CHIP_YAML[chipId]);
-    (chip.gpio || []).forEach(g => { chipGpioCaps[g.pin] = g; });
+  if (chipId) {
+    const chipText = await fetchYamlTextOptional(`chips/${chipId}.chip.yaml`);
+    if (chipText) {
+      const chip = jsyaml.load(chipText);
+      (chip.gpio || []).forEach(g => { chipGpioCaps[g.pin] = g; });
+    }
   }
+  const hotspotText = await fetchYamlTextOptional(`hotspots/${id}.hotspots.yaml`);
+  hotspotData = hotspotText ? jsyaml.load(hotspotText) : null;
+  computeResourcePins();
   renderResources();
+  renderHotspotPane();
+  wireHotspotHoverLinks();
   generateDraft();
+}
+
+/* Builds resourcePins (resourceKey -> [pin, ...]) from the board's own
+ * facts -- same resourceKey*() helpers and the same section-by-section walk
+ * renderResources() uses, so a resource's key here always matches the key
+ * its row is rendered/bound under. Purely a physical-pin fact, independent
+ * of whatever role (if any) ends up bound to a given resource. */
+function computeResourcePins() {
+  resourcePins = {};
+  resourceLabels = {};
+  (board.motor_sockets && board.motor_sockets.sockets || []).forEach((s, i) => {
+    resourcePins[resourceKeyMotor(i)] = Object.values(s.pins || {});
+    resourceLabels[resourceKeyMotor(i)] = s.label;
+  });
+  (board.generic_pins || []).forEach((p, i) => {
+    resourcePins[resourceKeyPin(i)] = [p.mcu_pin];
+    resourceLabels[resourceKeyPin(i)] = p.label;
+  });
+  (board.expansion_sockets || []).forEach((s, si) => {
+    (s.pins || []).forEach((p, pi) => {
+      resourcePins[resourceKeyExp(si, pi)] = [p.mcu_pin];
+      // Matches the exact label string generateDraft()'s allPins walk
+      // builds for this same resource (`${s.label}/${p.module_pin}`) --
+      // must stay identical so a comment hint scraped from an exported
+      // file's "# <label>" line matches this map's value exactly.
+      resourceLabels[resourceKeyExp(si, pi)] = `${s.label}/${p.module_pin}`;
+    });
+  });
+  (board.rs485_channels || []).forEach((ch, i) => {
+    resourcePins[resourceKeyRs485(i)] = [ch.tx_pin, ch.rx_pin, ch.rts_pin].filter(Boolean);
+    resourceLabels[resourceKeyRs485(i)] = ch.label;
+  });
+  (board.expansion_uarts || []).forEach((ex, i) => {
+    resourcePins[resourceKeyExpUart(i)] = [ex.txd_pin, ex.rxd_pin].filter(Boolean);
+    resourceLabels[resourceKeyExpUart(i)] = ex.label;
+  });
+  (board.i2c_connectors || []).forEach((ic, i) => {
+    resourcePins[resourceKeyI2c(i)] = [ic.sda_pin, ic.scl_pin].filter(Boolean);
+    resourceLabels[resourceKeyI2c(i)] = ic.label;
+  });
+}
+
+/* GPIO conflict detection: two DIFFERENT resources sometimes share the SAME
+ * physical pin on purpose (a board's own documented dual-purpose connector,
+ * e.g. Corgi's gpio.4 being both a plain "5V Out (shared w/ MOSFET1)" pin
+ * and a "MOSFET1" driver pin) -- only one of them can actually be used in a
+ * real config. Whenever a resource gets bound to a role, its pins go into a
+ * "used" list; every UNASSIGNED resource that shares a pin with something
+ * already used gets its role selector(s) disabled with a "conflicts with"
+ * note, so the user can't accidentally double-bind the same wire. Recomputed
+ * on every binding change (called from generateDraft(), same pattern as
+ * refreshHotspotStates()), so undoing the owning resource's binding
+ * immediately re-enables the conflicting one again. */
+function refreshGpioConflicts() {
+  const usedGpios = {}; // pin -> { key, label }
+  Object.keys(resourcePins).forEach(key => {
+    const row = document.querySelector(`#resourceCol .row[data-resource-key="${key}"]`);
+    if (!row) return;
+    // Only the FIRST visible select determines assigned-state, matching
+    // getRowRoleInfo()'s existing convention -- a hidden secondary select
+    // (e.g. output rows' per-pin picker after switching back to Unused)
+    // keeps its last value even while hidden, so checking every select
+    // regardless of visibility would wrongly treat that as still assigned.
+    const selects = Array.from(row.querySelectorAll("select")).filter(s => s.style.display !== "none" && s.options.length);
+    const assigned = selects.length && selects[0].value !== "unused" && selects[0].value !== "";
+    if (!assigned) return;
+    const label = row.querySelector(".name") ? row.querySelector(".name").textContent : key;
+    resourcePins[key].forEach(pin => {
+      if (!usedGpios[pin]) usedGpios[pin] = { key, label };
+    });
+  });
+
+  Object.keys(resourcePins).forEach(key => {
+    const row = document.querySelector(`#resourceCol .row[data-resource-key="${key}"]`);
+    if (!row) return;
+    const allSelects = Array.from(row.querySelectorAll("select"));
+    const visibleSelects = allSelects.filter(s => s.style.display !== "none" && s.options.length);
+    const assigned = visibleSelects.length && visibleSelects[0].value !== "unused" && visibleSelects[0].value !== "";
+    const note = row.querySelector(".conflict-note");
+    if (assigned) {
+      // Never disable/relabel an already-assigned resource -- conflicts are
+      // only surfaced on the side that hasn't committed to anything yet.
+      row.classList.remove("gpio-conflict");
+      allSelects.forEach(s => { s.disabled = false; });
+      if (note) note.style.display = "none";
+      return;
+    }
+    const conflict = resourcePins[key]
+      .map(pin => usedGpios[pin])
+      .find(owner => owner && owner.key !== key);
+    row.classList.toggle("gpio-conflict", !!conflict);
+    // Disable ALL selects in the row (not just the first), including a
+    // currently-hidden secondary one, so it can't be revealed mid-conflict
+    // by switching primary categories.
+    allSelects.forEach(s => { s.disabled = !!conflict; });
+    if (note) {
+      if (conflict) {
+        note.textContent = `conflicts with ${conflict.label}`;
+        note.title = note.textContent; // full text on hover in case it's ellipsis-truncated
+        note.style.display = "flex";
+      } else {
+        note.style.display = "none";
+      }
+    }
+  });
+}
+
+/* Role-uniqueness: the SAME FluidNC role (e.g. "X axis / First Motor",
+ * i.e. bindings value "x:motor0") shouldn't be assignable to two different
+ * resources -- two physical motor sockets both claiming to drive "X axis
+ * First Motor" is never correct, same idea for e.g. two different pins both
+ * set to "Digital Output 0" or both set to "Probe". Unlike GPIO conflicts
+ * (a hardware fact, independent of role), this is purely about the ROLE
+ * value itself being claimed elsewhere, regardless of which physical pin(s)
+ * are involved.
+ *
+ * bindings[key] already stores exactly one canonical, directly-comparable
+ * "full role" string for every row type (confirmed by reading each row
+ * builder's own onchange handler): makeRow's raw select value, makeOutputRow's
+ * "category" or "category:subvalue", makeInputRow's full ":"-joined leaf
+ * path -- so a single claimed-values map keyed by that string covers all
+ * three uniformly. What differs per row type is WHICH <option> elements
+ * represent a "complete" role worth checking:
+ *   - makeRow: every option IS a complete role (its own value).
+ *   - makeOutputRow: only options that DON'T cascade (no secondary select,
+ *     e.g. "coolant:flood") are complete on the primary select; a cascading
+ *     category's completion happens on the secondary select's options
+ *     instead ("<primary.value>:<secondary option value>").
+ *   - makeInputRow: only the DEEPEST select's options are complete (their
+ *     path segments plus every select's value strictly before them) -- by
+ *     construction (see render()'s `while (node.children)` loop) that's
+ *     always the LAST <select> rendered in .cascade-controls, whatever the
+ *     tree's depth for that particular branch.
+ * Called at the end of generateDraft(), same live-refresh pattern as
+ * refreshGpioConflicts()/refreshHotspotStates(). */
+
+/* Enumerates every leaf path reachable from `node` (DFS, tree key order),
+ * each prefixed with `segs`. Shared by refreshRoleUniqueness() (to check
+ * whether an entire BRANCH -- not just a single leaf -- is exhausted, so it
+ * can gray the branch option out too, not just leaves) and makeInputRow's
+ * own firstLeafPathFrom() (auto-fill). Hoisted to top-level scope since both
+ * need it and neither owns the tree data exclusively. */
+function enumerateLeafPaths(node, segs) {
+  if (!node.children) return [segs];
+  let out = [];
+  Object.keys(node.children).forEach(k => out = out.concat(enumerateLeafPaths(node.children[k], segs.concat([k]))));
+  return out;
+}
+
+function refreshRoleUniqueness() {
+  const claimed = {}; // full role value string -> { key, label }
+  Object.keys(resourcePins).forEach(key => {
+    const val = bindings[key];
+    if (!val || val === "unused") return;
+    const row = document.querySelector(`#resourceCol .row[data-resource-key="${key}"]`);
+    const label = row && row.querySelector(".name") ? row.querySelector(".name").textContent : key;
+    claimed[val] = { key, label };
+  });
+
+  function applyDisable(opt, fullValue, ownKey) {
+    if (opt.value === "unused") { opt.disabled = false; return; }
+    const owner = claimed[fullValue];
+    opt.disabled = !!owner && owner.key !== ownKey;
+  }
+
+  Object.keys(resourcePins).forEach(key => {
+    const row = document.querySelector(`#resourceCol .row[data-resource-key="${key}"]`);
+    if (!row) return;
+
+    const plainSel = row.querySelector(".ctrl-wrap select");
+    if (plainSel) {
+      Array.from(plainSel.options).forEach(opt => applyDisable(opt, opt.value, key));
+      return;
+    }
+
+    const outputControls = row.querySelector(".output-controls");
+    if (outputControls) {
+      const [primary, secondary] = outputControls.querySelectorAll("select");
+      if (primary) {
+        Array.from(primary.options).forEach(opt => {
+          if (opt.value === "unused") { opt.disabled = false; return; }
+          const copts = cascadeOptionsFor(opt.value);
+          if (copts) {
+            // A cascading category (spindle:*, digital_output, ...) has no
+            // single "complete" value of its own -- gray it out only if
+            // EVERY one of its secondary options is already claimed by a
+            // DIFFERENT resource (nothing left to pick under it), same
+            // "gray the whole exhausted branch" idea as cascade rows below.
+            const exhausted = copts.every(([v]) => {
+              const owner = claimed[`${opt.value}:${v}`];
+              return owner && owner.key !== key;
+            });
+            opt.disabled = exhausted;
+            return;
+          }
+          applyDisable(opt, opt.value, key);
+        });
+      }
+      if (secondary && secondary.style.display !== "none") {
+        Array.from(secondary.options).forEach(opt => applyDisable(opt, `${primary.value}:${opt.value}`, key));
+      }
+      return;
+    }
+
+    const cascadeControls = row.querySelector(".cascade-controls");
+    if (cascadeControls) {
+      const selects = Array.from(cascadeControls.querySelectorAll("select"));
+      const tree = row._cascadeTree;
+      if (!selects.length || !tree) return;
+      // Walk level by level (top select's options are the tree's own
+      // top-level keys, so start with a synthetic node whose .children IS
+      // the tree). At each select, an option whose node is a LEAF (no
+      // .children) gets the usual exact-role check; an option whose node is
+      // a BRANCH gets grayed out only if EVERY leaf reachable under it is
+      // already claimed by a DIFFERENT resource -- so an exhausted axis
+      // (e.g. both motor0 and motor1 already taken) is unselectable at the
+      // TOP level too, not just its individual leaves. Descend into
+      // whichever child the select's CURRENT value points to, to give the
+      // next select (if any) the right context.
+      let node = { children: tree };
+      let pathSoFar = [];
+      selects.forEach(sel => {
+        Array.from(sel.options).forEach(opt => {
+          if (opt.value === "unused") { opt.disabled = false; return; }
+          const childNode = node.children[opt.value];
+          if (!childNode) { opt.disabled = false; return; }
+          if (!childNode.children) {
+            const full = pathSoFar.concat([opt.value]).join(":");
+            applyDisable(opt, full, key);
+          } else {
+            const leaves = enumerateLeafPaths(childNode, pathSoFar.concat([opt.value]));
+            const exhausted = leaves.length > 0 && leaves.every(path => {
+              const owner = claimed[path.join(":")];
+              return owner && owner.key !== key;
+            });
+            opt.disabled = exhausted;
+          }
+        });
+        if (sel.value !== "unused" && node.children[sel.value]) {
+          pathSoFar = pathSoFar.concat([sel.value]);
+          node = node.children[sel.value];
+        }
+      });
+    }
+  });
+}
+
+/* Third pane: an optional board photo with clickable regions, sourced from
+ * hotspots/<id>.hotspots.yaml (fetched in loadBoard()) -- entirely a
+ * presentation aid layered on top of the real resource-binding rows in
+ * #resourceCol, never a second way to actually bind anything. Hidden
+ * entirely (main reverts to its normal 2-column layout) for any board
+ * without hotspot data. */
+function renderHotspotPane() {
+  const mainEl = document.querySelector("main");
+  const col = document.getElementById("hotspotCol");
+  if (!hotspotData) {
+    col.style.display = "none";
+    mainEl.style.gridTemplateColumns = "1fr 1fr";
+    col.innerHTML = "";
+    return;
+  }
+  mainEl.style.gridTemplateColumns = "320px 1fr 1fr";
+  col.style.display = "";
+  col.innerHTML = `<div class="note">Click a highlighted region to jump to its row on the left. (Prototype — board photos/hotspots only exist for the Corgi board so far.)</div>
+    <div id="hotspotImgWrap">
+      <img id="hotspotImg" src="${escapeAttr(hotspotData.image)}" alt="board photo">
+      <div id="hotspotOverlay"></div>
+    </div>`;
+  const overlay = document.getElementById("hotspotOverlay");
+  (hotspotData.hotspots || []).forEach(h => {
+    const el = document.createElement("div");
+    el.className = "hotspot-rect";
+    el.style.left = h.rect.x + "%";
+    el.style.top = h.rect.y + "%";
+    el.style.width = h.rect.w + "%";
+    el.style.height = h.rect.h + "%";
+    el.dataset.labels = JSON.stringify(h.labels);
+    el.onclick = () => jumpToLabels(h.labels, el);
+    // Connector's own name always shows in the connector box's corner --
+    // unconditional, regardless of whether a label_rect exists.
+    const labelSpan = document.createElement("span");
+    labelSpan.className = "hotspot-label";
+    labelSpan.textContent = h.labels.join(", ");
+    el.appendChild(labelSpan);
+    overlay.appendChild(el);
+    if (h.label_rect) {
+      // Separate box for the ASSIGNED ROLE (once one exists), positioned in
+      // the same % coordinate space as the connector rect (i.e. relative to
+      // the overlay, not nested inside the connector box), so it can sit
+      // anywhere on the photo -- typically just outside a small/crowded
+      // connector where there's no room for both its own name and a role.
+      // Text is populated/hidden live by refreshHotspotStates() below,
+      // since the assigned role can change on every binding edit.
+      const roleSpan = document.createElement("span");
+      roleSpan.className = "hotspot-role-label" + (h.label_orientation === "vertical" ? " vertical" : "");
+      roleSpan.dataset.labels = JSON.stringify(h.labels);
+      roleSpan.style.left = h.label_rect.x + "%";
+      roleSpan.style.top = h.label_rect.y + "%";
+      roleSpan.style.width = h.label_rect.w + "%";
+      roleSpan.style.height = h.label_rect.h + "%";
+      overlay.appendChild(roleSpan);
+    }
+  });
+  refreshHotspotStates();
+}
+
+/* Reads whichever left-pane row(s) a label maps to and reports its CURRENT
+ * binding state directly from that row's own <select>(s) -- rather than
+ * re-deriving it from `bindings[key]` (whose value format/shape varies a
+ * lot across resource types: "x:motor0", "limit:x:motor0:neg", "spindle:pwm",
+ * "vfd:Huanyang", etc.), this just reads back whatever the select is
+ * already showing the user, which is inherently already the right
+ * human-readable text and trivially correct regardless of format. A row's
+ * first <select> follows this file's universal convention of "unused" as
+ * the not-yet-assigned value (see makeRow/makeOutputRow/makeInputRow) --
+ * any select that's hidden (style.display "none", e.g. an output row's
+ * unused secondary picker) or has no options yet is skipped. */
+function getRowRoleInfo(label) {
+  const row = Array.from(document.querySelectorAll("#resourceCol .row"))
+    .find(r => r.querySelector(".name") && r.querySelector(".name").textContent === label);
+  if (!row) return { row: null, assigned: false, roleText: "" };
+  const selects = Array.from(row.querySelectorAll("select")).filter(s => s.style.display !== "none" && s.options.length);
+  if (!selects.length) return { row, assigned: false, roleText: "" };
+  const assigned = selects[0].value !== "unused" && selects[0].value !== "";
+  const roleText = assigned
+    ? selects.map(s => (s.options[s.selectedIndex] || {}).textContent || "").filter(Boolean).join(" / ")
+    : "";
+  return { row, assigned, roleText };
+}
+
+/* Refreshes every hotspot's assigned/unassigned color and hover tooltip
+ * from the left pane's CURRENT state -- called once at board load and
+ * again after every generateDraft() (i.e. every binding change), so the
+ * photo always reflects reality live, not just a snapshot from when the
+ * pane was first built. */
+function refreshHotspotStates() {
+  if (!hotspotData) return;
+  document.querySelectorAll("#hotspotOverlay .hotspot-rect").forEach(el => {
+    let hlabels = [];
+    try { hlabels = JSON.parse(el.dataset.labels || "[]"); } catch (e) {}
+    const infos = hlabels.map(getRowRoleInfo);
+    const assigned = infos.some(i => i.assigned);
+    el.classList.toggle("assigned", assigned);
+    el.title = hlabels.map((label, i) => infos[i].assigned ? `${label}: ${infos[i].roleText}` : label).join("\n");
+  });
+  // Populate/hide each hotspot's separate role label (only exists for
+  // hotspots with an editor-authored label_rect -- see renderHotspotPane()).
+  // Empty when nothing's assigned yet: :empty { display:none } in CSS hides
+  // the box entirely rather than showing a blank chip over the photo.
+  document.querySelectorAll("#hotspotOverlay .hotspot-role-label").forEach(el => {
+    let hlabels = [];
+    try { hlabels = JSON.parse(el.dataset.labels || "[]"); } catch (e) {}
+    const infos = hlabels.map(getRowRoleInfo);
+    const roleText = infos.filter(i => i.assigned).map(i => i.roleText).join(" / ");
+    el.textContent = roleText;
+  });
+}
+
+/* Clicking a hotspot highlights + scrolls to whichever left-pane row(s)
+ * share its label(s) -- a hotspot can name more than one label (a single
+ * physical connector serving more than one FluidNC resource role, e.g.
+ * Corgi's MOSFET1/5V-out pin), in which case every matching row is
+ * highlighted, not just the first. Purely a navigation aid -- clicking
+ * never changes any binding itself. Magenta (.active / .hotspot-target) is
+ * reserved for this selection state alone, distinct from the yellow/green
+ * assigned-state colors set by refreshHotspotStates(), so "the one I just
+ * clicked" always reads unambiguously regardless of whether it's also
+ * bound to something yet. */
+function clearHotspotSelection() {
+  document.querySelectorAll(".hotspot-rect.active").forEach(e => e.classList.remove("active"));
+  document.querySelectorAll("#resourceCol .row.hotspot-target").forEach(e => e.classList.remove("hotspot-target"));
+}
+
+function jumpToLabels(labelList, hotspotEl) {
+  clearHotspotSelection();
+  if (hotspotEl) hotspotEl.classList.add("active");
+  const rows = Array.from(document.querySelectorAll("#resourceCol .row"));
+  let first = null;
+  labelList.forEach(label => {
+    const row = rows.find(r => r.querySelector(".name") && r.querySelector(".name").textContent === label);
+    if (row) {
+      row.classList.add("hotspot-target");
+      if (!first) first = row;
+    }
+  });
+  if (first && first.scrollIntoView) first.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+/* Same selection, the other direction: clicking a left-pane resource row
+ * activates + scrolls to its matching hotspot(s) on the photo, same
+ * magenta .active/.hotspot-target state jumpToLabels() sets, just started
+ * from the opposite end. Wired alongside the hover link below (same
+ * matches array), since both need the identical row<->rect correspondence. */
+function selectFromRow(row, matches) {
+  clearHotspotSelection();
+  matches.forEach(el => el.classList.add("active"));
+  row.classList.add("hotspot-target");
+  if (matches[0] && matches[0].scrollIntoView) matches[0].scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+/* Bidirectional link, the other direction: hovering a left-pane resource
+ * row highlights its matching hotspot(s) on the photo (if any exist for
+ * this board/label) -- reinforces "this row is that physical connector"
+ * without requiring a click. Wired once per board load, right after both
+ * #resourceCol and the hotspot pane are built. */
+function wireHotspotHoverLinks() {
+  if (!hotspotData) return;
+  const rects = Array.from(document.querySelectorAll("#hotspotOverlay .hotspot-rect"));
+  document.querySelectorAll("#resourceCol .row").forEach(row => {
+    const nameEl = row.querySelector(".name");
+    if (!nameEl) return;
+    const label = nameEl.textContent;
+    const matches = rects.filter(el => {
+      let hlabels = [];
+      try { hlabels = JSON.parse(el.dataset.labels || "[]"); } catch (e) {}
+      return hlabels.includes(label);
+    });
+    if (!matches.length) return;
+    row.addEventListener("mouseenter", () => matches.forEach(el => el.classList.add("hover")));
+    row.addEventListener("mouseleave", () => matches.forEach(el => el.classList.remove("hover")));
+    // Clicking the row itself (not just hovering) selects it the same way
+    // clicking its hotspot would -- doesn't interfere with the row's own
+    // <select>(s), which keep their normal click-to-open behavior; this
+    // just adds the same magenta selection state on top.
+    row.addEventListener("click", () => selectFromRow(row, matches));
+  });
 }
 
 function renderResources() {
@@ -1536,6 +1893,7 @@ function renderResources() {
 function makeRow(key, name, sub, options) {
   const row = document.createElement("div");
   row.className = "row";
+  row.dataset.resourceKey = key;
   const lbl = document.createElement("div");
   lbl.className = "lbl";
   lbl.innerHTML = `<span class="name">${name}</span><span class="sub">${sub}</span>`;
@@ -1548,7 +1906,12 @@ function makeRow(key, name, sub, options) {
   });
   sel.value = bindings[key] || "unused";
   sel.onchange = () => { bindings[key] = sel.value; generateDraft(); };
-  row.appendChild(lbl); row.appendChild(sel);
+  const wrap = document.createElement("div");
+  wrap.className = "ctrl-wrap";
+  const conflictNote = document.createElement("span");
+  conflictNote.className = "conflict-note";
+  wrap.appendChild(sel); wrap.appendChild(conflictNote);
+  row.appendChild(lbl); row.appendChild(wrap);
   return row;
 }
 
@@ -1561,6 +1924,7 @@ function makeRow(key, name, sub, options) {
 function makeOutputRow(key, name, sub) {
   const row = document.createElement("div");
   row.className = "row output-row";
+  row.dataset.resourceKey = key;
   const lbl = document.createElement("div");
   lbl.className = "lbl";
   lbl.innerHTML = `<span class="name">${name}</span><span class="sub">${sub}</span>`;
@@ -1590,7 +1954,16 @@ function makeOutputRow(key, name, sub) {
         opt.value = val; opt.textContent = label;
         secondary.appendChild(opt);
       });
-      secondary.value = opts.some(p => p[0] === curSub) ? curSub : opts[0][0];
+      // Same "prefer an unclaimed option" policy as makeInputRow's
+      // firstLeafPathFrom() -- otherwise switching two different resources
+      // to the same cascading category (e.g. both to "Digital Output")
+      // would silently default BOTH to "Output 0" before the graying logic
+      // ever ran. Falls back to the first option if every one is claimed.
+      const unclaimedVal = opts.find(([v]) => {
+        const full = `${cat}:${v}`;
+        return !Object.keys(resourcePins).some(k => k !== key && bindings[k] === full);
+      });
+      secondary.value = opts.some(p => p[0] === curSub) ? curSub : (unclaimedVal ? unclaimedVal[0] : opts[0][0]);
       secondary.style.display = "";
     } else {
       secondary.style.display = "none";
@@ -1604,7 +1977,22 @@ function makeOutputRow(key, name, sub) {
     const cat = primary.value;
     if (cascadeOptionsFor(cat)) {
       refreshSecondary();
-      bindings[key] = `${cat}:${secondary.value}`;
+      const full = `${cat}:${secondary.value}`;
+      // A category with every secondary option already claimed elsewhere is
+      // now grayed out at the primary level by refreshRoleUniqueness() (so
+      // this branch shouldn't normally be reachable via the UI at all) --
+      // this is just a silent, no-popup safety net in case bindings ever
+      // gets into that state some other way (refreshSecondary() already
+      // prefers an unclaimed option, so this only fires if literally none
+      // exist).
+      const stillDuplicate = Object.keys(resourcePins).some(k => k !== key && bindings[k] === full);
+      if (stillDuplicate) {
+        bindings[key] = "unused";
+        primary.value = "unused";
+        secondary.style.display = "none";
+      } else {
+        bindings[key] = full;
+      }
     } else {
       secondary.style.display = "none";
       bindings[key] = cat;
@@ -1618,6 +2006,9 @@ function makeOutputRow(key, name, sub) {
 
   controls.appendChild(primary);
   controls.appendChild(secondary);
+  const conflictNote = document.createElement("span");
+  conflictNote.className = "conflict-note";
+  controls.appendChild(conflictNote);
   row.appendChild(controls);
   return row;
 }
@@ -1632,6 +2023,7 @@ function makeOutputRow(key, name, sub) {
 function makeInputRow(key, name, sub, tree) {
   const row = document.createElement("div");
   row.className = "row cascade-row";
+  row.dataset.resourceKey = key;
   const lbl = document.createElement("div");
   lbl.className = "lbl";
   lbl.innerHTML = `<span class="name">${name}</span><span class="sub">${sub}</span>`;
@@ -1640,15 +2032,36 @@ function makeInputRow(key, name, sub, tree) {
   const controls = document.createElement("div");
   controls.className = "cascade-controls";
   row.appendChild(controls);
+  const conflictNote = document.createElement("span");
+  conflictNote.className = "conflict-note";
+  // Appended inside controls at the end of every render() call below (not
+  // just once here) -- render() does `controls.innerHTML = ""` on every
+  // rebuild (each level change), which would otherwise wipe this out.
+  row._cascadeTree = tree; // read by refreshRoleUniqueness() to gray out exhausted branches, not just exhausted leaves
 
+  // Auto-fills the remaining levels below a newly-chosen branch down to a
+  // leaf (same "always land on a complete, valid role value" policy
+  // makeOutputRow uses) -- but prefers the first leaf NOT already claimed by
+  // a DIFFERENT resource (see refreshRoleUniqueness()), rather than always
+  // the tree's literal first child. Without this, picking the same branch
+  // on two different resources (e.g. two motor sockets both set to "X
+  // axis") would silently auto-assign BOTH of them the exact same leaf
+  // ("First Motor") before the graying logic ever got a chance to steer the
+  // user away from it. Returns null (NOT a duplicate) if every leaf under
+  // this branch is already claimed elsewhere -- the caller must refuse the
+  // pick rather than silently commit a second resource to an already-taken
+  // role (a real bug in an earlier version of this fix: with only 2 real
+  // leaves per axis, motor:0 and motor:1 could each grab one, but motor:2
+  // switching to that SAME axis would still fall through to duplicating
+  // motor:0's exact role since "every candidate is claimed" was treated as
+  // "give up and pick the first one anyway" instead of "this pick is not
+  // actually possible").
   function firstLeafPathFrom(node, segs) {
-    let n = node, path = segs.slice();
-    while (n.children) {
-      const firstKey = Object.keys(n.children)[0];
-      path.push(firstKey);
-      n = n.children[firstKey];
-    }
-    return path;
+    const candidates = enumerateLeafPaths(node, segs);
+    return candidates.find(path => {
+      const val = path.join(":");
+      return !Object.keys(resourcePins).some(k => k !== key && bindings[k] === val);
+    }) || null;
   }
 
   function render() {
@@ -1670,12 +2083,27 @@ function makeInputRow(key, name, sub, tree) {
       if (top.value === "unused") {
         bindings[key] = "unused";
       } else {
-        bindings[key] = firstLeafPathFrom(tree[top.value], [top.value]).join(":");
+        const leaf = firstLeafPathFrom(tree[top.value], [top.value]);
+        if (!leaf) {
+          // A branch with every leaf already claimed elsewhere is grayed
+          // out by refreshRoleUniqueness() at this very select, so this
+          // shouldn't normally be reachable via the UI -- silent, no-popup
+          // safety net only.
+          bindings[key] = "unused";
+        } else {
+          bindings[key] = leaf.join(":");
+        }
       }
-      generateDraft();
+      // render() first, THEN generateDraft() -- refreshGpioConflicts()/
+      // refreshRoleUniqueness() (called at the end of generateDraft()) need
+      // to run against the FRESH selects render() is about to build, not
+      // the stale ones about to be torn down, or this row's own new options
+      // would show no disabled state until some unrelated later change.
       render();
+      generateDraft();
     };
     controls.appendChild(top);
+    controls.appendChild(conflictNote);
     if (topVal === "unused") return;
 
     let node = tree[topVal];
@@ -1693,9 +2121,18 @@ function makeInputRow(key, name, sub, tree) {
 
       const parentNode = node, segsBefore = pathSoFar.slice();
       sel.onchange = () => {
-        bindings[key] = firstLeafPathFrom(parentNode.children[sel.value], segsBefore.concat([sel.value])).join(":");
+        const chosenNode = parentNode.children[sel.value];
+        const leaf = firstLeafPathFrom(chosenNode, segsBefore.concat([sel.value]));
+        if (!leaf) {
+          // Same silent safety net as the top-level handler above -- an
+          // exhausted branch is grayed out here too, so this option
+          // shouldn't normally be selectable via the UI at all.
+          bindings[key] = "unused";
+        } else {
+          bindings[key] = leaf.join(":");
+        }
+        render(); // see the top-level onchange's comment on this ordering
         generateDraft();
-        render();
       };
 
       controls.appendChild(sel);
@@ -1959,12 +2396,16 @@ function generateDraft() {
     const pin = p.mcu_pin;
 
     if (role.startsWith("limit:")) {
-      const [, letter, which] = role.split(":");
+      // "limit:<axis>:<motor0|motor1>:<neg|pos|all>" -- see INPUT_ROLE_TREE's
+      // own declaration comment for why the motor level is real (a two-
+      // motor axis' limit switches are per-motor in actual FluidNC config,
+      // not shared at the axis level).
+      const [, letter, motorSlot, which] = role.split(":");
       const axis = ensureAxis(cfg, letter);
-      axis.motor0 = axis.motor0 || {};
+      axis[motorSlot] = axis[motorSlot] || {};
       const field = which === "neg" ? "limit_neg_pin" : which === "pos" ? "limit_pos_pin" : "limit_all_pin";
-      annotate(axis.motor0, field, p.label);
-      axis.motor0[field] = pin;
+      annotate(axis[motorSlot], field, p.label);
+      axis[motorSlot][field] = pin;
     } else if (role.startsWith("probe:")) {
       // Child key is literally the real Probe:: config field name
       // ("pin" or "toolsetter_pin") -- see Probe::group() in the
@@ -2016,6 +2457,12 @@ function generateDraft() {
       const n = role.split(":")[1];
       annotate(cfg.user_outputs, `analog${n}_pin`, p.label);
       cfg.user_outputs[`analog${n}_pin`] = pin;
+      // analogN_hz (userOutputsSection) -- per-channel PWM frequency, a
+      // real config field with no resource/pin of its own to bind, so it's
+      // stubbed as an ordinary open TBD the moment this channel gets a pin,
+      // same as a spindle type's tuning fields. Only set once per channel
+      // (never overwrites a value the user already typed in).
+      if (cfg.user_outputs[`analog${n}_hz`] === undefined) cfg.user_outputs[`analog${n}_hz`] = "TBD";
     } else if (role.startsWith("status_output:")) {
       // Status_Outputs -- machine-state indicator pins (e.g. tower
       // lights), independent of Limit/Probe/Control/Spindle/Coolant/user
@@ -2156,6 +2603,19 @@ function generateDraft() {
   paramDefaultOverrides["use_line_numbers"] = { default: false, defaultKind: "firmware" };
   paramDefaultOverrides["planner_blocks"] = { default: 16, defaultKind: "firmware" };
 
+  // Optional top-level sections with no board-resource correlation
+  // (Parking/Macros/OLED/ATC Manual) -- see OPTIONAL_SECTIONS' own
+  // declaration comment. Planted last, after every other cfg.* assignment
+  // above, so they land at the END of the emitted file (js-yaml dumps
+  // object keys in insertion order) rather than in the middle of the
+  // board-derived sections. Sentinel is planted as its own KEY regardless
+  // of enabled state, same "selector lives inside the draft itself"
+  // pattern as kinematics/homing; when disabled the resolved clone deletes
+  // the key entirely below, rather than emitting an empty block.
+  Object.keys(OPTIONAL_SECTIONS).forEach(key => {
+    cfg[sectionSentinel(key)] = sectionEnabled[key] ? OPTIONAL_SECTIONS[key].stub() : null;
+  });
+
   // Work on a clone for the interactive view: it gets its pin leaves
   // overwritten with a "PINSLOT" sentinel (so we can splice in attribute
   // widgets at those positions) while every "TBD" slot is left untouched
@@ -2179,7 +2639,7 @@ function generateDraft() {
     el.onchange = () => setParam(el.dataset.path, el.dataset.key, el.value);
   });
   document.querySelectorAll("#draft .default-btn").forEach(btn => {
-    btn.onclick = () => setParam(btn.dataset.path, btn.dataset.key, btn.dataset.default);
+    btn.onclick = () => setParamDefault(btn.dataset.path, btn.dataset.key);
   });
   document.querySelectorAll("#draft .clear-btn").forEach(btn => {
     btn.onclick = () => setParam(btn.dataset.path, btn.dataset.key, "");
@@ -2192,6 +2652,9 @@ function generateDraft() {
   });
   document.querySelectorAll("#draft .homing-select").forEach(el => {
     el.onchange = () => { homingEnabled[el.dataset.letter] = el.value === "true"; generateDraft(); };
+  });
+  document.querySelectorAll("#draft .section-select").forEach(el => {
+    el.onchange = () => { sectionEnabled[el.dataset.section] = el.value === "true"; generateDraft(); };
   });
 
   // Plain-text version (real values where answered, literal TBD where not,
@@ -2236,8 +2699,597 @@ function generateDraft() {
     if (homingEnabled[letter]) ax.homing = ax[sentinelKey];
     delete ax[sentinelKey];
   });
+  // Same rename-or-delete idea one level up, for the optional top-level
+  // sections themselves (Parking/Macros/OLED/ATC Manual) -- see
+  // OPTIONAL_SECTIONS' own declaration comment.
+  Object.keys(OPTIONAL_SECTIONS).forEach(key => {
+    const sentinelKey = sectionSentinel(key);
+    if (!Object.prototype.hasOwnProperty.call(resolved, sentinelKey)) return;
+    if (sectionEnabled[key]) resolved[key] = resolved[sentinelKey];
+    delete resolved[sentinelKey];
+  });
   lastPlainYaml = dequoteAxisKeys(annotateYaml(jsyaml.dump(resolved, { lineWidth: -1, noRefs: true })));
+  // Keep the hotspot photo's assigned/unassigned colors and tooltips in
+  // sync with whatever just changed -- generateDraft() runs on every
+  // binding edit, so this stays live rather than only reflecting board-load
+  // time. No-op (returns immediately) for boards with no hotspot data.
+  refreshHotspotStates();
+  // Same idea for GPIO-conflict disabling: recompute on every binding
+  // change so assigning (or un-assigning) a resource immediately
+  // disables/re-enables anything else sharing one of its physical pins.
+  refreshGpioConflicts();
+  // Same idea for role-uniqueness graying: recompute on every binding
+  // change so claiming (or un-claiming) a role immediately disables/
+  // re-enables that same option everywhere else it appears.
+  refreshRoleUniqueness();
 }
+
+/* ---------------------------------------------------------------------
+ * Import an existing config.yaml -- the reverse of generateDraft() above:
+ * instead of walking bindings -> cfg, this walks a loaded cfg -> bindings
+ * (plus paramValues for real values found, instead of leaving them TBD).
+ * The loaded file's own `board:` field is checked against every known
+ * board_id/board.name (see detectBoardId(), called from the file-input
+ * handler below) and, on an exact case-insensitive match, the picker
+ * auto-switches to it before importing -- covers the common case of a file
+ * this tool itself produced (which always writes the board's real name into
+ * `board:`), or a hand-written config using the id directly. When there's
+ * no match (a free-text label, a board this tool doesn't know, or the field
+ * is simply absent), the currently-selected board is used as-is and the
+ * report notes that explicitly, so the user knows to double-check it.
+ *
+ * Per-field pin ATTRIBUTES (:low/:high/:pu/:pd suffixes) ARE re-imported
+ * into pinAttrs, at the same param path collectAndInjectSlots will assign
+ * once the draft is regenerated -- for motor-socket pins specifically, only
+ * when the loaded driver type matches what this board's own socket data
+ * implies (motorBlockFor() is board-derived, not a user choice, so a
+ * mismatched driver type means the real eventual path is unknown; see the
+ * "notes" entry generated in that case). Fixed-protocol pins (uartN:/i2c0:
+ * -- see isFixedProtocolPath()) never carry attributes in the first place,
+ * so none are attempted for those.
+ *
+ * Ambiguous pin ownership (a board's own documented dual-purpose pin, e.g.
+ * Corgi's shared MOSFET/5V-out) is resolved via the "# <label>" comment
+ * this tool's own exports write immediately above the pin (or above a
+ * wrapping block that contains it, e.g. "# RS485" above "uart1:") -- see
+ * buildPinLabelHints(). When exactly one candidate resource's own label
+ * matches that comment, it's used with confidence; otherwise (no comment,
+ * or the comment doesn't uniquely match) this falls back to picking the
+ * first candidate and reporting the ambiguity, since there's no other
+ * signal available -- expected for hand-written configs, which have no
+ * reason to carry this tool's specific comment convention.
+ *
+ * Still deliberately out of scope for now: the older per-model top-level
+ * VFD key form (e.g. `Huanyang:` instead of `ModbusVFD:` + `model:`) isn't
+ * recognized, only the modern form.
+ * ------------------------------------------------------------------- */
+
+// resourceKeyRs485/resourceKeyExpUart/resourceKeyI2c all return distinctly
+// prefixed strings ("rs485:", "expuart:", "i2c:") -- used below to tell
+// which kind of resource a matched uart-bus pin actually belongs to, since
+// the correct role STRING differs by resource type even though the pin
+// lookup itself is generic.
+function resourceKeyPrefix(key) { return key.split(":")[0]; }
+
+function parsePinString(raw) {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (!s || s === "NO_PIN") return null;
+  const parts = s.split(":");
+  const basePin = parts[0];
+  let level = "", pull = "";
+  parts.slice(1).forEach(a => {
+    if (a === "low" || a === "high") level = a;
+    else if (a === "pu" || a === "pd") pull = a;
+  });
+  return { basePin, level, pull };
+}
+
+function buildPinOwnerIndex() {
+  const idx = {};
+  Object.keys(resourcePins).forEach(key => {
+    (resourcePins[key] || []).forEach(pin => {
+      if (!pin) return;
+      idx[pin] = idx[pin] || [];
+      if (!idx[pin].includes(key)) idx[pin].push(key);
+    });
+  });
+  return idx;
+}
+
+/* Scrapes "# <label>" comments out of the RAW config.yaml text (jsyaml.load
+ * discards comments entirely, so this is a separate line-based pass over
+ * the original file text) and maps each pin VALUE found to the label of
+ * its nearest enclosing/preceding comment -- i.e. exactly the inverse of
+ * generateDraft()'s own annotate()/annotateYaml() mechanism, which writes
+ * a resource's board label as a "# <label>" comment immediately above
+ * either the pin's own key (e.g. "# In2" above "limit_neg_pin: gpio.2") OR
+ * above a wrapping block key that CONTAINS the pin (e.g. "# RS485" above
+ * "uart1:", which contains "txd_pin: gpio.15" one level deeper) -- so this
+ * scanner tracks a small indent-keyed stack of "nearest active comment",
+ * not just the immediately preceding line, to catch both shapes.
+ *
+ * Only useful for files this tool (or something matching its comment
+ * convention) produced -- a hand-written or differently-annotated
+ * config.yaml simply won't match anything here, and importConfig() falls
+ * back to its existing ambiguous-pin reporting in that case, per the
+ * explicit direction that "if there is no such comment, there is still an
+ * ambiguity." */
+function buildPinLabelHints(rawText) {
+  const hints = {}; // pin base value (e.g. "gpio.2") -> label
+  const lines = String(rawText || "").split(/\r\n|\n|\r/);
+  const commentRe = /^(\s*)#\s?(.*)$/;
+  const kvRe = /^(\s*)[A-Za-z0-9_]+:\s*(.*?)\s*$/;
+  const stack = []; // [{ indent, label }], nearest-enclosing comment per indent level
+  let pendingComment = null; // { indent, label } for the line directly below a comment
+  lines.forEach(line => {
+    const cm = line.match(commentRe);
+    if (cm) {
+      pendingComment = { indent: cm[1].length, label: cm[2] };
+      return;
+    }
+    const kv = line.match(kvRe);
+    if (!kv) { pendingComment = null; return; }
+    const indent = kv[1].length;
+    const rawValue = kv[2];
+    while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
+    let activeLabel = stack.length ? stack[stack.length - 1].label : null;
+    if (pendingComment && pendingComment.indent === indent) {
+      activeLabel = pendingComment.label;
+      stack.push({ indent, label: pendingComment.label });
+    }
+    if (/^(gpio\.\d+|i2so\.\d+)$/.test(rawValue) && activeLabel) {
+      hints[rawValue] = activeLabel;
+    }
+    pendingComment = null;
+  });
+  return hints;
+}
+
+/* Core of the importer: given a raw config.yaml document (already parsed
+ * via jsyaml.load) and the ORIGINAL raw text (for comment-based pin
+ * disambiguation, see buildPinLabelHints() above), populate
+ * bindings/paramValues/pinAttrs/homingEnabled/kinematicsType and return a
+ * { matched, ambiguous, unrecognized, notes } report for display. Resets
+ * all import-relevant state first, same as loadBoard() does for a fresh
+ * board load. */
+function importConfig(doc, rawText) {
+  bindings = {};
+  paramValues = {};
+  pinAttrs = {};
+  homingEnabled = {};
+  kinematicsType = "Cartesian";
+  sectionEnabled = {};
+
+  const report = { matched: [], ambiguous: [], unrecognized: [], notes: [] };
+  const pinOwnerIndex = buildPinOwnerIndex();
+  const pinLabelHints = buildPinLabelHints(rawText);
+
+  function resolvePin(pinRaw, ctxLabel) {
+    const parsed = parsePinString(pinRaw);
+    if (!parsed) return null;
+    const candidates = pinOwnerIndex[parsed.basePin] || [];
+    if (!candidates.length) {
+      report.unrecognized.push(`${ctxLabel}: pin ${parsed.basePin} not found on ${board.board.id}`);
+      return null;
+    }
+    if (candidates.length > 1) {
+      // Try to resolve via the "# <label>" comment (if any) the ORIGINAL
+      // file had directly above this pin/its wrapping block -- if exactly
+      // one candidate's own board label matches that hint, use it with
+      // confidence instead of falling back to "just pick the first one."
+      const hint = pinLabelHints[parsed.basePin];
+      const hintMatches = hint ? candidates.filter(k => resourceLabels[k] === hint) : [];
+      if (hintMatches.length === 1) {
+        report.notes.push(`${ctxLabel}: pin ${parsed.basePin} was ambiguous (${candidates.length} candidates) but resolved via the "# ${hint}" comment -> ${hintMatches[0]}`);
+        return { resourceKey: hintMatches[0], parsed };
+      }
+      report.ambiguous.push(
+        hint
+          ? `${ctxLabel}: pin ${parsed.basePin} matches ${candidates.length} resources (${candidates.join(", ")}); comment says "${hint}" but that doesn't uniquely match any of them -- used ${candidates[0]}, verify and re-bind manually if wrong`
+          : `${ctxLabel}: pin ${parsed.basePin} matches ${candidates.length} resources (${candidates.join(", ")}), and no disambiguating comment was found -- used ${candidates[0]}, verify and re-bind manually if wrong`
+      );
+    }
+    return { resourceKey: candidates[0], parsed };
+  }
+
+  function bind(resourceKey, role, ctxLabel) {
+    if (bindings[resourceKey] && bindings[resourceKey] !== "unused" && bindings[resourceKey] !== role) {
+      report.ambiguous.push(`${ctxLabel}: resource ${resourceKey} was already bound to "${bindings[resourceKey]}" by an earlier field -- overwritten with "${role}"`);
+    }
+    bindings[resourceKey] = role;
+    report.matched.push(`${ctxLabel} -> ${resourceKey} (${role})`);
+  }
+
+  // attrPath: the exact param path pinAttrs should be keyed under for this
+  // pin (matching what collectAndInjectSlots will build once the draft is
+  // regenerated from the new bindings) -- defaults to ctxLabel, which
+  // already IS that path for every call site except the motor-socket one
+  // (see below), which passes its own more specific path explicitly.
+  function claimPin(pinRaw, role, ctxLabel, attrPath) {
+    const r = resolvePin(pinRaw, ctxLabel);
+    if (!r) return null;
+    bind(r.resourceKey, role, ctxLabel);
+    const path = attrPath !== undefined ? attrPath : ctxLabel;
+    if (path && (r.parsed.level || r.parsed.pull)) {
+      pinAttrs[path] = { level: r.parsed.level, pull: r.parsed.pull };
+    }
+    return r.resourceKey;
+  }
+
+  // Copy every non-object, non-"TBD" scalar field from `src` into
+  // paramValues, keyed by `${pathPrefix}.${field}`. Used for tuning-field
+  // blocks (motor driver bodies, spindle stubs, homing, kinematics, etc.)
+  // where the field NAMES are already known to line up with what
+  // specForKey()/collectAndInjectSlots expect, since they're the real
+  // config.yaml field names either way. Skipping literal "TBD" values
+  // matters for files that are themselves a previous half-finished export
+  // from this tool -- copying the literal string "TBD" into paramValues
+  // would make collectAndInjectSlots' `hasOwnProperty(paramValues, path)`
+  // check see it as "answered" (rendered green/filled) even though its
+  // content is the same unresolved placeholder, rather than leaving it as
+  // a genuinely open (yellow) TBD slot.
+  function copyScalarParams(src, pathPrefix, skipKeys) {
+    if (!src || typeof src !== "object") return;
+    Object.keys(src).forEach(k => {
+      if (skipKeys && skipKeys.has(k)) return;
+      const v = src[k];
+      if (v === null || typeof v === "object" || v === "TBD") return;
+      paramValues[`${pathPrefix}.${k}`] = v;
+    });
+  }
+
+  // --- axes: motor sockets, limit pins, axis-level tuning, homing ---
+  const motorDriverKeys = new Set([
+    "standard_stepper", "stepstick", "tmc_2130", "tmc_2208", "tmc_5160",
+    "tmc_2209", "tmc_5160Pro", "tmc_2160Pro", "tmc_2160", "rc_servo",
+    "solenoid", "dynamixel2", "null_motor",
+  ]);
+  const axisNonMotorKeys = new Set(["motor0", "motor1", "homing", "shared_stepper_disable_pin"]);
+  Object.keys(doc.axes || {}).forEach(letter => {
+    if (letter === "shared_stepper_disable_pin") return;
+    const axisDoc = doc.axes[letter];
+    if (!axisDoc || typeof axisDoc !== "object") return;
+    if (!AXES.includes(letter)) {
+      report.unrecognized.push(`axes.${letter}: not a recognized axis letter, skipped`);
+      return;
+    }
+
+    ["motor0", "motor1"].forEach(slot => {
+      const motorDoc = axisDoc[slot];
+      if (!motorDoc || typeof motorDoc !== "object") return;
+      const driverKey = Object.keys(motorDoc).find(k => motorDriverKeys.has(k));
+      const driverBody = driverKey ? motorDoc[driverKey] : null;
+
+      // Identify the physical motor socket via any one of its own pins
+      // (step_pin preferred) -- all of a socket's pins share one
+      // resourceKey (resourceKeyMotor(i)), so matching just one suffices.
+      let resourceKey = null;
+      if (driverBody) {
+        const pinField = ["step_pin", "direction_pin", "disable_pin", "cs_pin"].find(f => driverBody[f]);
+        if (pinField) {
+          const r = resolvePin(driverBody[pinField], `axes.${letter}.${slot}`);
+          if (r) resourceKey = r.resourceKey;
+        }
+      }
+      if (!resourceKey) {
+        report.unrecognized.push(`axes.${letter}.${slot}: no recognizable motor pin found, skipped`);
+        return;
+      }
+      bind(resourceKey, `${letter}:${slot}`, `axes.${letter}.${slot}`);
+
+      // Tuning params only copied if the loaded config's own driver type
+      // matches what this board's own socket data says it should be
+      // (motorBlockFor() is board-derived, not a user choice) -- otherwise
+      // the field names wouldn't line up with the path the regenerated
+      // draft will actually use, so the values would silently go nowhere.
+      const socketIndex = Number(resourceKey.split(":")[1]);
+      const socket = (board.motor_sockets && board.motor_sockets.sockets || [])[socketIndex];
+      const expectedKey = socket ? motorBlockFor(socket).key : null;
+      const motorPinFields = ["step_pin", "direction_pin", "disable_pin", "cs_pin"];
+      if (driverKey && expectedKey && driverKey !== expectedKey) {
+        report.notes.push(`axes.${letter}.${slot}: loaded config uses driver type "${driverKey}", but this board's own socket data implies "${expectedKey}" -- resource bound, but this socket's tuning fields and pin attributes were NOT copied (would land on the wrong regenerated path)`);
+      } else if (driverBody) {
+        copyScalarParams(driverBody, `axes.${letter}.${slot}.${driverKey}`, new Set(motorPinFields));
+        // Per-pin :low/:high/:pu/:pd attributes -- only meaningful once the
+        // driver-type match above confirms this exact path
+        // (axes.<letter>.<slot>.<driverKey>.<field>) will really exist in
+        // the regenerated draft.
+        motorPinFields.forEach(f => {
+          if (!driverBody[f]) return;
+          const parsed = parsePinString(driverBody[f]);
+          if (parsed && (parsed.level || parsed.pull)) {
+            pinAttrs[`axes.${letter}.${slot}.${driverKey}.${f}`] = { level: parsed.level, pull: parsed.pull };
+          }
+        });
+      }
+    });
+
+    ["motor0", "motor1"].forEach(slot => {
+      const motorDoc = axisDoc[slot];
+      if (!motorDoc || typeof motorDoc !== "object") return;
+      [["limit_neg_pin", "neg"], ["limit_pos_pin", "pos"], ["limit_all_pin", "all"]].forEach(([field, which]) => {
+        if (motorDoc[field] == null) return;
+        claimPin(motorDoc[field], `limit:${letter}:${slot}:${which}`, `axes.${letter}.${slot}.${field}`);
+      });
+    });
+
+    copyScalarParams(axisDoc, `axes.${letter}`, axisNonMotorKeys);
+
+    if (axisDoc.homing && typeof axisDoc.homing === "object") {
+      homingEnabled[letter] = true;
+      copyScalarParams(axisDoc.homing, `axes.${letter}.${homingSentinel(letter)}`, null);
+    }
+  });
+
+  // --- probe / control / user_inputs ---
+  const probeDoc = doc.probe || {};
+  ["pin", "toolsetter_pin"].forEach(field => {
+    if (probeDoc[field] != null) claimPin(probeDoc[field], `probe:${field}`, `probe.${field}`);
+  });
+
+  const controlDoc = doc.control || {};
+  Object.keys(controlDoc).forEach(field => {
+    if (!field.endsWith("_pin")) return;
+    const which = field.slice(0, -4);
+    claimPin(controlDoc[field], `control:${which}`, `control.${field}`);
+  });
+
+  const userInputsDoc = doc.user_inputs || {};
+  Object.keys(userInputsDoc).forEach(field => {
+    const m = field.match(/^(digital|analog)(\d+)_pin$/);
+    if (!m) return;
+    claimPin(userInputsDoc[field], `user_input:${m[1]}:${m[2]}`, `user_inputs.${field}`);
+  });
+
+  // --- coolant ---
+  const coolantDoc = doc.coolant || {};
+  ["flood_pin", "mist_pin"].forEach(field => {
+    if (coolantDoc[field] == null) return;
+    const which = field.slice(0, -4);
+    claimPin(coolantDoc[field], `coolant:${which}`, `coolant.${field}`);
+  });
+
+  // --- user_outputs (digital/analog outputs + status_outputs) ---
+  const userOutputsDoc = doc.user_outputs || {};
+  Object.keys(userOutputsDoc).forEach(field => {
+    const m = field.match(/^(digital|analog)(\d+)_pin$/);
+    if (!m) return;
+    const [, kind, n] = m;
+    const role = kind === "digital" ? `digital_output:${n}` : `analog_output:${n}`;
+    const resourceKey = claimPin(userOutputsDoc[field], role, `user_outputs.${field}`);
+    if (resourceKey && kind === "analog") {
+      const hzField = `analog${n}_hz`;
+      if (userOutputsDoc[hzField] != null && userOutputsDoc[hzField] !== "TBD") {
+        paramValues[`user_outputs.${hzField}`] = userOutputsDoc[hzField];
+      }
+    }
+  });
+
+  const statusOutputsDoc = doc.status_outputs || {};
+  Object.keys(statusOutputsDoc).forEach(field => {
+    const m = field.match(/^(idle|run|hold|alarm|door)_pin$/);
+    if (!m) return;
+    claimPin(statusOutputsDoc[field], `status_output:${m[1]}`, `status_outputs.${field}`);
+  });
+  if (statusOutputsDoc.report_interval_ms != null && statusOutputsDoc.report_interval_ms !== "TBD") {
+    paramValues["status_outputs.report_interval_ms"] = statusOutputsDoc.report_interval_ms;
+  }
+
+  // --- spindles: any top-level key matching a known SPINDLE_TYPES cfgKey ---
+  Object.keys(SPINDLE_TYPES).forEach(typeId => {
+    const def = SPINDLE_TYPES[typeId];
+    const spindleDoc = doc[def.cfgKey];
+    if (!spindleDoc || typeof spindleDoc !== "object") return;
+    const pinFields = new Set();
+    def.pins.forEach(([which]) => {
+      const field = `${which}_pin`;
+      pinFields.add(field);
+      if (spindleDoc[field] != null) claimPin(spindleDoc[field], `spindle:${typeId}:${which}`, `${def.cfgKey}.${field}`);
+    });
+    copyScalarParams(spindleDoc, def.cfgKey, pinFields);
+  });
+
+  // --- RS485 -> Modbus VFD spindle (modern ModbusVFD: form only in v1;
+  // the older per-model top-level key alias, e.g. Huanyang:, is not
+  // recognized here yet) ---
+  if (doc.ModbusVFD && typeof doc.ModbusVFD === "object") {
+    const model = doc.ModbusVFD.model;
+    const n = doc.ModbusVFD.uart_num;
+    const uartBlock = doc[`uart${n}`];
+    if (model && uartBlock && uartBlock.txd_pin != null) {
+      // attrPath explicitly null: the pin actually lives in uartN:, a
+      // fixed-protocol path (see isFixedProtocolPath()) that never gets
+      // PINSLOT/attr treatment, and "ModbusVFD" itself isn't a real pin
+      // leaf path -- nothing to attach attrs to here either way.
+      claimPin(uartBlock.txd_pin, `vfd:${model}`, "ModbusVFD", null);
+    } else {
+      report.unrecognized.push("ModbusVFD: missing model/uart_num, or its referenced uartN: block, skipped");
+    }
+  }
+
+  // --- expansion UART / I2C-as-UART: any uart_channelN: paired with a
+  // uartN: block. Which resource type it resolves to (an actual expansion
+  // UART connector vs. an I2C connector repurposed as one) determines the
+  // correct role string, so the resourceKey's own prefix decides it. ---
+  Object.keys(doc).forEach(key => {
+    const m = key.match(/^uart_channel(\d+)$/);
+    if (!m) return;
+    const n = m[1];
+    const uartBlock = doc[`uart${n}`];
+    if (!uartBlock || uartBlock.txd_pin == null) {
+      report.unrecognized.push(`${key}: no matching uart${n}: block with a txd_pin, skipped`);
+      return;
+    }
+    const r = resolvePin(uartBlock.txd_pin, key);
+    if (!r) return;
+    const prefix = resourceKeyPrefix(r.resourceKey);
+    if (prefix === "expuart") {
+      bind(r.resourceKey, "uart_channel", key);
+    } else if (prefix === "i2c") {
+      bind(r.resourceKey, "expansion_uart", key);
+    } else {
+      report.ambiguous.push(`${key}: txd_pin resolved to ${r.resourceKey}, which is neither an expansion UART nor I2C connector -- skipped`);
+    }
+    if (doc[key].report_interval_ms != null && doc[key].report_interval_ms !== "TBD") {
+      paramValues[`${key}.report_interval_ms`] = doc[key].report_interval_ms;
+    }
+  });
+
+  // --- bare I2C bus --- (attrPath explicitly null: i2c0's pins are a
+  // fixed-protocol path, see isFixedProtocolPath(), never PINSLOT-eligible)
+  if (doc.i2c0 && doc.i2c0.sda_pin != null) {
+    claimPin(doc.i2c0.sda_pin, "i2c_bus", "i2c0", null);
+  }
+
+  // --- kinematics ---
+  if (doc.kinematics && typeof doc.kinematics === "object") {
+    const sysKey = Object.keys(doc.kinematics)[0];
+    const matchedTypeId = Object.keys(KINEMATICS_TYPES).find(t => KINEMATICS_TYPES[t].cfgKey === sysKey);
+    if (matchedTypeId) {
+      kinematicsType = matchedTypeId;
+      copyScalarParams(doc.kinematics[sysKey], "kinematics.KINSELECT", null);
+    } else if (sysKey) {
+      report.notes.push(`kinematics: unrecognized system "${sysKey}", left as Cartesian`);
+    }
+  }
+
+  // --- start / stepping / uncategorized top-level scalars, and name: ---
+  // (name: is set unconditionally to "TBD" by generateDraft() itself, same
+  // open-TBD mechanism as these others -- not tied to any board resource.)
+  if (doc.name != null && doc.name !== "TBD") paramValues.name = doc.name;
+  if (doc.start) copyScalarParams(doc.start, "start", null);
+  if (doc.stepping) copyScalarParams(doc.stepping, "stepping", new Set(["engine"]));
+  [
+    "arc_tolerance_mm", "junction_deviation_mm", "verbose_errors", "report_inches",
+    "enable_parking_override_control", "use_line_numbers", "planner_blocks",
+  ].forEach(key => {
+    if (doc[key] != null && doc[key] !== "TBD") paramValues[key] = doc[key];
+  });
+
+  // --- optional top-level sections with no board correlation: parking /
+  // macros / oled / atc_manual --- mirrors the KINSELECT/homing sentinel
+  // convention above: presence of the real section key in the loaded doc
+  // means the selector should come back enabled, and its scalar params are
+  // stored under the SECTIONSELECT_<key> sentinel path (same path the
+  // sentinel occupies in `cfg` itself, see OPTIONAL_SECTIONS/generateDraft()).
+  Object.keys(OPTIONAL_SECTIONS).forEach(key => {
+    if (doc[key] && typeof doc[key] === "object") {
+      sectionEnabled[key] = true;
+      copyScalarParams(doc[key], sectionSentinel(key), null);
+      report.matched.push(key);
+    }
+  });
+
+  return report;
+}
+
+function renderImportReport(report, filename, boardNote) {
+  const panel = document.getElementById("importReport");
+  const total = report.matched.length;
+  let html = "";
+  if (boardNote) html += `<div>${escapeHtml(boardNote)}</div>`;
+  html += `<b>Loaded ${escapeHtml(filename)}:</b> ${total} resource(s) matched`;
+  if (report.ambiguous.length) html += `, ${report.ambiguous.length} ambiguous`;
+  if (report.unrecognized.length) html += `, ${report.unrecognized.length} unrecognized`;
+  html += `. <button onclick="document.getElementById('importReport').style.display='none'">Dismiss</button>`;
+  if (report.ambiguous.length || report.unrecognized.length || report.notes.length) {
+    html += `<details><summary>Details</summary><ul>`;
+    report.ambiguous.forEach(m => html += `<li><b>Ambiguous:</b> ${escapeHtml(m)}</li>`);
+    report.unrecognized.forEach(m => html += `<li><b>Unrecognized:</b> ${escapeHtml(m)}</li>`);
+    report.notes.forEach(m => html += `<li><b>Note:</b> ${escapeHtml(m)}</li>`);
+    html += `</ul></details>`;
+  }
+  panel.innerHTML = html;
+  panel.style.display = "block";
+}
+
+/* Best-effort match of a loaded config's own `board:` field back to one of
+ * this tool's board_ids, so the picker can auto-switch instead of relying
+ * on the user to have pre-selected the right board. Two passes: a direct
+ * board_id match first (covers a hand-written config that happens to use
+ * the id itself), then a match against each board file's own human-
+ * readable `board.name` -- generateDraft() itself writes `cfg.board =
+ * board.board.name`, so this is the common case for files this tool
+ * produced. Both passes are case-insensitive, exact-match only (no fuzzy
+ * matching -- a near-miss should fall through to "couldn't auto-detect"
+ * rather than silently guess a different board). */
+async function detectBoardId(doc) {
+  const raw = doc && doc.board;
+  if (!raw || typeof raw !== "string") return null;
+  const target = raw.trim().toLowerCase();
+  const idHit = BOARD_IDS.find(id => id.toLowerCase() === target);
+  if (idHit) return idHit;
+  const entries = await Promise.all(BOARD_IDS.map(async id => {
+    const text = await fetchYamlTextOptional(`boards/${id}.board.yaml`);
+    if (!text) return null;
+    try {
+      const parsed = jsyaml.load(text);
+      return { id, name: parsed.board && parsed.board.name };
+    } catch (e) {
+      return null;
+    }
+  }));
+  const nameHit = entries.find(e => e && typeof e.name === "string" && e.name.trim().toLowerCase() === target);
+  return nameHit ? nameHit.id : null;
+}
+
+document.getElementById("configFileInput").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    let doc;
+    try {
+      doc = jsyaml.load(reader.result);
+    } catch (err) {
+      document.getElementById("importReport").style.display = "block";
+      document.getElementById("importReport").innerHTML =
+        `<b>Couldn't parse ${escapeHtml(file.name)}:</b> ${escapeHtml(err.message)}`;
+      return;
+    }
+    if (!doc || typeof doc !== "object") {
+      document.getElementById("importReport").style.display = "block";
+      document.getElementById("importReport").innerHTML = `<b>${escapeHtml(file.name)} doesn't look like a config.yaml (empty or not a mapping).</b>`;
+      return;
+    }
+
+    const priorBoardId = board && board.board && board.board.id;
+    const detectedId = await detectBoardId(doc);
+    let boardNote = null;
+    if (detectedId && detectedId !== priorBoardId) {
+      await loadBoard(detectedId);
+      document.getElementById("boardPicker").value = detectedId;
+      boardNote = `Auto-detected board from config's "board: ${doc.board}" -- switched to ${detectedId}.`;
+    } else if (detectedId) {
+      boardNote = `Config's "board: ${doc.board}" matches the currently selected board (${detectedId}).`;
+    } else if (!priorBoardId) {
+      // No board loaded yet (nothing is preselected at boot -- see boot())
+      // and the config's own "board:" field, if any, didn't match a known
+      // board either -- there's nothing to bind pins against yet.
+      document.getElementById("importReport").style.display = "block";
+      document.getElementById("importReport").innerHTML = doc.board
+        ? `<b>Config's "board: ${escapeHtml(doc.board)}" didn't match any known board.</b> Pick a board above first, then re-load this file.`
+        : `<b>This config.yaml has no "board:" field to auto-detect from.</b> Pick a board above first, then re-load this file.`;
+      return;
+    } else if (doc.board) {
+      boardNote = `Config's "board: ${doc.board}" didn't match any known board -- using the currently selected board (${priorBoardId}); verify pin bindings look right.`;
+    }
+
+    const report = importConfig(doc, reader.result);
+    renderResources();
+    renderHotspotPane();
+    wireHotspotHoverLinks();
+    generateDraft();
+    renderImportReport(report, file.name, boardNote);
+  };
+  reader.onerror = () => {
+    document.getElementById("importReport").style.display = "block";
+    document.getElementById("importReport").innerHTML = `<b>Couldn't read ${escapeHtml(file.name)}.</b>`;
+  };
+  reader.readAsText(file);
+  e.target.value = ""; // allow re-selecting the same file later
+});
 
 /* js-yaml (correctly, per the YAML 1.1 spec it follows) quotes a bare
  * mapping key equal to a "y"/"n"/"on"/"off"/etc. bool-like word, to avoid
@@ -2294,13 +3346,43 @@ function downloadDraft() {
  * Boot
  * ------------------------------------------------------------------- */
 const picker = document.getElementById("boardPicker");
-Object.keys(BOARD_YAML).forEach(id => {
+// Placeholder option -- nothing is preselected/auto-loaded at boot (see
+// boot() below), so there needs to be a real "no board chosen yet" option
+// for the picker to actually show, rather than silently defaulting to
+// whichever real board happens to be first in BOARD_IDS.
+const placeholderOpt = document.createElement("option");
+placeholderOpt.value = "";
+placeholderOpt.textContent = "— Select a board —";
+picker.appendChild(placeholderOpt);
+BOARD_IDS.forEach(id => {
   const o = document.createElement("option");
   o.value = id; o.textContent = id;
   picker.appendChild(o);
 });
-picker.onchange = () => loadBoard(picker.value);
-loadBoard(Object.keys(BOARD_YAML)[0]);
+picker.onchange = () => { if (picker.value) loadBoard(picker.value); };
+
+// The role-tree/vocabulary data derived from schema/fluidnc-config-schema.json
+// is global/board-independent, so it's loaded (and derived) once here before
+// the first board, rather than per-loadBoard() like boards/chips/hotspots.
+// Everything downstream (renderResources(), makeInputRow(), etc.) depends on
+// INPUT_ROLE_TREE/SPINDLE_TYPES/etc. being populated, so loadBoard() must not
+// run until this resolves.
+async function boot() {
+  try {
+    await loadRoleData();
+  } catch (e) {
+    document.getElementById("resourceCol").innerHTML = `<div class="note">` +
+      `Couldn't load schema/fluidnc-config-schema.json (${escapeAttr(e.message)}). If you opened this page ` +
+      `via a file:// URL, browsers block fetch() of local files -- serve this folder over HTTP instead ` +
+      `(e.g. "python3 -m http.server" from a terminal here, then open http://localhost:8000/index.html).</div>`;
+    return;
+  }
+  // No board is preselected/auto-loaded -- the user picks one explicitly
+  // via the picker (or loads an existing config.yaml, which auto-detects
+  // and selects its board for them, see configFileInput's change handler).
+  document.getElementById("boardNote").textContent = "Pick a board above to begin, or load an existing config.yaml.";
+}
+boot();
 </script>
 </body>
 </html>

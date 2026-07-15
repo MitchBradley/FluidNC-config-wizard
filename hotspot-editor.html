@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FluidNC Board Hotspot Editor — Prototype</title>
+<style>
+  :root {
+    --bg: #14191c; --panel: #1c262c; --border: #2c3a42; --text: #d8e2e6;
+    --muted: #7f939c; --accent: #4ea8de; --tbd: #d9a53c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font: 14px/1.4 -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--text);
+  }
+  h1 { font-size: 15px; margin: 0; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 14px 0 6px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .toolbar input[type=text] { flex: 1; min-width: 200px; }
+  input[type=text], textarea {
+    font: inherit; background: #10161a; color: var(--text); border: 1px solid var(--border);
+    border-radius: 4px; padding: 4px 6px;
+  }
+  button {
+    font: inherit; cursor: pointer; background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px; padding: 4px 10px;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { border-color: var(--accent); color: var(--accent); }
+  .note { font-size: 12px; color: var(--muted); padding: 8px 14px; }
+  .layout { display: grid; grid-template-columns: 260px 1fr 320px; gap: 0; height: calc(100vh - 45px); }
+  .col { overflow-y: auto; padding: 10px 14px; border-right: 1px solid var(--border); }
+  .col:last-child { border-right: none; }
+  textarea#boardYamlInput { width: 100%; height: 110px; font-size: 11px; font-family: ui-monospace, monospace; }
+  .label-row {
+    display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 4px; font-size: 12.5px;
+  }
+  .label-row:hover { background: var(--panel); }
+  .label-row.placed { color: #6fbf73; }
+  .label-row.armed { background: rgba(78,168,222,.15); }
+  .label-row .lname { flex: 1; }
+  .label-row .unplace-btn { font-size: 10px; padding: 0 4px; }
+  #imgWrap { position: relative; display: inline-block; max-width: 100%; }
+  #boardImg { max-width: 100%; display: block; user-select: none; -webkit-user-drag: none; }
+  #overlay { position: absolute; inset: 0; cursor: crosshair; }
+  .rect {
+    position: absolute; border: 2px solid var(--accent); background: rgba(78,168,222,.15);
+    box-sizing: border-box; cursor: move;
+  }
+  .rect.selected { border-color: #6fbf73; background: rgba(111,191,115,.18); }
+  .rect .tag {
+    position: absolute; top: -18px; left: -2px; background: var(--accent); color: #0b1114;
+    font-size: 10px; padding: 1px 4px; border-radius: 3px; white-space: nowrap; pointer-events: none;
+  }
+  .rect.selected .tag { background: #6fbf73; }
+  .rect .handle {
+    position: absolute; width: 10px; height: 10px; right: -6px; bottom: -6px;
+    background: #6fbf73; border: 1px solid #0b1114; border-radius: 2px; cursor: nwse-resize;
+  }
+  .rect .del {
+    position: absolute; top: -18px; right: -2px; background: #d9694a; color: #fff;
+    font-size: 10px; line-height: 14px; width: 14px; height: 14px; text-align: center;
+    border-radius: 3px; cursor: pointer;
+  }
+  .rect .label-btn {
+    position: absolute; top: -18px; right: 14px; background: #c98fe0; color: #0b1114;
+    font-size: 10px; line-height: 14px; padding: 0 4px; text-align: center;
+    border-radius: 3px; cursor: pointer; white-space: nowrap;
+  }
+  .rect.label-rect {
+    border: 2px dashed #c98fe0; background: rgba(201,143,224,.14); cursor: move;
+  }
+  .rect.label-rect .tag { background: #c98fe0; }
+  .rect.label-rect .del { top: auto; bottom: -18px; }
+  .rect.label-rect.armed-for-draw { outline: 2px solid #c98fe0; outline-offset: 2px; }
+  .rect.label-rect .orient-btn {
+    position: absolute; bottom: -18px; left: -2px; background: #c98fe0; color: #0b1114;
+    font-size: 10px; line-height: 14px; padding: 0 4px; border-radius: 3px; cursor: pointer;
+  }
+  pre#output {
+    font-size: 11px; font-family: ui-monospace, monospace; white-space: pre-wrap; word-break: break-word;
+    background: #10161a; border: 1px solid var(--border); border-radius: 4px; padding: 8px; margin-top: 6px;
+  }
+  .warn { color: var(--tbd); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>FluidNC Board Hotspot Editor — Prototype</h1>
+<div class="toolbar">
+  <label>Image URL:</label>
+  <input type="text" id="imgUrl" value="http://wiki.fluidnc.com/hardware/corgi_1p1.jpg">
+  <button id="loadImgBtn">Load image</button>
+  <span class="note" style="padding:0 8px 0 0">or</span>
+  <button id="loadImgFileBtn">Load image file…</button>
+  <input type="file" id="loadImgFileInput" accept="image/*" style="display:none">
+  <span class="note" style="padding:0">Test board: Corgi (image from the FluidNC wiki's Corgi page)</span>
+</div>
+
+<div class="layout">
+  <div class="col">
+    <h2>Board resource list</h2>
+    <textarea id="boardYamlInput" placeholder="Load a board.yaml file below, or paste/type a plain label list here (one per line, label | resource type), then click Parse labels."></textarea>
+    <div class="toolbar" style="padding:6px 0; border:none">
+      <button id="loadBoardFileBtn">Load board.yaml file…</button>
+      <input type="file" id="loadBoardFileInput" accept=".yaml,.yml,.txt,text/yaml,text/plain" style="display:none">
+      <button id="parseBtn">Parse labels</button>
+    </div>
+    <div class="note" id="loadBoardNote" style="padding:0 0 6px"></div>
+    <div class="note" style="padding:0 0 8px">
+      Load a real <code>&lt;board&gt;.board.yaml</code> file (labels are extracted automatically from its
+      <code>motor_sockets</code>/<code>generic_pins</code>/<code>rs485_channels</code>/<code>expansion_uarts</code>/<code>i2c_connectors</code>
+      entries), or paste/type a plain label list yourself, one line per resource label in the format
+      <code>label | resource type</code>. Check one or more labels that share the SAME physical connector
+      (e.g. a pin doing double duty as both a 5V output and a MOSFET), then drag a rectangle on the image
+      to place them together.
+    </div>
+    <h2>Labels (<span id="labelCount">0</span>)</h2>
+    <div id="labelList"></div>
+  </div>
+
+  <div class="col" style="border-right:1px solid var(--border)">
+    <h2>Board image</h2>
+    <div class="note" style="padding:0 0 8px" id="drawHint">Check one or more labels on the left, then click-drag on the image to draw a rectangle.</div>
+    <div id="imgWrap">
+      <img id="boardImg" src="" alt="board photo">
+      <div id="overlay"></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h2>Hotspots (<span id="hotspotCount">0</span>)</h2>
+    <div class="toolbar" style="padding:0 0 6px; border:none">
+      <button id="loadBtn">Load hotspots file…</button>
+      <input type="file" id="loadFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
+      <button id="copyBtn">Copy</button>
+      <button id="downloadBtn">Download</button>
+      <button id="clearBtn">Clear all</button>
+    </div>
+    <div class="note" id="loadNote" style="padding:0 0 6px"></div>
+    <pre id="output"></pre>
+  </div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------------
+ * Prototype hotspot editor for the FluidNC config wizard's eventual
+ * "click on a picture of the board" embellishment. Standalone from the
+ * wizard itself -- this tool's only job is producing a small sidecar file
+ * (board_id + image + a list of {labels[], x%, y%, w%, h%} rectangles)
+ * that a future clickable-board UI would consume, keyed by the SAME
+ * resource labels already used in a real board.yaml file (motor_sockets,
+ * generic_pins, rs485_channels, expansion_uarts, etc.) -- this tool does
+ * NOT invent new labels, it only positions existing ones.
+ *
+ * Design notes:
+ * - Rectangles are stored as percentages of the image's natural box, not
+ *   pixels, so the sidecar survives the image being redisplayed at any
+ *   size/resolution.
+ * - A single rectangle can carry MORE THAN ONE label. This matters
+ *   because board.schema.json deliberately allows one physical MCU pin to
+ *   appear under several different resource entries (its own
+ *   "no pin-uniqueness constraint" design principle) -- e.g. the Corgi's
+ *   gpio.4 is both a plain 5V logic output ("5V Out (shared w/ MOSFET1)")
+ *   and a MOSFET driver ("MOSFET1"). Those are two different FluidNC
+ *   roles a config author could pick between, but they're the SAME
+ *   physical connector on the board, so they belong under one hotspot,
+ *   not two overlapping ones.
+ * - Kept deliberately separate from board.schema.json itself: hotspot
+ *   coordinates are a presentation-layer fact about a particular photo,
+ *   not a hardware fact, so this sidecar is meant to live alongside a
+ *   board file (e.g. corgi_cnc_controller.hotspots.yaml), never inside it.
+ * ------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------
+ * Board labels: loaded from a file (a real board.yaml, or a plain
+ * "label | type" list), NOT hardcoded -- previously this textarea was
+ * prefilled with Corgi's labels typed out by hand, which meant trying any
+ * other board meant manually retyping its whole label list. Now either
+ * "Load board.yaml file..." (extracts labels automatically, see
+ * extractLabelsFromBoardYaml() below) or pasting/typing a plain list
+ * directly into the textarea both work, with the textarea starting empty.
+ * ------------------------------------------------------------------- */
+
+// Hand-rolled extraction, matching this tool's existing no-js-yaml-
+// dependency stance (see parseHotspotsYaml() for the same reasoning).
+// Tracks which known resource-array section (top-level, 0-indent key) each
+// line falls under, then pulls out any `label: "..."` occurring on that
+// line -- this works for BOTH shapes real board.yaml files use: a flat
+// single-line `- { label: "X", ... }` entry (generic_pins, rs485_channels,
+// expansion_uarts, i2c_connectors) and a multi-line block entry with
+// `label:` on its own line (motor_sockets' nested `sockets:` list). Returns
+// [] (not a throw) for text that isn't a resource-bearing board.yaml at
+// all, so callers can fall back to treating the text as a plain label list.
+const BOARD_YAML_SECTION_TYPES = {
+  motor_sockets: "motor_socket",
+  generic_pins: "generic_pin",
+  rs485_channels: "rs485_channel",
+  expansion_uarts: "expansion_uart",
+  i2c_connectors: "i2c_connector",
+};
+
+function extractLabelsFromBoardYaml(text) {
+  const out = [];
+  let section = null;
+  text.split("\n").forEach(raw => {
+    if (!raw.trim()) return;
+    if (/^\S/.test(raw)) {
+      // 0-indent line -- a new top-level key, so this either enters one of
+      // our recognized resource sections or (any other top-level key, e.g.
+      // "board:"/"fixed_peripherals:"/"stepping:") leaves whichever section
+      // we were in.
+      const m = raw.match(/^([A-Za-z0-9_]+):/);
+      section = m && BOARD_YAML_SECTION_TYPES[m[1]] ? m[1] : null;
+      return;
+    }
+    if (!section) return;
+    const lm = raw.match(/label:\s*"([^"]*)"|label:\s*'([^']*)'|label:\s*([^\s,}]+)/);
+    if (!lm) return;
+    const label = lm[1] ?? lm[2] ?? lm[3];
+    let type = BOARD_YAML_SECTION_TYPES[section];
+    if (section === "generic_pins") {
+      const dm = raw.match(/direction:\s*(input|output)/);
+      if (dm) type += ` (${dm[1]})`;
+    }
+    out.push({ label, type });
+  });
+  return out;
+}
+
+function loadLabelsFromText(text, sourceName) {
+  const extracted = extractLabelsFromBoardYaml(text);
+  const listText = extracted.length
+    ? extracted.map(({ label, type }) => (type ? `${label} | ${type}` : label)).join("\n")
+    : text; // not a resource-bearing board.yaml -- assume it's already a plain label list
+  document.getElementById("boardYamlInput").value = listText;
+  parseLabels();
+  const note = document.getElementById("loadBoardNote");
+  note.textContent = extracted.length
+    ? `Extracted ${extracted.length} label(s) from ${sourceName || "file"}.`
+    : `Loaded ${sourceName || "file"} as a plain label list (no board.yaml resource sections found in it).`;
+  note.className = "note";
+}
+
+document.getElementById("loadBoardFileBtn").onclick = () => document.getElementById("loadBoardFileInput").click();
+document.getElementById("loadBoardFileInput").onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => loadLabelsFromText(reader.result, file.name);
+  reader.readAsText(file);
+  e.target.value = "";
+};
+
+let labels = [];        // [{label, type}]
+let armed = new Set();  // labels currently checked, to be assigned to the next drawn rect
+// [{id, rect: {x,y,w,h}, labels: [...], labelRect: {x,y,w,h}|null, labelOrientation: "horizontal"|"vertical"}]
+// rect and labelRect are both %-of-image-box boxes, same {x,y,w,h} shape,
+// deliberately symmetric with each other. labelRect is optional: many
+// connectors are big enough that the role text fits right inside the
+// connector box (the wizard falls back to that), but small/crowded
+// connectors need their label placed somewhere else on the photo --
+// labelRect is that separate, independently positioned box.
+let hotspots = [];
+let selectedId = null;
+let nextId = 1;
+let drawingLabelForId = null; // set by the "label" button; next drag on the overlay becomes that hotspot's labelRect instead of a new connector hotspot
+
+function placedLabelSet() {
+  const s = new Set();
+  hotspots.forEach(h => h.labels.forEach(l => s.add(l)));
+  return s;
+}
+
+function parseLabels() {
+  const text = document.getElementById("boardYamlInput").value;
+  labels = text.split("\n").map(l => l.trim()).filter(Boolean).map(line => {
+    const [label, type] = line.split("|").map(s => s.trim());
+    return { label, type: type || "" };
+  });
+  armed.clear();
+  renderLabels();
+}
+
+function renderLabels() {
+  const placed = placedLabelSet();
+  const col = document.getElementById("labelList");
+  col.innerHTML = "";
+  labels.forEach(({ label, type }) => {
+    const row = document.createElement("div");
+    row.className = "label-row" + (placed.has(label) ? " placed" : "") + (armed.has(label) ? " armed" : "");
+    if (placed.has(label)) {
+      row.innerHTML = `<span class="lname">✓ ${escapeHtml(label)}</span>` +
+        `<button class="unplace-btn" data-label="${escapeAttr(label)}">unplace</button>`;
+    } else {
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = armed.has(label);
+      cb.onchange = () => { cb.checked ? armed.add(label) : armed.delete(label); renderLabels(); };
+      row.appendChild(cb);
+      const span = document.createElement("span");
+      span.className = "lname";
+      span.textContent = label + (type ? ` (${type})` : "");
+      row.appendChild(span);
+    }
+    col.appendChild(row);
+  });
+  document.getElementById("labelCount").textContent =
+    `${placed.size}/${labels.length} placed`;
+  col.querySelectorAll(".unplace-btn").forEach(btn => {
+    btn.onclick = () => unplaceLabel(btn.dataset.label);
+  });
+}
+
+function unplaceLabel(label) {
+  hotspots.forEach(h => { h.labels = h.labels.filter(l => l !== label); });
+  hotspots = hotspots.filter(h => h.labels.length > 0);
+  renderLabels();
+  renderHotspots();
+  renderOutput();
+}
+
+function escapeHtml(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function escapeAttr(s) { return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;"); }
+
+/* ---------------------------------------------------------------------
+ * Image + drawing
+ * ------------------------------------------------------------------- */
+document.getElementById("loadImgBtn").onclick = loadImage;
+function loadImage() {
+  document.getElementById("boardImg").src = document.getElementById("imgUrl").value;
+}
+loadImage();
+
+// Local-disk alternative to typing a URL. Reads the file as a data: URL via
+// FileReader and drops it straight into the SAME #imgUrl text field that
+// renderOutput()/parseHotspotsYaml() already read from -- so a locally-
+// loaded image round-trips through the exported hotspots.yaml's `image:`
+// field exactly like a typed URL would, no separate code path needed
+// downstream. The data: URL will be long (the whole image, base64-encoded)
+// but that's an acceptable tradeoff for this standalone prototype; a real
+// integration would more likely want the developer to place the image
+// alongside the board's other files and reference it by relative path.
+document.getElementById("loadImgFileBtn").onclick = () => document.getElementById("loadImgFileInput").click();
+document.getElementById("loadImgFileInput").onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById("imgUrl").value = reader.result;
+    loadImage();
+  };
+  reader.readAsDataURL(file);
+  e.target.value = ""; // allow reloading the same filename twice in a row
+};
+
+const imgWrap = document.getElementById("imgWrap");
+const overlay = document.getElementById("overlay");
+let drawing = null; // { startX, startY, el }
+let dragging = null; // { hotspotId, mode: "move"|"resize", startX, startY, orig }
+
+function overlayRect() { return overlay.getBoundingClientRect(); }
+
+overlay.addEventListener("mousedown", (e) => {
+  if (e.target !== overlay) return; // clicks on an existing .rect are handled by that rect's own listeners
+  if (drawingLabelForId !== null) {
+    // Armed via a hotspot's "label" button -- this drag places/replaces
+    // THAT hotspot's labelRect, not a new connector hotspot.
+    const r = overlayRect();
+    drawing = { startX: e.clientX - r.left, startY: e.clientY - r.top, forLabelId: drawingLabelForId };
+    const el = document.createElement("div");
+    el.className = "rect drawing-temp";
+    overlay.appendChild(el);
+    drawing.el = el;
+    renderHotspots();
+    return;
+  }
+  if (armed.size === 0) {
+    document.getElementById("drawHint").textContent =
+      "Check at least one label on the left before drawing a rectangle.";
+    document.getElementById("drawHint").className = "warn";
+    return;
+  }
+  const r = overlayRect();
+  drawing = { startX: e.clientX - r.left, startY: e.clientY - r.top };
+  const el = document.createElement("div");
+  // NOT class "rect" -- renderHotspots() clears every ".rect" element and
+  // rebuilds strictly from the `hotspots` array, and this temp element
+  // isn't in that array yet (it only joins on mouseup); giving it the same
+  // class would make renderHotspots() sweep it away the instant anything
+  // else triggers a re-render mid-drag (deselecting an old hotspot, etc).
+  el.className = "rect drawing-temp";
+  overlay.appendChild(el);
+  drawing.el = el;
+  selectedId = null;
+  renderHotspots(); // safe: renderHotspots() only clears/rebuilds ".hotspot" elements, not this ".drawing-temp" one
+});
+
+document.addEventListener("mousemove", (e) => {
+  const r = overlayRect();
+  if (drawing) {
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    const left = Math.min(drawing.startX, x), top = Math.min(drawing.startY, y);
+    const w = Math.abs(x - drawing.startX), h = Math.abs(y - drawing.startY);
+    Object.assign(drawing.el.style, { left: left + "px", top: top + "px", width: w + "px", height: h + "px" });
+  } else if (dragging) {
+    const dx = e.clientX - dragging.startX, dy = e.clientY - dragging.startY;
+    const hs = hotspots.find(h => h.id === dragging.hotspotId);
+    if (!hs) return;
+    // target: "rect" (the connector box, original behavior) or "label"
+    // (that hotspot's separately-positioned labelRect, same move/resize math)
+    const box = dragging.target === "label" ? hs.labelRect : hs.rect;
+    if (!box) return;
+    const pctDx = dx / r.width * 100, pctDy = dy / r.height * 100;
+    if (dragging.mode === "move") {
+      box.x = clamp(dragging.orig.x + pctDx, 0, 100 - box.w);
+      box.y = clamp(dragging.orig.y + pctDy, 0, 100 - box.h);
+    } else {
+      box.w = clamp(dragging.orig.w + pctDx, 1, 100 - box.x);
+      box.h = clamp(dragging.orig.h + pctDy, 1, 100 - box.y);
+    }
+    renderHotspots();
+  }
+});
+
+document.addEventListener("mouseup", (e) => {
+  if (drawing) {
+    const r = overlayRect();
+    const rectEl = drawing.el;
+    const left = parseFloat(rectEl.style.left), top = parseFloat(rectEl.style.top);
+    const w = parseFloat(rectEl.style.width), h = parseFloat(rectEl.style.height);
+    overlay.removeChild(rectEl);
+    const forLabelId = drawing.forLabelId;
+    drawing = null;
+    if (w > 4 && h > 4) { // ignore accidental clicks/tiny drags
+      if (forLabelId != null) {
+        const h2 = hotspots.find(x => x.id === forLabelId);
+        if (h2) {
+          h2.labelRect = {
+            x: left / r.width * 100, y: top / r.height * 100,
+            w: w / r.width * 100, h: h / r.height * 100,
+          };
+          if (!h2.labelOrientation) h2.labelOrientation = "horizontal";
+          selectedId = h2.id;
+        }
+      } else {
+        const hotspot = {
+          id: nextId++,
+          rect: {
+            x: left / r.width * 100, y: top / r.height * 100,
+            w: w / r.width * 100, h: h / r.height * 100,
+          },
+          labels: Array.from(armed),
+          labelRect: null, labelOrientation: "horizontal",
+        };
+        hotspots.push(hotspot);
+        armed.clear();
+        selectedId = hotspot.id;
+      }
+      document.getElementById("drawHint").textContent =
+        "Check at least one label on the left before drawing a rectangle.";
+      document.getElementById("drawHint").className = "note";
+      renderLabels();
+      renderHotspots();
+      renderOutput();
+    }
+    drawingLabelForId = null;
+  }
+  dragging = null;
+});
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function renderHotspots() {
+  // Only clears/rebuilds committed hotspots (".hotspot") -- NOT the
+  // in-progress ".drawing-temp" rectangle a live drag creates, which isn't
+  // in the `hotspots` array yet and must survive a mid-drag re-render
+  // (e.g. this same function also runs on mousedown to clear any prior
+  // selection highlight).
+  overlay.querySelectorAll(".hotspot").forEach(el => el.remove());
+  hotspots.forEach(h => {
+    const el = document.createElement("div");
+    el.className = "rect hotspot" + (h.id === selectedId ? " selected" : "");
+    Object.assign(el.style, { left: h.rect.x + "%", top: h.rect.y + "%", width: h.rect.w + "%", height: h.rect.h + "%" });
+    const tag = document.createElement("div");
+    tag.className = "tag";
+    tag.textContent = h.labels.join(", ");
+    el.appendChild(tag);
+
+    el.addEventListener("mousedown", (e) => {
+      e.stopPropagation();
+      selectedId = h.id;
+      renderHotspots();
+      dragging = { hotspotId: h.id, target: "rect", mode: "move", startX: e.clientX, startY: e.clientY, orig: { ...h.rect } };
+    });
+
+    if (h.id === selectedId) {
+      const del = document.createElement("div");
+      del.className = "del";
+      del.textContent = "✕";
+      // Buttons nested inside a .rect need their OWN mousedown handler that
+      // stops propagation -- otherwise the mousedown bubbles up to the
+      // .rect's own listener above, which calls renderHotspots() and
+      // rebuilds/replaces the DOM (including this very button) before the
+      // click event can fire on it, so the click silently never happens.
+      // (Root cause of the long-standing "the X does nothing" bug.)
+      del.addEventListener("mousedown", (e) => e.stopPropagation());
+      del.onclick = (e) => {
+        e.stopPropagation();
+        hotspots = hotspots.filter(x => x.id !== h.id);
+        if (drawingLabelForId === h.id) drawingLabelForId = null;
+        selectedId = null;
+        renderLabels();
+        renderHotspots();
+        renderOutput();
+      };
+      el.appendChild(del);
+
+      const handle = document.createElement("div");
+      handle.className = "handle";
+      handle.addEventListener("mousedown", (e) => {
+        e.stopPropagation();
+        dragging = { hotspotId: h.id, target: "rect", mode: "resize", startX: e.clientX, startY: e.clientY, orig: { ...h.rect } };
+      });
+      el.appendChild(handle);
+
+      // "Draw/redraw label box" button: arms drawingLabelForId so the NEXT
+      // drag on the overlay places (or replaces) this hotspot's labelRect,
+      // rather than creating a new connector hotspot.
+      const labelBtn = document.createElement("div");
+      labelBtn.className = "label-btn";
+      labelBtn.textContent = h.labelRect ? "redraw label" : "+ label box";
+      labelBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+      labelBtn.onclick = (e) => {
+        e.stopPropagation();
+        drawingLabelForId = (drawingLabelForId === h.id) ? null : h.id;
+        document.getElementById("drawHint").textContent = drawingLabelForId === h.id
+          ? "Drag on the image to place this hotspot's label box."
+          : "Check at least one label on the left before drawing a rectangle.";
+        document.getElementById("drawHint").className = drawingLabelForId === h.id ? "warn" : "note";
+        renderHotspots();
+      };
+      el.appendChild(labelBtn);
+    }
+    overlay.appendChild(el);
+
+    // Separate labelRect box, rendered as a sibling (its coordinates are in
+    // the SAME % space as the connector box, i.e. relative to the whole
+    // image, not nested inside the connector element) so it can sit
+    // anywhere on the photo, independent of the connector's own position.
+    if (h.labelRect) {
+      const lel = document.createElement("div");
+      lel.className = "rect hotspot label-rect" + (h.id === selectedId ? " selected" : "")
+        + (drawingLabelForId === h.id ? " armed-for-draw" : "");
+      Object.assign(lel.style, {
+        left: h.labelRect.x + "%", top: h.labelRect.y + "%",
+        width: h.labelRect.w + "%", height: h.labelRect.h + "%",
+      });
+      const ltag = document.createElement("div");
+      ltag.className = "tag";
+      ltag.textContent = h.labels.join(", ") + (h.labelOrientation === "vertical" ? " (V)" : "");
+      lel.appendChild(ltag);
+
+      lel.addEventListener("mousedown", (e) => {
+        e.stopPropagation();
+        selectedId = h.id;
+        renderHotspots();
+        dragging = { hotspotId: h.id, target: "label", mode: "move", startX: e.clientX, startY: e.clientY, orig: { ...h.labelRect } };
+      });
+
+      if (h.id === selectedId) {
+        const del = document.createElement("div");
+        del.className = "del";
+        del.textContent = "✕";
+        del.addEventListener("mousedown", (e) => e.stopPropagation());
+        del.onclick = (e) => {
+          e.stopPropagation();
+          h.labelRect = null;
+          renderHotspots();
+          renderOutput();
+        };
+        lel.appendChild(del);
+
+        const handle = document.createElement("div");
+        handle.className = "handle";
+        handle.addEventListener("mousedown", (e) => {
+          e.stopPropagation();
+          dragging = { hotspotId: h.id, target: "label", mode: "resize", startX: e.clientX, startY: e.clientY, orig: { ...h.labelRect } };
+        });
+        lel.appendChild(handle);
+
+        const orientBtn = document.createElement("div");
+        orientBtn.className = "orient-btn";
+        orientBtn.textContent = h.labelOrientation === "vertical" ? "↕ vertical" : "↔ horizontal";
+        orientBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+        orientBtn.onclick = (e) => {
+          e.stopPropagation();
+          h.labelOrientation = h.labelOrientation === "vertical" ? "horizontal" : "vertical";
+          renderHotspots();
+          renderOutput();
+        };
+        lel.appendChild(orientBtn);
+      }
+      overlay.appendChild(lel);
+    }
+  });
+  document.getElementById("hotspotCount").textContent = hotspots.length;
+}
+
+document.addEventListener("mouseup", () => { renderOutput(); });
+
+/* ---------------------------------------------------------------------
+ * Output (hand-rolled YAML -- the data model here is simple enough that
+ * pulling in a full YAML library for this standalone prototype isn't
+ * worth it; a real integration would presumably reuse the wizard's own
+ * jsyaml.dump()).
+ * ------------------------------------------------------------------- */
+function boardIdGuess() {
+  // Best-effort: look for a line like "id: some_board" in the pasted text,
+  // in case the user pastes a real board.yaml instead of the plain label
+  // list -- purely a convenience, not required.
+  const m = document.getElementById("boardYamlInput").value.match(/^\s*id:\s*(\S+)/m);
+  return m ? m[1] : "corgi_cnc_controller";
+}
+
+function renderOutput() {
+  let y = `board_id: ${boardIdGuess()}\n`;
+  y += `image: ${document.getElementById("imgUrl").value}\n`;
+  y += `hotspots:\n`;
+  if (hotspots.length === 0) y += `  []\n`;
+  hotspots.forEach(h => {
+    y += `  - labels: [${h.labels.map(l => JSON.stringify(l)).join(", ")}]\n`;
+    // rect and label_rect share the same {x,y,w,h} object shape, deliberately.
+    y += `    rect: {x: ${h.rect.x.toFixed(2)}, y: ${h.rect.y.toFixed(2)}, w: ${h.rect.w.toFixed(2)}, h: ${h.rect.h.toFixed(2)}}\n`;
+    if (h.labelRect) {
+      // Optional: only present when the developer drew a separate box for
+      // the role text (see "+ label box" button) -- omitted entirely
+      // otherwise, so the wizard's fallback (label text inside the
+      // connector box itself) stays in effect for ordinary-sized connectors.
+      y += `    label_rect: {x: ${h.labelRect.x.toFixed(2)}, y: ${h.labelRect.y.toFixed(2)}, w: ${h.labelRect.w.toFixed(2)}, h: ${h.labelRect.h.toFixed(2)}}\n`;
+      y += `    label_orientation: ${h.labelOrientation === "vertical" ? "vertical" : "horizontal"}\n`;
+    }
+  });
+  document.getElementById("output").textContent = y;
+}
+
+/* ---------------------------------------------------------------------
+ * Load an existing <board_id>.hotspots.yaml (e.g. one downloaded earlier
+ * from this same tool) back into the editable `hotspots` state, so a
+ * previously-drawn file can be reopened and tweaked rather than always
+ * starting from scratch. Hand-rolled parser matching renderOutput()'s
+ * hand-rolled format exactly (line-oriented, fixed key set) -- consistent
+ * with the rest of this standalone prototype not pulling in a real YAML
+ * library. Not a general YAML parser: it only understands the specific
+ * shape this tool itself writes.
+ * ------------------------------------------------------------------- */
+function parseHotspotsYaml(text) {
+  const lines = text.split("\n");
+  let boardId = null, image = null;
+  const parsed = [];
+  let current = null;
+  lines.forEach(raw => {
+    const line = raw.trim();
+    if (!line) return;
+    let m;
+    if ((m = line.match(/^board_id:\s*(\S+)/))) { boardId = m[1]; return; }
+    if ((m = line.match(/^image:\s*(\S+)/))) { image = m[1]; return; }
+    if (line === "hotspots:" || line === "[]") return;
+    if ((m = line.match(/^-\s*labels:\s*\[(.*)\]/))) {
+      const labels = [];
+      const re = /"((?:[^"\\]|\\.)*)"/g;
+      let lm;
+      while ((lm = re.exec(m[1]))) labels.push(lm[1].replace(/\\"/g, '"'));
+      current = { id: nextId++, rect: { x: 0, y: 0, w: 0, h: 0 }, labels, labelRect: null, labelOrientation: "horizontal" };
+      parsed.push(current);
+      return;
+    }
+    if (!current) return; // stray line before any "- labels:" block -- ignore
+    if ((m = line.match(/^rect:\s*\{x:\s*([-\d.]+),\s*y:\s*([-\d.]+),\s*w:\s*([-\d.]+),\s*h:\s*([-\d.]+)\}/))) {
+      current.rect = { x: parseFloat(m[1]), y: parseFloat(m[2]), w: parseFloat(m[3]), h: parseFloat(m[4]) };
+      return;
+    }
+    if ((m = line.match(/^label_rect:\s*\{x:\s*([-\d.]+),\s*y:\s*([-\d.]+),\s*w:\s*([-\d.]+),\s*h:\s*([-\d.]+)\}/))) {
+      current.labelRect = { x: parseFloat(m[1]), y: parseFloat(m[2]), w: parseFloat(m[3]), h: parseFloat(m[4]) };
+      return;
+    }
+    if ((m = line.match(/^label_orientation:\s*(\S+)/))) { current.labelOrientation = m[1]; return; }
+    // Backward compat with files exported before the connector box's own
+    // coordinates were nested into `rect: {...}` (they used to be flat
+    // top-level x:/y:/w:/h: keys, same shape label_rect still uses) --
+    // without this, loading an older export leaves current.rect at its
+    // {0,0,0,0} default (an invisible, zero-size connector box) while
+    // label_rect (whose shape never changed) parses and renders fine, which
+    // looked like "only the label boxes show up, not the connector ones."
+    if ((m = line.match(/^x:\s*([-\d.]+)/))) { current.rect.x = parseFloat(m[1]); return; }
+    if ((m = line.match(/^y:\s*([-\d.]+)/))) { current.rect.y = parseFloat(m[1]); return; }
+    if ((m = line.match(/^w:\s*([-\d.]+)/))) { current.rect.w = parseFloat(m[1]); return; }
+    if ((m = line.match(/^h:\s*([-\d.]+)/))) { current.rect.h = parseFloat(m[1]); return; }
+  });
+  return { boardId, image, hotspots: parsed };
+}
+
+function loadHotspotsFromText(text, sourceName) {
+  const note = document.getElementById("loadNote");
+  let result;
+  try {
+    result = parseHotspotsYaml(text);
+  } catch (e) {
+    note.textContent = `Couldn't parse ${sourceName || "file"}: ${e.message}`;
+    note.className = "warn";
+    return;
+  }
+  if (!result.hotspots.length) {
+    note.textContent = `No hotspots found in ${sourceName || "file"} -- check it's a file this tool exported.`;
+    note.className = "warn";
+    return;
+  }
+  hotspots = result.hotspots;
+  if (result.image) document.getElementById("imgUrl").value = result.image;
+  // Note: this doesn't touch the label textarea/board_id guess -- the
+  // hotspots file only records which labels are USED, not the board's full
+  // label list, so the left-pane label list stays whatever's already
+  // loaded/pasted there (boardIdGuess() still reads it independently).
+  loadImage();
+  selectedId = null;
+  drawingLabelForId = null;
+  renderLabels();
+  renderHotspots();
+  renderOutput();
+  note.textContent = `Loaded ${result.hotspots.length} hotspot(s) from ${sourceName || "file"}.`;
+  note.className = "note";
+}
+
+document.getElementById("loadBtn").onclick = () => document.getElementById("loadFileInput").click();
+document.getElementById("loadFileInput").onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => loadHotspotsFromText(reader.result, file.name);
+  reader.readAsText(file);
+  e.target.value = ""; // allow reloading the same filename twice in a row
+};
+
+document.getElementById("parseBtn").onclick = parseLabels;
+document.getElementById("copyBtn").onclick = () => navigator.clipboard.writeText(document.getElementById("output").textContent);
+document.getElementById("downloadBtn").onclick = () => {
+  const blob = new Blob([document.getElementById("output").textContent], { type: "text/yaml" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${boardIdGuess()}.hotspots.yaml`;
+  a.click();
+};
+document.getElementById("clearBtn").onclick = () => {
+  hotspots = []; selectedId = null; armed.clear(); drawingLabelForId = null;
+  renderLabels(); renderHotspots(); renderOutput();
+};
+
+parseLabels();
+renderHotspots();
+renderOutput();
+</script>
+</body>
+</html>

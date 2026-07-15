@@ -1,0 +1,56 @@
+board:
+  id: 6x_cnc_controller
+  name: "6x CNC Controller"
+  manufacturer: "Dring Engineering Services"
+  mcu_chip: esp32
+  status: active
+stepping:
+  engines: [i2s]
+fixed_peripherals:
+  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
+  sdcard: { cs_pin: gpio.5 }
+  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 24 }
+motor_sockets:
+  sockets:
+    - label: "Motor1"
+      driver_class: external_connector
+      pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
+    - label: "Motor2"
+      driver_class: external_connector
+      pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
+    - label: "Motor3"
+      driver_class: external_connector
+      pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
+    - label: "Motor4"
+      driver_class: external_connector
+      pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
+    - label: "Motor5"
+      driver_class: external_connector
+      pins: { step_pin: i2so.18, direction_pin: i2so.17, disable_pin: i2so.16 }
+    - label: "Motor6"
+      driver_class: external_connector
+      pins: { step_pin: i2so.21, direction_pin: i2so.20, disable_pin: i2so.23 }
+generic_pins:
+  - { label: "IO2",  mcu_pin: gpio.2,  direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "5V Out (shared w/ MOSFET1)", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "MOSFET1", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "5V Out (shared w/ MOSFET2)", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "MOSFET2", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "5V Out 3", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 4", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Spindle Fwd", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: open_collector } }
+  - { label: "Spindle Rev", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: open_collector } }
+rs485_channels:
+  - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
+expansion_sockets:
+  - label: "Expansion Module Socket"
+    pins:
+      - { module_pin: "1", mcu_pin: gpio.25, direction: bidirectional }
+      - { module_pin: "2", mcu_pin: gpio.27, direction: bidirectional }

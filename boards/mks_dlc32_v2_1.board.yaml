@@ -1,0 +1,37 @@
+board:
+  id: mks_dlc32_v2_1
+  name: "MKS DLC32 V2.1"
+  manufacturer: "Makerbase"
+  mcu_chip: esp32
+  status: community_documented
+stepping:
+  engines: [i2s]
+fixed_peripherals:
+  spi: { miso_pin: gpio.12, mosi_pin: gpio.13, sck_pin: gpio.14 }
+  sdcard: { cs_pin: gpio.15, card_detect_pin: gpio.39 }
+  i2so: { bck_pin: gpio.16, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 8 }
+i2c_connectors:
+  - { label: "I2C", sda_pin: gpio.0, scl_pin: gpio.4 }
+motor_sockets:
+  shared_disable_pin: i2so.0
+  sockets:
+    - label: "X"
+      driver_class: stepstick_socket
+      pins: { step_pin: i2so.1, direction_pin: i2so.2 }
+    - label: "Y"
+      driver_class: stepstick_socket
+      pins: { step_pin: i2so.5, direction_pin: i2so.6 }
+    - label: "Z"
+      driver_class: stepstick_socket
+      pins: { step_pin: i2so.3, direction_pin: i2so.4 }
+generic_pins:
+  - { label: "X-", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "Y-", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "Z-", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "PROBE_PIN", mcu_pin: gpio.22, direction: input, input_profile: { conditioning: raw } }
+  - { label: "TTL (laser PWM)", mcu_pin: gpio.32, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Spindle (RPM control)", mcu_pin: gpio.32, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "LCD_CS", mcu_pin: gpio.25, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "TOUCH_CS", mcu_pin: gpio.26, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "LCD_RST", mcu_pin: gpio.27, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "LCD_RS", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: raw } }
