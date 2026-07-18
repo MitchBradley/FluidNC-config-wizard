@@ -3,6 +3,7 @@ board:
   name: "FluidNC Pen/Laser CNC Controller (SPI)"
   manufacturer: "Dring Engineering Services"
   mcu_chip: esp32
+  family: "FluidNC Pen/Laser Controller"
   status: active
 stepping:
   engines: [rmt, timed]
