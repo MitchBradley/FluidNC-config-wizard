@@ -19,13 +19,8 @@ meta:
     native USB-C ("USB CDC", experimental, direct to the ESP32-S3's fixed
     USB_D-/USB_D+ silicon pins -- see chips/esp32s3.chip.yaml
 
-    Known gap in this file, deliberately left unfilled rather than
-    guessed: the center "CNC I/O module socket" is real and
-    documented in prose (accepts any standard CNC I/O module) but its
-    individual pin assignments are only shown in a schematic image,
-    not enumerated in the wiki's text -- not modeled as an
-    expansion_socket here; cross-check the schematic before assuming
-    specific pins.
+    The I/O module pins are listed as individual IO pins since we do
+    not have module abstration at this time.
 
 stepping:
   engines: [i2s]
