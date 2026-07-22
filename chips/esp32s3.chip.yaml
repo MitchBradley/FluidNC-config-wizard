@@ -1,0 +1,96 @@
+# ESP32-S3 (WROOM-1/WROOM-1U family) chip-level GPIO facts. Same purpose/
+# consumer as esp32.chip.yaml (see index.html's chipGpioCaps -- currently
+# used ONLY to decide whether a pin's :pu/:pd attribute dropdown is offered
+# in the wizard UI; "reserved" is not currently read/enforced by the wizard
+# at all, so a mistake here is low-stakes/cosmetic, not a hard validation
+# gate). One general file for the "esp32s3" chip family, same precedent as
+# esp32.chip.yaml covering multiple classic-ESP32 flash/PSRAM variants --
+# NOT specific to one exact module SKU.
+#
+# Sourced from the Espressif ESP32-S3-WROOM-1/1U datasheet and cross-
+# referenced against https://github.com/atomic14/esp32-s3-pinouts (itself
+# datasheet-derived). Reasonably confident facts:
+#   - GPIO0, GPIO3, GPIO45, GPIO46 are strapping pins (boot mode / VDD_SPI /
+#     ROM message printing / JTAG source select) -- usable as ordinary
+#     GPIOs after boot, but a device wired to one of these can interfere
+#     with boot if it holds the pin in the wrong state at reset. Recorded
+#     as ordinary usable pins here (matching real confirmed board usage,
+#     see below), not blocked -- this is a wiring caution, not a hard
+#     chip-level unavailability.
+#   - GPIO19/GPIO20 are the native USB D-/D+ pins -- only actually
+#     unavailable for other use on a board that wires up native USB (a
+#     board-level fact, not modeled as chip-level "reserved" here).
+#   - GPIO22-25 are not broken out on the WROOM-1/1U module package at all
+#     (absent from the module's own pin table) -- marked reserved.
+#   - GPIO26-32 are used internally for the in-package SPI flash -- marked
+#     reserved (matches every WROOM-1 module regardless of flash/PSRAM
+#     size).
+#
+# GPIO35/36/37 deliberately left USABLE here, despite general ESP32-S3
+# guidance (e.g. the atomic14 pinout guide) that octal-PSRAM modules
+# ("R8"/"R16" variants, which includes the N8R8 module used on boards like
+# Doberman) must avoid them -- per explicit confirmation (Doberman uses
+# gpio.36/gpio.37 as ordinary limit inputs in its own official example
+# config): that guidance is about the PSRAM hardware being PRESENT on the
+# module, not about whether it's actually enabled/wired up in a given
+# board's FluidNC build. A board whose firmware build doesn't enable
+# octal PSRAM is free to use these pins for ordinary low-speed I/O, same
+# as any other pin -- this is a board/firmware-config choice, not a fixed
+# chip-level restriction, so it belongs in a board's own file (by simply
+# not listing these pins as used, if a specific board DOES enable PSRAM),
+# not as a chip-wide "reserved" here. This file describes raw silicon/
+# module capability only, on the same principle already used for the
+# strapping pins above: what a specific board's designer chose to leave
+# unused is that board's own fact to omit, not this file's to guess or
+# restrict pre-emptively.
+chip_id: esp32s3
+gpio:
+  - { pin: 0,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 1,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 2,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 3,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 4,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 5,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 6,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 7,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 8,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 9,  input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 10, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 11, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 12, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 13, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 14, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 15, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 16, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 17, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 18, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 19, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 20, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 21, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 22, reserved: true, input: false, output: false }
+  - { pin: 23, reserved: true, input: false, output: false }
+  - { pin: 24, reserved: true, input: false, output: false }
+  - { pin: 25, reserved: true, input: false, output: false }
+  - { pin: 26, reserved: true, input: false, output: false }
+  - { pin: 27, reserved: true, input: false, output: false }
+  - { pin: 28, reserved: true, input: false, output: false }
+  - { pin: 29, reserved: true, input: false, output: false }
+  - { pin: 30, reserved: true, input: false, output: false }
+  - { pin: 31, reserved: true, input: false, output: false }
+  - { pin: 32, reserved: true, input: false, output: false }
+  - { pin: 33, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 34, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 35, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 36, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 37, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 38, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 39, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 40, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 41, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 42, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 43, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 44, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 45, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 46, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 47, input: true, output: true, pullup: true, pulldown: true }
+  - { pin: 48, input: true, output: true, pullup: true, pulldown: true }
