@@ -6,11 +6,22 @@ board:
   family: btt_rodent
   revision: "V1.1"
   status: community_documented
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/hardware/3rd-party/btt_rodent"
+  vendor_docs_url: "https://github.com/bigtreetech/Rodent/blob/master/BIGTREETECH%20Rodent%20V1.x%20User%20Manual.pdf"
+  purchase_url: "https://biqu.equipment/collections/new-arrival/products/bigtreetech-rodent"
+  schematic_url: "https://github.com/bigtreetech/Rodent/tree/master/Hardware"
+  notes: >
+    The E1-Lim input moved from gpio.37 (V1.0) to gpio.39
+    (V1.1) -- this file is the V1.1 variant and uses gpio.39 (see
+    boards/btt_rodent_v1_0.board.yaml for the V1.0 pin instead).
+
 stepping:
   engines: [i2s]
 fixed_peripherals:
   spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
-  sdcard: { cs_pin: gpio.0 }
+  sdcard: { cs_pin: gpio.0, notes: "Wiki's own default config explicitly sets card_detect_pin: NO_PIN -- no physical card-detect wire, not merely unconfirmed." }
   i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 16 }
 i2c_connectors:
   - { label: "I2C", sda_pin: gpio.27, scl_pin: gpio.26 }
@@ -41,21 +52,45 @@ motor_sockets:
       pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
       extra: { spi_index: 4, r_sense_ohms_hint: 0.075 }
 generic_pins:
-  - { label: "E-Lim", generic_name: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Z-Lim", generic_name: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Y-Lim", generic_name: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: raw } }
-  - { label: "X-Lim", generic_name: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: raw } }
-  - { label: "E1-Lim", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: raw } }
-  - { label: "Probe", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }
+  # 5 limit inputs + probe, each a 3-pin JST (switch/SW_VCC/GND) with the
+  # switch's own supply voltage (5V/12V/V-Motor) jumper-selectable via a
+  # V-Lim (or, for probe, V-Probe/CN43) jumper -- wiki, verbatim: "the
+  # resistor in the optocoupler circuit below will dissipate over 500mW",
+  # confirming these go through an actual optocoupler, not a bare GPIO;
+  # same jumper-selectable-voltage opto pattern as 6x/4x/Corgi's inputs.
+  - { label: "E-Lim", generic_name: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "Z-Lim", generic_name: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "Y-Lim", generic_name: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "X-Lim", generic_name: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "E1-Lim", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated }, notes: "gpio.39 on V1.1 boards; V1.0 uses gpio.37 instead (see btt_rodent_v1_0.board.yaml)." }
+  - { label: "Probe", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated }, notes: "Separate V-Probe/CN43 voltage-selector jumper from the 5 switch inputs' shared V-Lim jumper; also has its own NPN EN jumper to add a pull-up on the signal pin for NPN-style sensors." }
   - { label: "MOSFET1", generic_name: "FET2", mcu_pin: gpio.2, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
   - { label: "MOSFET2", generic_name: "FET4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
   - { label: "MOSFET3", generic_name: "FET12", mcu_pin: gpio.12, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 11.0 } }
   - { label: "Spindle PWM", generic_name: "Spindle 10V", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 10.0 } }
-  - { label: "SPINDLE_EN", generic_name: "Spindle Out25", mcu_pin: gpio.25, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
-  - { label: "DIRECTION", generic_name: "DIRECTION", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
-  - { label: "SPINDLE_FB", generic_name: "Spindle Out14", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 3.3 } }
+  # DIRECTION/SPINDLE_EN/SPINDLE_FB: wiki, verbatim: these 3 signals "go
+  # directly to ESP32 GPIOs via 100 ohm series resistors, with transient
+  # voltage protection... could be used as either outputs or inputs for
+  # anything compatible with 3.3V signaling" -- genuinely bidirectional-
+  # by-choice, not fixed-output, hence direction: either (not a shared
+  # single signal, so distinct from rs485_channel's own reuse case below).
+  # Named IO<gpio> rather than a Spindle-specific generic_name since their
+  # role here is one particular suggested use, not a fixed board function.
+  - { label: "SPINDLE_EN", generic_name: "IO25", mcu_pin: gpio.25, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole, voltage_max: 3.3 }, notes: "Wiki's suggested use is spindle enable; not compatible with typical opto-isolated VFD digital inputs (see board-level notes)." }
+  - { label: "DIRECTION", generic_name: "IO15", mcu_pin: gpio.15, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole, voltage_max: 3.3 }, notes: "Wiki's suggested use is spindle direction. Shares gpio.15 with the RS485 channel's tx_pin -- usable as one or the other, not both while RS485 is in use." }
+  - { label: "SPINDLE_FB", generic_name: "IO14", mcu_pin: gpio.14, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole, voltage_max: 3.3 }, notes: "Wiki's suggested use is spindle feedback. Shares gpio.14 with the RS485 channel's rts_pin -- usable as one or the other, not both while RS485 is in use." }
   - { label: "Status LED R", generic_name: "Status LED R", mcu_pin: i2so.3, direction: output, output_profile: { drive_type: totem_pole } }
   - { label: "Status LED B", generic_name: "Status LED B", mcu_pin: i2so.11, direction: output, output_profile: { drive_type: totem_pole } }
   - { label: "Status LED G", generic_name: "Status LED G", mcu_pin: i2so.14, direction: output, output_profile: { drive_type: totem_pole } }
 rs485_channels:
-  - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
+  - label: "RS485"
+    tx_pin: gpio.15
+    rx_pin: gpio.16
+    rts_pin: gpio.14
+    pins_reusable_as_generic_io: true
+    notes: >
+      Wiki: "See back of controller for A and B pins... There is an Rx
+      LED to help with diagnostics." tx_pin/rts_pin double as the
+      IO15/IO14 generic pins above when RS485 isn't in use -- see their
+      notes; the wiki explicitly warns those signals "cannot be used if
+      RS485 is in use."
