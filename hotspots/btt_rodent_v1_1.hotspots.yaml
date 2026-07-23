@@ -1,0 +1,99 @@
+board_id: btt_rodent_v1_1
+image: images/btt_rodent_v1_1.jpg
+hotspots:
+  - generic_name: "Motor4"
+    rect: {x: 29.00, y: 85.00, w: 10.00, h: 8.00}
+    label_rect: {x: 29.00, y: 93.00, w: 10.00, h: 12.00}
+    label_orientation: horizontal
+  - generic_name: "Motor3"
+    rect: {x: 39.00, y: 85.00, w: 10.00, h: 8.00}
+    label_rect: {x: 39.00, y: 93.00, w: 10.00, h: 12.00}
+    label_orientation: horizontal
+  - generic_name: "Motor2"
+    rect: {x: 72.00, y: 85.00, w: 10.00, h: 8.00}
+    label_rect: {x: 72.00, y: 93.00, w: 10.00, h: 11.00}
+    label_orientation: horizontal
+  - generic_name: "Motor1"
+    rect: {x: 93.00, y: 66.00, w: 5.00, h: 18.00}
+    label_rect: {x: 98.00, y: 66.00, w: 6.00, h: 18.00}
+    label_orientation: vertical
+  - generic_name: "In35"
+    rect: {x: 71.00, y: 36.00, w: 9.00, h: 7.00}
+    label_rect: {x: 71.00, y: 27.00, w: 9.00, h: 9.00}
+    label_orientation: horizontal
+  - generic_name: "In34"
+    rect: {x: 62.00, y: 36.00, w: 9.00, h: 7.00}
+    label_rect: {x: 62.00, y: 27.00, w: 9.00, h: 9.00}
+    label_orientation: horizontal
+  - generic_name: "In33"
+    rect: {x: 53.00, y: 36.00, w: 9.00, h: 7.00}
+    label_rect: {x: 53.00, y: 27.00, w: 9.00, h: 9.00}
+    label_orientation: horizontal
+  - generic_name: "In32"
+    rect: {x: 44.00, y: 36.00, w: 9.00, h: 7.00}
+    label_rect: {x: 44.00, y: 27.00, w: 9.00, h: 9.00}
+    label_orientation: horizontal
+  - generic_name: "In39"
+    rect: {x: 35.00, y: 36.00, w: 9.00, h: 7.00}
+    label_rect: {x: 35.00, y: 27.00, w: 9.00, h: 9.00}
+    label_orientation: horizontal
+  - generic_name: "In36"
+    rect: {x: 26.00, y: 36.00, w: 9.00, h: 7.00}
+    label_rect: {x: 26.00, y: 27.00, w: 9.00, h: 9.00}
+    label_orientation: horizontal
+  - generic_name: "Spindle 10V"
+    rect: {x: 41.00, y: 3.00, w: 9.00, h: 10.00}
+    label_rect: {x: 41.00, y: -9.00, w: 9.00, h: 11.00}
+    label_orientation: horizontal
+  - generic_name: "RS485"
+    rect: {x: 27.00, y: 3.00, w: 13.00, h: 10.00}
+    label_rect: {x: 27.00, y: -9.00, w: 13.00, h: 12.00}
+    label_orientation: horizontal
+  - generic_name: "FET4"
+    rect: {x: 1.00, y: 11.00, w: 6.00, h: 15.00}
+    label_rect: {x: -5.00, y: 11.00, w: 6.00, h: 15.00}
+    label_orientation: horizontal
+  - generic_name: "FET2"
+    rect: {x: 1.00, y: 27.00, w: 6.00, h: 15.00}
+    label_rect: {x: -5.00, y: 27.00, w: 6.00, h: 15.00}
+    label_orientation: vertical
+  - generic_name: "FET12"
+    rect: {x: 1.00, y: 44.00, w: 6.00, h: 15.00}
+    label_rect: {x: -5.00, y: 44.00, w: 6.00, h: 15.00}
+    label_orientation: vertical
+  - generic_name: "IO14"
+    rect: {x: 57.00, y: 1.00, w: 8.00, h: 8.00}
+    label_rect: {x: 57.00, y: -10.00, w: 8.00, h: 11.00}
+    label_orientation: horizontal
+  - generic_name: "IO15"
+    rect: {x: 75.00, y: 1.00, w: 8.00, h: 8.00}
+    label_rect: {x: 75.00, y: -10.00, w: 8.00, h: 11.00}
+    label_orientation: horizontal
+  - generic_name: "I2C"
+    rect: {x: 93.00, y: 47.00, w: 5.00, h: 16.00}
+    label_rect: {x: 98.00, y: 47.00, w: 6.00, h: 18.00}
+    label_orientation: vertical
+  - generic_name: "Status LED R"
+    rect: {x: 9.00, y: 0.00, w: 3.00, h: 13.00}
+    label_rect: {x: 9.00, y: -15.00, w: 3.00, h: 14.00}
+    label_orientation: vertical
+  - generic_name: "Status LED G"
+    rect: {x: 12.00, y: 0.00, w: 3.00, h: 13.00}
+    label_rect: {x: 12.00, y: -15.00, w: 3.00, h: 14.00}
+    label_orientation: vertical
+  - generic_name: "Status LED B"
+    rect: {x: 15.00, y: 0.00, w: 3.00, h: 13.00}
+    label_rect: {x: 15.00, y: -15.00, w: 3.00, h: 15.00}
+    label_orientation: vertical
+  - generic_name: "IO25"
+    rect: {x: 66.00, y: 1.00, w: 8.00, h: 8.00}
+    label_rect: {x: 66.00, y: -10.00, w: 8.00, h: 11.00}
+    label_orientation: horizontal
+  - generic_name: "IO26"
+    rect: {x: 87.00, y: 55.00, w: 6.00, h: 5.00}
+    label_rect: {x: 75.00, y: 55.00, w: 12.00, h: 5.00}
+    label_orientation: horizontal
+  - generic_name: "IO27"
+    rect: {x: 87.00, y: 60.00, w: 6.00, h: 5.00}
+    label_rect: {x: 75.00, y: 60.00, w: 12.00, h: 5.00}
+    label_orientation: vertical
