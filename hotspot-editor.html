@@ -6,7 +6,12 @@
 <style>
   :root {
     --bg: #14191c; --panel: #1c262c; --border: #2c3a42; --text: #d8e2e6;
-    --muted: #7f939c; --accent: #4ea8de; --tbd: #d9a53c;
+    --muted: #7f939c; --accent: #64e3fc; --tbd: #d9a53c; --danger: #e0616b;
+    /* Halfway between --muted and --text -- matches index.html's own
+       --muted-strong, used the same way here: for secondary-but-still-
+       worth-reading text (currently just .note-info) that needs more
+       contrast than --muted alone gives. */
+    --muted-strong: #aebcc4;
   }
   * { box-sizing: border-box; }
   body {
@@ -14,7 +19,7 @@
     background: var(--bg); color: var(--text);
   }
   h1 { font-size: 15px; margin: 0; padding: 10px 14px; border-bottom: 1px solid var(--border); }
-  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 14px 0 6px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-strong); margin: 14px 0 6px; }
   .toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
   .toolbar input[type=text] { flex: 1; min-width: 200px; }
   input[type=text], textarea {
@@ -27,7 +32,30 @@
   }
   button:hover { border-color: var(--accent); color: var(--accent); }
   button.primary { border-color: var(--accent); color: var(--accent); }
+  /* Same severity-tier vocabulary as the main wizard's index.html --
+   * .note-instruct (imperative, e.g. the default drag-hint text),
+   * .note-info (neutral status, e.g. "N hotspots loaded"), .note-warn
+   * (advisory, e.g. "pick a label before drawing"/the armed-drag-hint
+   * state -- this tool's --tbd amber has no competing "TBD field" meaning
+   * here, unlike the wizard, so it doubles as the warning color directly),
+   * or .note-error (an operation actually failed, e.g. a hotspots.yaml
+   * that wouldn't parse). Color-only here (no left accent stripe like the
+   * wizard's boxed .note) -- these are plain inline text notes with no
+   * border/background to anchor a stripe against, and several call sites
+   * override padding-left to 0, so a stripe would collide with the text.
+   * Matches this file's own pre-existing convention of color-only state
+   * signaling (see the armed-drag amber, orient-btn highlight, etc). Both
+   * classes always applied together, e.g. class="note note-warn". */
   .note { font-size: 14px; line-height: 1.5; color: var(--text); padding: 8px 14px; }
+  .note-instruct { color: var(--accent); }
+  .note-info { color: var(--muted-strong); }
+  .note-warn { color: var(--tbd); }
+  .note-error { color: var(--danger); }
+  /* For a single warning-flavored fragment of text nested inside an
+     otherwise-info note (e.g. the "load the image file" callout inside
+     the hotspots-loaded success message) -- a finer-grained warning
+     signal than wrapping the WHOLE note in .note-warn would allow. */
+  .tag-warn { color: var(--tbd); font-weight: 600; }
   .layout { display: grid; grid-template-columns: 260px 1fr 320px; gap: 0; height: calc(100vh - 45px); }
   .col { overflow: auto; padding: 10px 14px; border-right: 1px solid var(--border); }
   .col:last-child { border-right: none; }
@@ -54,7 +82,7 @@
      makes the rest of it reachable, rather than silently clipping it. */
   #imgWrap { position: relative; display: inline-block; background: var(--panel); border-radius: 4px; }
   #imgPad { display: inline-block; padding: 150px; }
-  #boardImg { max-width: none; display: block; user-select: none; -webkit-user-drag: none; outline: 1px dashed var(--muted); }
+  #boardImg { max-width: none; display: block; user-select: none; -webkit-user-drag: none; outline: 1px dashed var(--muted-strong); }
   #overlay {
     position: absolute; inset: 0; cursor: crosshair;
     background-image:
@@ -119,7 +147,6 @@
     font-size: 11px; font-family: ui-monospace, monospace; white-space: pre-wrap; word-break: break-word;
     background: #10161a; border: 1px solid var(--border); border-radius: 4px; padding: 8px; margin-top: 6px;
   }
-  .warn { color: var(--tbd); font-size: 14px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -130,18 +157,22 @@
   <div class="col">
     <h2>Board resource list</h2>
     <div class="toolbar" style="padding:0 0 6px; border:none">
-      <button id="loadBoardFileBtn">Load board.yaml file…</button>
+      <!-- "primary" (accent-colored) until a board file's been loaded --
+           see loadLabelsFromText(), which removes it. The button's own
+           label already says "Load board.yaml file…", so a separate
+           "load a board file" instruction div was redundant with it --
+           replaced by this styling instead of removed-but-unreplaced. -->
+      <button id="loadBoardFileBtn" class="primary">Load board.yaml file…</button>
       <input type="file" id="loadBoardFileInput" accept=".yaml,.yml,.txt,text/yaml,text/plain" style="display:none">
     </div>
     <div class="note" id="loadBoardNote" style="padding:0 0 6px"></div>
-    <div class="note" style="padding:0 0 8px">
-      Load a real <code>&lt;board&gt;.board.yaml</code> file -- labels are extracted automatically from its
-      <code>motor_sockets</code>/<code>generic_pins</code>/<code>rs485_channels</code>/<code>expansion_uarts</code>/<code>i2c_connectors</code>
-      entries. Pick one label on the left, then drag a rectangle on the image to
-      place it -- one hotspot, one name, even for a pin that does double duty (e.g. a MOSFET
-      output also usable as a 5V output): give each role its own separate hotspot on the photo.
+    <!-- placeLabelHint only -- see renderLabels(), which reveals it once
+         `labels` is populated. Its "how to load a board file" counterpart
+         is gone; see loadBoardFileBtn's accent styling above instead. -->
+    <div class="note note-instruct" id="placeLabelHint" style="padding:0 0 8px; display:none">
+      Select a resource then draw its hotspot over the image
     </div>
-    <h2>Connector Names (<span id="labelCount">0</span>)</h2>
+    <h2>Resources (<span id="labelCount">0</span>)</h2>
     <div id="labelList"></div>
   </div>
 
@@ -149,7 +180,9 @@
     <div class="imgcol-header">
       <h2>Board image</h2>
       <div class="toolbar" style="padding:0 0 6px; border:none">
-        <button id="loadImgFileBtn">Load board photo…</button>
+        <!-- "primary" (accent-colored) until an image's been loaded --
+             see loadImgFileInput's onchange handler, which removes it. -->
+        <button id="loadImgFileBtn" class="primary">Load board image…</button>
         <input type="file" id="loadImgFileInput" accept="image/*" style="display:none">
         <span style="margin-left:auto; display:flex; align-items:center; gap:8px">
           <button id="zoomOutBtn">−</button>
@@ -159,8 +192,22 @@
           <span class="note" style="padding:0 0 0 8px">or Ctrl/⌘+scroll over the image</span>
         </span>
       </div>
-      <div class="note" id="imgLoadNote" style="padding:0 0 6px">Load a local image file to begin. It's normalized (downscaled/recompressed) automatically -- nothing is fetched from a URL.</div>
-      <div class="note" style="padding:0 0 8px" id="drawHint">Pick a label on the left, then click-drag on the image to draw a rectangle.</div>
+      <!-- Empty/hidden until an image loads -- the button's own label
+           already says "Load board image…", so a separate "load an image
+           file" instruction was redundant with it (replaced by the
+           button's accent styling above); once an image IS loaded this
+           becomes a genuinely useful status line (dimensions etc), which
+           has no button-label equivalent, so it's kept for that. -->
+      <div class="note note-instruct" id="imgLoadNote" style="padding:0 0 6px; display:none"></div>
+      <!-- drawHint's "click-drag on the image" advice doesn't make sense
+           before there's actually an image loaded to draw on, so it also
+           stays hidden until loadImgFileInput's onchange handler reveals
+           it, alongside imgLoadNote above. -->
+      <!-- Content always set by updateDrawHint() (called on reveal, and on
+           every armedLabel/drawingLabelForId change) -- left empty here
+           rather than duplicating any one of its three possible messages,
+           since a static default would drift out of sync with it. -->
+      <div class="note note-instruct" style="padding:0 0 8px; display:none" id="drawHint"></div>
     </div>
     <div class="imgcol-body">
       <div id="imgWrap">
@@ -332,10 +379,9 @@ function loadLabelsFromText(text, sourceName) {
   armedLabel = null;
   renderLabels();
   const note = document.getElementById("loadBoardNote");
-  note.textContent = extracted.length
-    ? `Extracted ${extracted.length} label(s) from ${sourceName || "file"}.`
-    : `Loaded ${sourceName || "file"} as a plain label list (no board.yaml resource sections found in it).`;
-  note.className = "note";
+  note.textContent = `${sourceName || "file"} - ${extracted.length} resources.`;
+  note.className = "note note-info";
+  document.getElementById("loadBoardFileBtn").classList.remove("primary");
 }
 
 document.getElementById("loadBoardFileBtn").onclick = () => document.getElementById("loadBoardFileInput").click();
@@ -376,6 +422,7 @@ function placedLabelSet() {
 }
 
 function renderLabels() {
+  document.getElementById("placeLabelHint").style.display = labels.length ? "" : "none";
   const placed = placedLabelSet();
   const col = document.getElementById("labelList");
   col.innerHTML = "";
@@ -395,7 +442,7 @@ function renderLabels() {
       cb.type = "radio";
       cb.name = "armedLabel";
       cb.checked = armedLabel === label;
-      cb.onchange = () => { armedLabel = cb.checked ? label : null; renderLabels(); };
+      cb.onchange = () => { armedLabel = cb.checked ? label : null; updateDrawHint(); renderLabels(); };
       row.appendChild(cb);
       const span = document.createElement("span");
       span.className = "lname";
@@ -456,7 +503,19 @@ document.getElementById("loadImgFileInput").onchange = (e) => {
       }
       document.getElementById("boardImg").src = src;
       const note = document.getElementById("imgLoadNote");
-      note.textContent = `Loaded ${file.name} (${w}x${h}${longEdge > MAX_IMG_DIM ? ", downscaled for editing" : ""}).`;
+      note.textContent = `${file.name} (${w}x${h}${longEdge > MAX_IMG_DIM ? ", downscaled for editing" : ""}).`;
+      note.className = "note note-info";
+      note.style.display = "";
+      updateDrawHint();
+      document.getElementById("drawHint").style.display = "";
+      document.getElementById("loadImgFileBtn").classList.remove("primary");
+      // Hides the "load the image file" callout inside the hotspots-loaded
+      // success message (see loadHotspotsFromText()), if that message is
+      // currently showing it -- covers loading the image AFTER the
+      // hotspots.yaml, not just before (which loadHotspotsFromText()
+      // itself already accounts for at message-build time).
+      const imgWarn = document.getElementById("loadImageWarn");
+      if (imgWarn) imgWarn.style.display = "none";
     };
     probe.src = reader.result;
   };
@@ -568,6 +627,32 @@ function snapPct(v) { return Math.round(v / GRID_SNAP_PCT) * GRID_SNAP_PCT; }
 function beginNoSelect() { document.body.style.userSelect = "none"; }
 function endNoSelect() { document.body.style.userSelect = ""; }
 
+/* Single source of truth for drawHint's text/tier, driven by the same
+ * state (drawingLabelForId/armedLabel) that actually governs what a drag
+ * on the overlay will do right now -- every place that used to set
+ * drawHint's textContent/className directly duplicated this same
+ * three-way decision, which let them drift out of sync (e.g. the message
+ * shown right when the image first loads never checked armedLabel at
+ * all, so it could claim "the resource selected on the left" was ready to
+ * draw even when nothing was actually armed yet). Called wherever any of
+ * that state changes, and once right after the image loads/drawHint is
+ * first revealed. */
+function updateDrawHint() {
+  const hint = document.getElementById("drawHint");
+  if (drawingLabelForId !== null) {
+    hint.textContent = "Drag on the image to place this hotspot's role box.";
+    hint.className = "note note-warn";
+  } else if (armedLabel === null) {
+    hint.textContent = "Select a resource on the left to choose which hotspot to draw.";
+    hint.className = "note note-warn";
+  } else {
+    hint.innerHTML = `Click/drag to draw a hotspot rectangle for the resource selected on the left.` +
+      `<br><br>First draw a green rectangle for the resource name, the click "+ label box" to draw a ` +
+      `magenta rectangle for the FluidNC role name.`;
+    hint.className = "note note-instruct";
+  }
+}
+
 overlay.addEventListener("mousedown", (e) => {
   if (e.target !== overlay) return; // clicks on an existing .rect are handled by that rect's own listeners
   e.preventDefault(); // stop the browser's own selection-drag from starting alongside ours
@@ -585,9 +670,7 @@ overlay.addEventListener("mousedown", (e) => {
     return;
   }
   if (armedLabel === null) {
-    document.getElementById("drawHint").textContent =
-      "Pick a label on the left before drawing a rectangle.";
-    document.getElementById("drawHint").className = "warn";
+    updateDrawHint();
     return;
   }
   const r = overlayRect();
@@ -683,9 +766,7 @@ document.addEventListener("mouseup", (e) => {
         armedLabel = null;
         selectedId = hotspot.id;
       }
-      document.getElementById("drawHint").textContent =
-        "Pick a label on the left before drawing a rectangle.";
-      document.getElementById("drawHint").className = "note";
+      updateDrawHint();
       renderLabels();
       renderHotspots();
       renderOutput();
@@ -780,10 +861,7 @@ function renderHotspots() {
         labelBtn.onclick = (e) => {
           e.stopPropagation();
           drawingLabelForId = (drawingLabelForId === h.id) ? null : h.id;
-          document.getElementById("drawHint").textContent = drawingLabelForId === h.id
-            ? "Drag on the image to place this hotspot's role box."
-            : "Pick a label on the left before drawing a rectangle.";
-          document.getElementById("drawHint").className = drawingLabelForId === h.id ? "warn" : "note";
+          updateDrawHint();
           renderHotspots();
         };
         el.appendChild(labelBtn);
@@ -979,12 +1057,12 @@ function loadHotspotsFromText(text, sourceName) {
     result = parseHotspotsYaml(text);
   } catch (e) {
     note.textContent = `Couldn't parse ${sourceName || "file"}: ${e.message}`;
-    note.className = "warn";
+    note.className = "note note-error";
     return;
   }
   if (!result.hotspots.length) {
     note.textContent = `No hotspots found in ${sourceName || "file"} -- check it's a file this tool exported.`;
-    note.className = "warn";
+    note.className = "note note-error";
     return;
   }
   hotspots = result.hotspots;
@@ -994,16 +1072,30 @@ function loadHotspotsFromText(text, sourceName) {
   // loaded/pasted there (boardIdGuess() still reads it independently). It
   // also can't auto-load the referenced image (result.image is a repo-
   // relative path, not fetchable from this standalone local tool) -- the
-  // contributor needs to separately click "Load board photo…" and pick that
+  // contributor needs to separately click "Load board image…" and pick that
   // same image file from wherever they have it on disk.
   selectedId = null;
   drawingLabelForId = null;
   renderLabels();
   renderHotspots();
   renderOutput();
-  note.textContent = `Loaded ${result.hotspots.length} hotspot(s) from ${sourceName || "file"}.`
-    + (result.image ? ` Now load its image file (was saved as ${result.image}) to continue editing visually.` : "");
-  note.className = "note";
+  // Only nag about loading the image if one isn't already loaded -- this
+  // fires just as easily when re-loading a hotspots.yaml onto a session
+  // that already has its image in place (e.g. re-importing after editing
+  // the file externally), where the suggestion is simply wrong. Checked
+  // via getAttribute(), NOT the .src property -- an <img> with no src
+  // attribute set still reports a truthy, base-resolved .src (the page's
+  // own URL), so that would read as "loaded" even when it never was.
+  const imageAlreadyLoaded = !!document.getElementById("boardImg").getAttribute("src");
+  // The "load the image file" part is its own warning-styled span (rather
+  // than plain text tacked onto the info message) with a stable id, so it
+  // can also be hidden later by the image-load handler if the image gets
+  // loaded AFTER this message is already showing -- not just suppressed
+  // up front when it's already loaded at the time this message is built.
+  note.innerHTML = `${escapeHtml(sourceName || "file")} - ${result.hotspots.length} hotspots.`
+    + (result.image ? `<br><br> <span class="tag-warn" id="loadImageWarn" style="display:${imageAlreadyLoaded ? "none" : ""}">` +
+      `Load the image file to continue editing visually.</span>` : "");
+  note.className = "note note-info";
 }
 
 /* ---------------------------------------------------------------------

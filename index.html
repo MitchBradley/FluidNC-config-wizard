@@ -39,12 +39,18 @@
 <style>
   :root {
     --bg: #0f1417; --panel: #171e23; --border: #2a343b; --text: #dbe4e8;
-    --muted: #7d8f98; --accent: #4fb5c9; --tbd: #d9a441; --fixed: #5c7d63; --danger: #e0616b;
+    --muted: #7d8f98; --accent: #64e3fc; --tbd: #d9a441; --fixed: #5c7d63; --danger: #e0616b;
     /* Halfway between --muted and --text -- for secondary-but-still-worth-
        reading text (section headers, per-row sub info, the fixed-
        peripherals list) that needs to stay visually subordinate to actual
        resource names/values without being as low-contrast as --muted. */
     --muted-strong: #aebcc4;
+    /* Amber, but distinct from --tbd's amber -- --tbd already has an
+       established, different meaning ("this field needs a decision"), so
+       a genuine advisory warning (e.g. the RS485/expansion-UART "only one
+       of these can be used" note) gets its own slightly more orange tone
+       rather than overloading --tbd's. */
+    --warn: #e0a53c;
   }
   * { box-sizing: border-box; }
   body {
@@ -57,6 +63,14 @@
   }
   header h1 { font-size: 17px; margin: 0; font-weight: 600; }
   header p { margin: 0; color: var(--muted); font-size: 12.5px; }
+  /* Board picker sits in a flex:1 middle region so it lands roughly
+     centered in the header (between the title and the right-pinned
+     load-config button) rather than jammed hard against the right edge --
+     it reads much better against the resource pane's own "Pick a board
+     above" instruction that way, since the picker is now actually more
+     "above" than "above and off to the right". */
+  .header-picker { flex: 1; text-align: center; }
+  .header-right { margin-left: auto; display: flex; align-items: baseline; gap: 16px; }
   select, button {
     background: var(--panel); color: var(--text); border: 1px solid var(--border);
     border-radius: 5px; padding: 6px 10px; font-size: 13px; font-family: inherit;
@@ -133,10 +147,39 @@
   .summary .stat.tbd b { color: var(--tbd); }
   .summary .stat.done b { color: #6fbf73; }
   .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+  /* .note is the base box (background/border/spacing) for every status/
+   * guidance message in the resource pane. Its SEVERITY -- what kind of
+   * message it is -- is a separate modifier class, always paired with
+   * "note": .note-instruct (imperative -- tells the user to do something
+   * right now, e.g. "Pick a board above to begin"), .note-info (neutral
+   * status/context, nothing to act on), .note-warn (advisory -- worth
+   * noticing but not a failure, e.g. a shared-pin/bus conflict), or
+   * .note-error (an operation actually failed -- couldn't load/parse a
+   * file). Color-only (an earlier left accent-stripe treatment looked like
+   * an unclosed bracket against this box's own border, so was dropped);
+   * deliberately reuses existing app-wide color tokens (--accent for
+   * "do this", --danger for real errors) rather than inventing a fully
+   * separate palette, except --warn (see its definition above) which
+   * needed to stay distinct from --tbd's already-established meaning. */
   .note {
     font-size: 14px; line-height: 1.5; color: var(--text); background: var(--panel);
     border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 16px;
   }
+  .note-instruct { color: var(--accent); }
+  .note-info { color: var(--muted-strong); }
+  .note-warn { color: var(--warn); }
+  .note-error { color: var(--danger); }
+  /* The loaded board's name, shown just below the resource-pane's intro
+     instruction note -- styled like a heading (same weight/size as
+     header h1) rather than folded into that note's own instructional
+     text/color, since it's an identifying title, not an instruction. */
+  .board-title { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 16px; }
+  /* Ambiguous/Unrecognized import-report list items are their own small
+   * warning-flavored callouts inside an otherwise info/warn-toned panel --
+   * see renderImportReport() -- so their <b> label gets --warn directly
+   * rather than waiting for a wrapping .note-warn (which colors the WHOLE
+   * panel, a coarser-grained decision made once per import, not per line). */
+  .note b.tag-warn { color: var(--warn); }
   .inline-field {
     font: inherit; font-size: 12.5px; font-family: inherit; color: var(--tbd);
     background: #1c262c; border: 1px solid var(--tbd); border-radius: 3px;
@@ -312,15 +355,22 @@
 
 <header>
   <h1>FluidNC Board Mapping Wizard</h1>
-  <select id="boardPicker" style="margin-left:auto"></select>
-  <input type="file" id="customBoardFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
-  <button onclick="document.getElementById('configFileInput').click()">Load config.yaml…</button>
-  <input type="file" id="configFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
+  <div class="header-picker">
+    <select id="boardPicker"></select>
+  </div>
+  <div class="header-right">
+    <input type="file" id="customBoardFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
+    <button onclick="document.getElementById('configFileInput').click()">Load config.yaml…</button>
+    <input type="file" id="configFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
+  </div>
 </header>
 
 <main>
   <div class="col left" id="resourceCol">
-    <div class="note" id="boardNote"></div>
+    <div class="note note-instruct" id="boardNote"></div>
+    <!-- importReport's tier varies by outcome (error/info/warn) -- its
+         className is set in full wherever its content is, see
+         renderImportReport() and configFileInput's change handler. -->
     <div class="note" id="importReport" style="display:none"></div>
   </div>
   <div class="col hotspot" id="hotspotCol" style="display:none">
@@ -1427,7 +1477,7 @@ async function loadBoard(id) {
     // #resourceCol itself is never replaced (it's the element renderResources()
     // writes INTO), so that's the stable place to report a load failure,
     // whether this is the very first load or a later one that failed.
-    document.getElementById("resourceCol").innerHTML = `<div class="note">` +
+    document.getElementById("resourceCol").innerHTML = `<div class="note note-error">` +
       `Couldn't load boards/${escapeAttr(id)}.board.yaml (${escapeAttr(e.message)}). If you opened this page via a ` +
       `file:// URL, browsers block fetch() of local files -- serve this folder over HTTP instead ` +
       `(e.g. "python3 -m http.server" from a terminal here, then open http://localhost:8000/index.html).</div>`;
@@ -1437,7 +1487,7 @@ async function loadBoard(id) {
   try {
     doc = jsyaml.load(boardText);
   } catch (e) {
-    document.getElementById("resourceCol").innerHTML = `<div class="note">` +
+    document.getElementById("resourceCol").innerHTML = `<div class="note note-error">` +
       `Couldn't parse boards/${escapeAttr(id)}.board.yaml (${escapeAttr(e.message)}).</div>`;
     return;
   }
@@ -1502,7 +1552,7 @@ function loadCustomBoardFile(file) {
     try {
       doc = jsyaml.load(reader.result);
     } catch (e) {
-      document.getElementById("resourceCol").innerHTML = `<div class="note">` +
+      document.getElementById("resourceCol").innerHTML = `<div class="note note-error">` +
         `Couldn't parse ${escapeAttr(file.name)} (${escapeAttr(e.message)}).</div>`;
       return;
     }
@@ -1510,7 +1560,7 @@ function loadCustomBoardFile(file) {
     await applyBoardDoc(doc, null);
   };
   reader.onerror = () => {
-    document.getElementById("resourceCol").innerHTML = `<div class="note">` +
+    document.getElementById("resourceCol").innerHTML = `<div class="note note-error">` +
       `Couldn't read ${escapeAttr(file.name)}.</div>`;
   };
   reader.readAsText(file);
@@ -1890,7 +1940,7 @@ function renderHotspotPane() {
   }
   mainEl.style.gridTemplateColumns = "320px 1fr max-content";
   col.style.display = "";
-  col.innerHTML = `<div class="note">Click a highlighted region to selct its row on the left.</div>
+  col.innerHTML = `<div class="note note-instruct">Click a highlighted region to selct its row on the left.</div>
     <div id="hotspotImgWrap">
       <div id="hotspotImgPad">
         <img id="hotspotImg" src="${escapeAttr(hotspotData.image)}" alt="board photo">
@@ -2089,11 +2139,14 @@ function renderResources() {
   col.innerHTML = "";
 
   const note = document.createElement("div");
-  note.className = "note";
-  note.innerHTML = `<b>${board.board.name}</b><br>` +
-    `<br>For each physical board resource below, ` +
-    `choose it's FluidNC role (or leave Unused).`;
+  note.className = "note note-instruct";
+  note.textContent = `For each physical board resource below, choose it's FluidNC role (or leave Unused).`;
   col.appendChild(note);
+
+  const title = document.createElement("div");
+  title.className = "board-title";
+  title.textContent = board.board.name;
+  col.appendChild(title);
 
   // Kinematics has NO left-pane row -- the left pane is pure board-resource
   // assignment, and a kinematic system choice isn't tied to any board
@@ -2189,7 +2242,7 @@ function renderResources() {
     });
     if (boardHasUartTmc(board) && board.rs485_channels && board.rs485_channels.length) {
       const warn = document.createElement("div");
-      warn.className = "note";
+      warn.className = "note note-warn";
       warn.innerHTML = `<b>Note:</b> this board's onboard TMC drivers already use uart1, so both RS485 ` +
         `and this expansion connector default to uart2 -- per real FluidNC board docs, only one of them ` +
         `can actually be used in a given config file.`;
@@ -3558,12 +3611,19 @@ function renderImportReport(report, filename, boardNote) {
   html += `. <button onclick="document.getElementById('importReport').style.display='none'">Dismiss</button>`;
   if (report.ambiguous.length || report.unrecognized.length || report.notes.length) {
     html += `<details><summary>Details</summary><ul>`;
-    report.ambiguous.forEach(m => html += `<li><b>Ambiguous:</b> ${escapeHtml(m)}</li>`);
-    report.unrecognized.forEach(m => html += `<li><b>Unrecognized:</b> ${escapeHtml(m)}</li>`);
+    report.ambiguous.forEach(m => html += `<li><b class="tag-warn">Ambiguous:</b> ${escapeHtml(m)}</li>`);
+    report.unrecognized.forEach(m => html += `<li><b class="tag-warn">Unrecognized:</b> ${escapeHtml(m)}</li>`);
     report.notes.forEach(m => html += `<li><b>Note:</b> ${escapeHtml(m)}</li>`);
     html += `</ul></details>`;
   }
   panel.innerHTML = html;
+  // Nothing to flag at all -> plain info. Anything ambiguous/unrecognized,
+  // or a boardNote saying the config's own board didn't match (so pin
+  // bindings should be double-checked), is worth a warning tone instead --
+  // this import succeeded, but the result deserves a second look.
+  const needsAttention = report.ambiguous.length || report.unrecognized.length ||
+    (boardNote && boardNote.includes("verify pin bindings"));
+  panel.className = needsAttention ? "note note-warn" : "note note-info";
   panel.style.display = "block";
 }
 
@@ -3606,12 +3666,14 @@ document.getElementById("configFileInput").addEventListener("change", (e) => {
     try {
       doc = jsyaml.load(reader.result);
     } catch (err) {
+      document.getElementById("importReport").className = "note note-error";
       document.getElementById("importReport").style.display = "block";
       document.getElementById("importReport").innerHTML =
         `<b>Couldn't parse ${escapeHtml(file.name)}:</b> ${escapeHtml(err.message)}`;
       return;
     }
     if (!doc || typeof doc !== "object") {
+      document.getElementById("importReport").className = "note note-error";
       document.getElementById("importReport").style.display = "block";
       document.getElementById("importReport").innerHTML = `<b>${escapeHtml(file.name)} doesn't look like a config.yaml (empty or not a mapping).</b>`;
       return;
@@ -3631,6 +3693,7 @@ document.getElementById("configFileInput").addEventListener("change", (e) => {
       // No board loaded yet (nothing is preselected at boot -- see boot())
       // and the config's own "board:" field, if any, didn't match a known
       // board either -- there's nothing to bind pins against yet.
+      document.getElementById("importReport").className = "note note-error";
       document.getElementById("importReport").style.display = "block";
       document.getElementById("importReport").innerHTML = doc.board
         ? `<b>Config's "board: ${escapeHtml(doc.board)}" didn't match any known board.</b> Pick a board above first, then re-load this file.`
@@ -3648,6 +3711,7 @@ document.getElementById("configFileInput").addEventListener("change", (e) => {
     renderImportReport(report, file.name, boardNote);
   };
   reader.onerror = () => {
+    document.getElementById("importReport").className = "note note-error";
     document.getElementById("importReport").style.display = "block";
     document.getElementById("importReport").innerHTML = `<b>Couldn't read ${escapeHtml(file.name)}.</b>`;
   };
@@ -3810,7 +3874,7 @@ async function boot() {
   try {
     await loadRoleData();
   } catch (e) {
-    document.getElementById("resourceCol").innerHTML = `<div class="note">` +
+    document.getElementById("resourceCol").innerHTML = `<div class="note note-error">` +
       `Couldn't load schema/fluidnc-config-schema.json (${escapeAttr(e.message)}). If you opened this page ` +
       `via a file:// URL, browsers block fetch() of local files -- serve this folder over HTTP instead ` +
       `(e.g. "python3 -m http.server" from a terminal here, then open http://localhost:8000/index.html).</div>`;
