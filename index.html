@@ -357,7 +357,8 @@
  * ------------------------------------------------------------------- */
 const BOARD_IDS = [
   "6x_cnc_controller", "4x_cnc_controller", "corgi_cnc_controller",
-  "fluidnc_pen_laser_spi", "mks_dlc32_v2_1", "btt_rodent_v1_0", "btt_rodent_v1_1",
+  "fluidnc_pen_laser_spi", "tmc2209_pen_laser_v2", "mks_dlc32_v2_1",
+  "btt_rodent_v1_0", "btt_rodent_v1_1", "doberman",
 ];
 
 async function fetchYamlText(path) {
@@ -3554,6 +3555,7 @@ document.getElementById("configFileInput").addEventListener("change", (e) => {
     if (detectedId && detectedId !== priorBoardId) {
       await loadBoard(detectedId);
       document.getElementById("boardPicker").value = detectedId;
+      syncUrlToBoard(detectedId);
       boardNote = `Auto-detected board from config's "board: ${doc.board}" -- switched to ${detectedId}.`;
     } else if (detectedId) {
       boardNote = `Config's "board: ${doc.board}" matches the currently selected board (${detectedId}).`;
@@ -3653,7 +3655,29 @@ BOARD_IDS.forEach(id => {
   o.value = id; o.textContent = id;
   picker.appendChild(o);
 });
-picker.onchange = () => { if (picker.value) loadBoard(picker.value); };
+picker.onchange = () => { if (picker.value) { loadBoard(picker.value); syncUrlToBoard(picker.value); } };
+
+/* ---------------------------------------------------------------------
+ * URL-based board selection: index.html?board=<id> preselects and loads
+ * that board at boot, so a board's own wiki/vendor page can link straight
+ * into the wizard already showing the right resource list -- e.g.
+ * "index.html?board=corgi_cnc_controller" -- rather than requiring every
+ * visitor to find and click through the dropdown themselves. Two halves:
+ * getBoardIdFromUrl() (read on boot) and syncUrlToBoard() (called
+ * whenever the selected board changes some other way -- the picker
+ * itself, or config.yaml auto-detection on import -- so the address bar
+ * stays a valid, shareable/bookmarkable link to whatever's currently
+ * loaded, without adding a new history entry per change).
+ * ------------------------------------------------------------------- */
+function getBoardIdFromUrl() {
+  return new URLSearchParams(window.location.search).get("board");
+}
+function syncUrlToBoard(id) {
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set("board", id);
+  else url.searchParams.delete("board");
+  history.replaceState(null, "", url);
+}
 
 // The role-tree/vocabulary data derived from schema/fluidnc-config-schema.json
 // is global/board-independent, so it's loaded (and derived) once here before
@@ -3671,9 +3695,26 @@ async function boot() {
       `(e.g. "python3 -m http.server" from a terminal here, then open http://localhost:8000/index.html).</div>`;
     return;
   }
-  // No board is preselected/auto-loaded -- the user picks one explicitly
-  // via the picker (or loads an existing config.yaml, which auto-detects
-  // and selects its board for them, see configFileInput's change handler).
+  // Normally no board is preselected/auto-loaded -- the user picks one
+  // explicitly via the picker (or loads an existing config.yaml, which
+  // auto-detects and selects its board for them, see configFileInput's
+  // change handler) -- UNLESS a ?board=<id> URL param names one (see
+  // getBoardIdFromUrl()/syncUrlToBoard() above), for linking directly into
+  // the wizard with a board already selected.
+  const urlBoardId = getBoardIdFromUrl();
+  if (urlBoardId && BOARD_IDS.includes(urlBoardId)) {
+    document.getElementById("boardPicker").value = urlBoardId;
+    await loadBoard(urlBoardId);
+    return;
+  }
+  if (urlBoardId) {
+    // Named board doesn't exist (typo, or a board removed/renamed since a
+    // link was published) -- fall back to the normal empty-picker state
+    // rather than silently ignoring the mistake.
+    document.getElementById("boardNote").innerHTML =
+      `<b>URL named board "${escapeAttr(urlBoardId)}", which isn't a recognized board id.</b> Pick a board above to begin, or load an existing config.yaml.`;
+    return;
+  }
   document.getElementById("boardNote").textContent = "Pick a board above to begin, or load an existing config.yaml.";
 }
 boot();
