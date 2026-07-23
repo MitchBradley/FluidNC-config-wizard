@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>FluidNC Board Mapping Wizard — Prototype</title>
+<title>FluidNC Board Mapping Wizard</title>
 <script>(function(e,t){typeof exports==`object`&&typeof module<`u`?t(exports):typeof define==`function`&&define.amd?define([`exports`],t):(e=typeof globalThis<`u`?globalThis:e||self,t(e.jsyaml={}))})(this,function(e){Object.defineProperty(e,Symbol.toStringTag,{value:`Module`});var t=Symbol(`NOT_RESOLVED`),n=Symbol(`MERGE_KEY`);function r(e,t){var n,r,i,a,o,s;return{tagName:e,nodeKind:`scalar`,implicit:(n=t.implicit)==null?!1:n,matchByTagPrefix:(r=t.matchByTagPrefix)==null?!1:r,implicitFirstChars:(i=t.implicitFirstChars)==null?null:i,resolve:t.resolve,identify:(a=t.identify)==null?null:a,represent:(o=t.represent)==null?(e=>String(e)):o,representTagName:(s=t.representTagName)==null?null:s}}function i(e,t){var n,r,i,a,o;let s=t.finalize===void 0;return{tagName:e,nodeKind:`sequence`,implicit:!1,matchByTagPrefix:(n=t.matchByTagPrefix)==null?!1:n,create:t.create,addItem:t.addItem,finalize:(r=t.finalize)==null?(e=>e):r,carrierIsResult:s,identify:(i=t.identify)==null?null:i,represent:(a=t.represent)==null?(e=>e):a,representTagName:(o=t.representTagName)==null?null:o}}function a(e,t){var n,r,i,a,o;let s=t.finalize===void 0;return{tagName:e,nodeKind:`mapping`,implicit:!1,matchByTagPrefix:(n=t.matchByTagPrefix)==null?!1:n,create:t.create,addPair:t.addPair,has:t.has,keys:t.keys,get:t.get,finalize:(r=t.finalize)==null?(e=>e):r,carrierIsResult:s,identify:(i=t.identify)==null?null:i,represent:(a=t.represent)==null?(e=>e):a,representTagName:(o=t.representTagName)==null?null:o}}var o=r(`tag:yaml.org,2002:str`,{resolve:e=>e,identify:e=>typeof e==`string`}),s=[``,`~`,`null`,`Null`,`NULL`],c=r(`tag:yaml.org,2002:null`,{implicit:!0,implicitFirstChars:[``,`~`,`n`,`N`],resolve:e=>s.indexOf(e)===-1?t:null,identify:e=>e===null,represent:()=>`null`}),l=r(`tag:yaml.org,2002:null`,{implicit:!0,implicitFirstChars:[`n`],resolve:(e,n)=>e===`null`||n&&e===``?null:t,identify:e=>e===null,represent:()=>`null`}),u=[``,`~`,`null`,`Null`,`NULL`],d=r(`tag:yaml.org,2002:null`,{implicit:!0,implicitFirstChars:[``,`~`,`n`,`N`],resolve:e=>u.indexOf(e)===-1?t:null,identify:e=>e===null,represent:()=>`null`}),f=[`true`,`True`,`TRUE`],p=[`false`,`False`,`FALSE`],m=r(`tag:yaml.org,2002:bool`,{implicit:!0,implicitFirstChars:[`t`,`T`,`f`,`F`],resolve:e=>f.indexOf(e)===-1?p.indexOf(e)===-1?t:!1:!0,identify:e=>Object.prototype.toString.call(e)===`[object Boolean]`,represent:e=>e?`true`:`false`}),h=[`true`],ee=[`false`],te=r(`tag:yaml.org,2002:bool`,{implicit:!0,implicitFirstChars:[`t`,`f`],resolve:e=>h.indexOf(e)===-1?ee.indexOf(e)===-1?t:!1:!0,identify:e=>Object.prototype.toString.call(e)===`[object Boolean]`,represent:e=>e?`true`:`false`}),ne=[`true`,`True`,`TRUE`,`y`,`Y`,`yes`,`Yes`,`YES`,`on`,`On`,`ON`],re=[`false`,`False`,`FALSE`,`n`,`N`,`no`,`No`,`NO`,`off`,`Off`,`OFF`],ie=r(`tag:yaml.org,2002:bool`,{implicit:!0,implicitFirstChars:[`y`,`Y`,`n`,`N`,`t`,`T`,`f`,`F`,`o`,`O`],resolve:e=>ne.indexOf(e)===-1?re.indexOf(e)===-1?t:!1:!0,identify:e=>Object.prototype.toString.call(e)===`[object Boolean]`,represent:e=>e?`true`:`false`}),ae=RegExp(`^(?:0o[0-7]+|0x[0-9a-fA-F]+|[-+]?[0-9]+)$`),oe=RegExp(`^(?:[-+]?0b[0-1]+|[-+]?0o[0-7]+|[-+]?0x[0-9a-fA-F]+|[-+]?[0-9]+)$`);function se(e){let t=e,n=1;return(t[0]===`-`||t[0]===`+`)&&(t[0]===`-`&&(n=-1),t=t.slice(1)),t.startsWith(`0b`)?n*parseInt(t.slice(2),2):t.startsWith(`0o`)?n*parseInt(t.slice(2),8):t.startsWith(`0x`)?n*parseInt(t.slice(2),16):n*parseInt(t,10)}function ce(e,n){if(n){if(!oe.test(e))return t}else if(!ae.test(e))return t;let r=se(e);return Number.isFinite(r)?r:t}var le=r(`tag:yaml.org,2002:int`,{implicit:!0,implicitFirstChars:[`-`,`+`,...`0123456789`],resolve:ce,identify:e=>Number.isInteger(e)&&!Object.is(e,-0)&&e.toString(10).indexOf(`e`)<0,represent:e=>e.toString(10)}),ue=RegExp(`^-?(?:0|[1-9][0-9]*)$`),de=RegExp(`^(?:[-+]?0b[0-1]+|[-+]?0o[0-7]+|[-+]?0x[0-9a-fA-F]+|[-+]?[0-9]+)$`);function fe(e){let t=e,n=1;return(t[0]===`-`||t[0]===`+`)&&(t[0]===`-`&&(n=-1),t=t.slice(1)),t.startsWith(`0b`)?n*parseInt(t.slice(2),2):t.startsWith(`0o`)?n*parseInt(t.slice(2),8):t.startsWith(`0x`)?n*parseInt(t.slice(2),16):n*parseInt(t,10)}function pe(e,n){if(n){if(!de.test(e))return t}else if(!ue.test(e))return t;let r=fe(e);return Number.isFinite(r)?r:t}var me=r(`tag:yaml.org,2002:int`,{implicit:!0,implicitFirstChars:[`-`,...`0123456789`],resolve:pe,identify:e=>Number.isInteger(e)&&!Object.is(e,-0)&&e.toString(10).indexOf(`e`)<0,represent:e=>e.toString(10)}),he=RegExp(`^(?:[-+]?0b[0-1_]+|[-+]?0[0-7_]+|[-+]?0x[0-9a-fA-F_]+|[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+|[-+]?(?:0|[1-9][0-9_]*))$`);function ge(e){let t=e.replace(/_/g,``),n=1;if((t[0]===`-`||t[0]===`+`)&&(t[0]===`-`&&(n=-1),t=t.slice(1)),t.startsWith(`0b`))return n*parseInt(t.slice(2),2);if(t.startsWith(`0x`))return n*parseInt(t.slice(2),16);if(t.includes(`:`)){let e=0;for(let n of t.split(`:`))e=e*60+Number(n);return n*e}return t!==`0`&&t[0]===`0`?n*parseInt(t,8):n*parseInt(t,10)}function _e(e){if(!he.test(e))return t;let n=ge(e);return Number.isFinite(n)?n:t}var ve=r(`tag:yaml.org,2002:int`,{implicit:!0,implicitFirstChars:[`-`,`+`,...`0123456789`],resolve:_e,identify:e=>Number.isInteger(e)&&!Object.is(e,-0)&&e.toString(10).indexOf(`e`)<0,represent:e=>e.toString(10)}),ye=RegExp(`^(?:[-+]?[0-9]+(?:\\.[0-9]*)?(?:[eE][-+]?[0-9]+)?|[-+]?\\.[0-9]+(?:[eE][-+]?[0-9]+)?|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`),be=RegExp(`^(?:[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`);function xe(e){if(!ye.test(e))return t;let n=e.toLowerCase(),r=n[0]===`-`?-1:1;if(`+-`.includes(n[0])&&(n=n.slice(1)),n===`.inf`)return r===1?1/0:-1/0;if(n===`.nan`)return NaN;let i=r*parseFloat(n);return Number.isFinite(i)||be.test(e)?i:t}function Se(e){if(isNaN(e))return`.nan`;if(e===1/0)return`.inf`;if(e===-1/0)return`-.inf`;if(Object.is(e,-0))return`-0.0`;let t=e.toString(10);return/^[-+]?[0-9]+e/.test(t)?t.replace(`e`,`.e`):t}var Ce=r(`tag:yaml.org,2002:float`,{implicit:!0,implicitFirstChars:[`-`,`+`,`.`,...`0123456789`],resolve:xe,identify:e=>typeof e==`number`&&(!Number.isInteger(e)||Object.is(e,-0)||e.toString(10).indexOf(`e`)>=0),represent:Se}),we=RegExp(`^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]*)?(?:[eE][-+]?[0-9]+)?$`),Te=RegExp(`^(?:[-+]?[0-9]+(?:\\.[0-9]*)?(?:[eE][-+]?[0-9]+)?|[-+]?\\.[0-9]+(?:[eE][-+]?[0-9]+)?|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`);function Ee(e,n){if(n){if(!Te.test(e))return t;let n=e.toLowerCase(),r=n[0]===`-`?-1:1;if(`+-`.includes(n[0])&&(n=n.slice(1)),n===`.inf`)return r===1?1/0:-1/0;if(n===`.nan`)return NaN;let i=r*parseFloat(n);return Number.isFinite(i)?i:t}if(!we.test(e))return t;let r=Number(e);return Number.isFinite(r)?r:t}function De(e){if(isNaN(e))return`.nan`;if(e===1/0)return`.inf`;if(e===-1/0)return`-.inf`;if(Object.is(e,-0))return`-0.0`;let t=e.toString(10);return/^[-+]?[0-9]+e/.test(t)?t.replace(`e`,`.e`):t}var Oe=r(`tag:yaml.org,2002:float`,{implicit:!0,implicitFirstChars:[`-`,...`0123456789`],resolve:Ee,identify:e=>typeof e==`number`&&(!Number.isInteger(e)||Object.is(e,-0)||e.toString(10).indexOf(`e`)>=0),represent:De}),ke=RegExp(`^(?:[-+]?(?:(?:[0-9][0-9_]*)?\\.[0-9_]*)(?:[eE][-+][0-9]+)?|[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\\.[0-9_]*|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`),Ae=RegExp(`^(?:[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`);function je(e){if(!ke.test(e))return t;let n=e.toLowerCase().replace(/_/g,``),r=n[0]===`-`?-1:1;if(`+-`.includes(n[0])&&(n=n.slice(1)),n===`.inf`)return r===1?1/0:-1/0;if(n===`.nan`)return NaN;let i=0;if(n.includes(`:`)){for(let e of n.split(`:`))i=i*60+Number(e);i*=r}else i=r*parseFloat(n);return Number.isFinite(i)||Ae.test(e)?i:t}function Me(e){if(isNaN(e))return`.nan`;if(e===1/0)return`.inf`;if(e===-1/0)return`-.inf`;if(Object.is(e,-0))return`-0.0`;let t=e.toString(10);return/^[-+]?[0-9]+e/.test(t)?t.replace(`e`,`.e`):t}var Ne=r(`tag:yaml.org,2002:float`,{implicit:!0,implicitFirstChars:[`-`,`+`,`.`,...`0123456789`],resolve:je,identify:e=>typeof e==`number`&&(!Number.isInteger(e)||Object.is(e,-0)||e.toString(10).indexOf(`e`)>=0),represent:Me}),Pe=r(`tag:yaml.org,2002:merge`,{implicit:!0,implicitFirstChars:[`<`],resolve:(e,r)=>e===`<<`||r&&e===``?n:t}),Fe=/^[A-Za-z0-9+/]*={0,2}$/;function Ie(e){let n=e.replace(/\s/g,``);if(n.length%4!=0||!Fe.test(n))return t;let r=atob(n),i=new Uint8Array(r.length);for(let e=0;e<r.length;e++)i[e]=r.charCodeAt(e);return i}function Le(e){let t=``;for(let n=0;n<e.length;n++)t+=String.fromCharCode(e[n]);return btoa(t)}var Re=r(`tag:yaml.org,2002:binary`,{resolve:Ie,identify:e=>Object.prototype.toString.call(e)===`[object Uint8Array]`,represent:Le}),ze=RegExp(`^([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9])$`),Be=RegExp(`^([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)(?:[Tt]|[ \\t]+)([0-9][0-9]?):([0-9][0-9]):([0-9][0-9])(?:\\.([0-9]*))?(?:[ \\t]*(Z|([-+])([0-9][0-9]?)(?::([0-9][0-9]))?))?$`);function Ve(e){let n=ze.exec(e);if(n===null&&(n=Be.exec(e)),n===null)return t;let r=+n[1],i=n[2]-1,a=+n[3];if(!n[4]){let e=new Date(Date.UTC(r,i,a));return e.getUTCFullYear()!==r||e.getUTCMonth()!==i||e.getUTCDate()!==a?t:e}let o=+n[4],s=+n[5],c=+n[6],l=0;if(o>23||s>59||c>59)return t;if(n[7]){let e=n[7].slice(0,3);for(;e.length<3;)e+=`0`;l=+e}let u=new Date(Date.UTC(r,i,a,o,s,c,l));if(u.getUTCFullYear()!==r||u.getUTCMonth()!==i||u.getUTCDate()!==a)return t;if(n[9]){let e=+n[10],r=+(n[11]||0);if(e>23||r>59)return t;let i=(e*60+r)*6e4;u.setTime(u.getTime()-(n[9]===`-`?-i:i))}return u}var He=r(`tag:yaml.org,2002:timestamp`,{implicit:!0,implicitFirstChars:[...`0123456789`],resolve:Ve,identify:e=>e instanceof Date,represent:e=>e.toISOString()}),Ue=i(`tag:yaml.org,2002:seq`,{create:()=>[],addItem:(e,t)=>{e.push(t)},identify:Array.isArray});function We(e){if(typeof e!=`object`||!e||Array.isArray(e))return!1;let t=Object.getPrototypeOf(e);return t===null||t===Object.prototype}function Ge(e,t){let n={};for(let r of t)e[r]!==void 0&&(n[r]=e[r]);return n}var Ke=i(`tag:yaml.org,2002:omap`,{create:()=>({list:[],seen:new Set}),addItem:(e,t)=>{let n;if(t instanceof Map){if(t.size!==1)return`cannot resolve an ordered map item`;n=t.keys().next().value}else if(We(t)){let e=Object.keys(t);if(e.length!==1)return`cannot resolve an ordered map item`;n=e[0]}else return`cannot resolve an ordered map item`;return e.seen.has(n)?`duplicate key in ordered map`:(e.seen.add(n),e.list.push(t),``)},finalize:e=>e.list}),qe=i(`tag:yaml.org,2002:pairs`,{create:()=>[],addItem:(e,t)=>{if(t instanceof Map)return t.size===1?(e.push(t.entries().next().value),``):`cannot resolve a pairs item`;if(Object.prototype.toString.call(t)!==`[object Object]`)return`cannot resolve a pairs item`;let n=t,r=Object.keys(n);return r.length===1?(e.push([r[0],n[r[0]]]),``):`cannot resolve a pairs item`}}),Je=a(`tag:yaml.org,2002:map`,{create:()=>({}),identify:We,represent:e=>{let t=new Map;for(let n of Object.keys(e))t.set(n,e[n]);return t},addPair:(e,t,n)=>{if(typeof t==`object`&&t)return`object-based map does not support complex keys`;let r=String(t);return r===`__proto__`?Object.defineProperty(e,r,{value:n,enumerable:!0,configurable:!0,writable:!0}):e[r]=n,``},has:(e,t)=>typeof t==`object`&&t?!1:Object.prototype.hasOwnProperty.call(e,String(t)),keys:e=>Object.keys(e),get:(e,t)=>e[String(t)]}),Ye=a(`tag:yaml.org,2002:set`,{create:()=>new Set,identify:e=>e instanceof Set,represent:e=>{let t=new Map;for(let n of e)t.set(n,null);return t},addPair:(e,t,n)=>n===null?(e.add(t),``):`cannot resolve a set item`,has:(e,t)=>e.has(t),keys:e=>e.keys(),get:()=>null});function g(e){"@babel/helpers - typeof";return g=typeof Symbol==`function`&&typeof Symbol.iterator==`symbol`?function(e){return typeof e}:function(e){return e&&typeof Symbol==`function`&&e.constructor===Symbol&&e!==Symbol.prototype?`symbol`:typeof e},g(e)}function Xe(e,t){if(g(e)!=`object`||!e)return e;var n=e[Symbol.toPrimitive];if(n!==void 0){var r=n.call(e,t||`default`);if(g(r)!=`object`)return r;throw TypeError(`@@toPrimitive must return a primitive value.`)}return(t===`string`?String:Number)(e)}function Ze(e){var t=Xe(e,`string`);return g(t)==`symbol`?t:t+``}function _(e,t,n){return(t=Ze(t))in e?Object.defineProperty(e,t,{value:n,enumerable:!0,configurable:!0,writable:!0}):e[t]=n,e}function Qe(){return{scalar:{},sequence:{},mapping:{}}}function $e(){return{scalar:[],sequence:[],mapping:[]}}function et(e){let t=[];for(let n of e){let e=t.length;for(let r=0;r<t.length;r++){let i=t[r];if(i.nodeKind===n.nodeKind&&i.tagName===n.tagName&&i.matchByTagPrefix===n.matchByTagPrefix){e=r;break}}t[e]=n}return t}var v=class e{constructor(e){_(this,`tags`,void 0),_(this,`implicitScalarTags`,void 0),_(this,`implicitScalarByFirstChar`,void 0),_(this,`implicitScalarAnyFirstChar`,void 0),_(this,`defaultScalarTag`,void 0),_(this,`defaultSequenceTag`,void 0),_(this,`defaultMappingTag`,void 0),_(this,`exact`,void 0),_(this,`prefix`,void 0);let t=et(e),n=[],r=Qe(),i=$e();for(let e of t){if(e.nodeKind===`scalar`&&e.implicit){if(e.matchByTagPrefix)throw Error(`Implicit scalar tags cannot match by tag prefix`);n.push(e)}switch(e.nodeKind){case`scalar`:e.matchByTagPrefix?i.scalar.push(e):r.scalar[e.tagName]=e;break;case`sequence`:e.matchByTagPrefix?i.sequence.push(e):r.sequence[e.tagName]=e;break;case`mapping`:e.matchByTagPrefix?i.mapping.push(e):r.mapping[e.tagName]=e;break}}let a=n.filter(e=>e.implicitFirstChars===null),o=new Set;for(let e of n)if(e.implicitFirstChars!==null)for(let t of e.implicitFirstChars)o.add(t);let s=new Map;for(let e of o)s.set(e,n.filter(t=>t.implicitFirstChars===null||t.implicitFirstChars.indexOf(e)!==-1));let c=r.scalar[`tag:yaml.org,2002:str`];if(!c)throw Error(`schema does not define the default scalar tag (tag:yaml.org,2002:str)`);this.tags=t,this.implicitScalarTags=n,this.implicitScalarByFirstChar=s,this.implicitScalarAnyFirstChar=a,this.defaultScalarTag=c,this.defaultSequenceTag=r.sequence[`tag:yaml.org,2002:seq`],this.defaultMappingTag=r.mapping[`tag:yaml.org,2002:map`],this.exact=r,this.prefix=i}withTags(...t){let n=[];for(let e of t)n=n.concat(e);return new e([...this.tags,...n])}},tt=new v([o,Ue,Je]),nt=new v([...tt.tags,l,te,me,Oe]),rt=new v([...tt.tags,c,m,le,Ce]),it=new v([...tt.tags,d,ie,ve,Ne,He,Pe,Re,Ke,qe,Ye]),at=a(`tag:yaml.org,2002:map`,{create:()=>new Map,addPair:(e,t,n)=>(e.set(t,n),``),has:(e,t)=>e.has(t),keys:e=>e.keys(),get:(e,t)=>e.get(t),identify:e=>e instanceof Map||We(e),represent:e=>{if(e instanceof Map)return e;let t=new Map,n=e;for(let e of Object.keys(n))t.set(e,n[e]);return t}});function ot(e){if(Array.isArray(e)){let t=Array.prototype.slice.call(e);for(let e=0;e<t.length;e++){if(Array.isArray(t[e]))return null;typeof t[e]==`object`&&Object.prototype.toString.call(t[e])===`[object Object]`&&(t[e]=`[object Object]`)}return String(t)}return typeof e==`object`&&Object.prototype.toString.call(e)===`[object Object]`?`[object Object]`:String(e)}var st=a(`tag:yaml.org,2002:map`,{create:()=>({}),identify:We,represent:e=>{let t=new Map;for(let n of Object.keys(e))t.set(n,e[n]);return t},addPair:(e,t,n)=>{let r=ot(t);return r===null?`nested arrays are not supported inside keys`:(r===`__proto__`?Object.defineProperty(e,r,{value:n,enumerable:!0,configurable:!0,writable:!0}):e[r]=n,``)},has:(e,t)=>{let n=ot(t);return n!==null&&Object.prototype.hasOwnProperty.call(e,n)},keys:e=>Object.keys(e),get:(e,t)=>e[String(t)]});function ct(e,t){var n=Object.keys(e);if(Object.getOwnPropertySymbols){var r=Object.getOwnPropertySymbols(e);t&&(r=r.filter(function(t){return Object.getOwnPropertyDescriptor(e,t).enumerable})),n.push.apply(n,r)}return n}function y(e){for(var t=1;t<arguments.length;t++){var n=arguments[t]==null?{}:arguments[t];t%2?ct(Object(n),!0).forEach(function(t){_(e,t,n[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(e,Object.getOwnPropertyDescriptors(n)):ct(Object(n)).forEach(function(t){Object.defineProperty(e,t,Object.getOwnPropertyDescriptor(n,t))})}return e}var lt={maxLength:79,indent:1,linesBefore:3,linesAfter:2};function ut(e,t,n,r,i){let a=``,o=``,s=Math.floor(i/2)-1;return r-t>s&&(a=` ... `,t=r-s+a.length),n-r>s&&(o=` ...`,n=r+s-o.length),{str:a+e.slice(t,n).replace(/\t/g,`→`)+o,pos:r-t+a.length}}function dt(e,t){return` `.repeat(Math.max(t-e.length,0))+e}function ft(e,t){if(!e.buffer)return null;let n=y(y({},lt),t),r=/\r?\n|\r|\0/g,i=[0],a=[],o,s=-1;for(;o=r.exec(e.buffer);)a.push(o.index),i.push(o.index+o[0].length),e.position<=o.index&&s<0&&(s=i.length-2);s<0&&(s=i.length-1);let c=``,l=Math.min(e.line+n.linesAfter,a.length).toString().length,u=n.maxLength-(n.indent+l+3);for(let t=1;t<=n.linesBefore&&!(s-t<0);t++){let r=ut(e.buffer,i[s-t],a[s-t],e.position-(i[s]-i[s-t]),u);c=`${` `.repeat(n.indent)}${dt((e.line-t+1).toString(),l)} | ${r.str}\n${c}`}let d=ut(e.buffer,i[s],a[s],e.position,u);c+=`${` `.repeat(n.indent)}${dt((e.line+1).toString(),l)} | ${d.str}\n`,c+=`${`-`.repeat(n.indent+l+3+d.pos)}^\n`;for(let t=1;t<=n.linesAfter&&!(s+t>=a.length);t++){let r=ut(e.buffer,i[s+t],a[s+t],e.position-(i[s]-i[s+t]),u);c+=`${` `.repeat(n.indent)}${dt((e.line+t+1).toString(),l)} | ${r.str}\n`}return c.replace(/\n$/,``)}function pt(e,t){let n=``;return e.mark?(e.mark.name&&(n+=`in "${e.mark.name}" `),n+=`(${e.mark.line+1}:${e.mark.column+1})`,!t&&e.mark.snippet&&(n+=`\n\n${e.mark.snippet}`),`${e.reason} ${n}`):e.reason}var b=class extends Error{constructor(e,t){super(),_(this,`reason`,void 0),_(this,`mark`,void 0),this.name=`YAMLException`,this.reason=e,this.mark=t,this.message=pt(this,!1),Error.captureStackTrace&&Error.captureStackTrace(this,this.constructor)}toString(e){return`${this.name}: ${pt(this,e)}`}};function mt(e,t,n,r=``){let i=0,a=0;for(let n=0;n<t;n++){let t=e.charCodeAt(n);t===10?(i++,a=n+1):t===13&&(i++,e.charCodeAt(n+1)===10&&n++,a=n+1)}let o={name:r,buffer:e,position:t,line:i,column:t-a};throw o.snippet=ft(o),new b(n,o)}var ht=1,gt=2,_t=3,vt=4,yt=5,bt=6,xt=1,St=2,Ct=3,wt=4,Tt=5,Et=1,Dt=2,Ot=1,kt=2,At=3,jt=-1;function Mt(e){switch(e){case 48:return`\0`;case 97:return`\x07`;case 98:return`\b`;case 116:return`	`;case 9:return`	`;case 110:return`
 `;case 118:return`\v`;case 102:return`\f`;case 114:return`\r`;case 101:return`\x1B`;case 32:return` `;case 34:return`"`;case 47:return`/`;case 92:return`\\`;case 78:return``;case 95:return`\xA0`;case 76:return`\u2028`;case 80:return`\u2029`;default:return``}}var Nt=Array(256),Pt=Array(256);for(let e=0;e<256;e++)Nt[e]=+!!Mt(e),Pt[e]=Mt(e);function Ft(e){return e<=65535?String.fromCharCode(e):String.fromCharCode((e-65536>>10)+55296,(e-65536&1023)+56320)}function It(e){return e>=48&&e<=57?e-48:(e|32)-97+10}function Lt(e){return e===120?2:e===117?4:8}function Rt(e,t,n){let r=0;for(;t<n;){let n=e.charCodeAt(t);if(n===10)r++,t++;else if(n===13)r++,t++,e.charCodeAt(t)===10&&t++;else if(n===32||n===9)t++;else break}return{position:t,breaks:r}}function zt(e){return e===1?` `:`
 `.repeat(e-1)}function Bt(e,t,n){let r=``,i=t,a=t,o=t;for(;i<n;){let t=e.charCodeAt(i);if(t===10||t===13){r+=e.slice(a,o);let t=Rt(e,i,n);r+=zt(t.breaks),i=a=o=t.position}else i++,t!==32&&t!==9&&(o=i)}return r+e.slice(a,o)}function Vt(e,t,n){let r=``,i=t,a=t,o=t;for(;i<n;){let t=e.charCodeAt(i);if(t===39)r+=e.slice(a,i)+`'`,i+=2,a=o=i;else if(t===10||t===13){r+=e.slice(a,o);let t=Rt(e,i,n);r+=zt(t.breaks),i=a=o=t.position}else i++,t!==32&&t!==9&&(o=i)}return r+e.slice(a,n)}function Ht(e,t,n){let r=``,i=t,a=t,o=t;for(;i<n;){let t=e.charCodeAt(i);if(t===92){r+=e.slice(a,i),i++;let t=e.charCodeAt(i);if(t===10||t===13)i=Rt(e,i,n).position;else if(t<256&&Nt[t])r+=Pt[t],i++;else{let n=Lt(t),a=0;for(;n>0;n--){i++;let t=It(e.charCodeAt(i));a=(a<<4)+t}r+=Ft(a),i++}a=o=i}else if(t===10||t===13){r+=e.slice(a,o);let t=Rt(e,i,n);r+=zt(t.breaks),i=a=o=t.position}else i++,t!==32&&t!==9&&(o=i)}return r+e.slice(a,n)}function Ut(e,t,n,r,i,a){let o=r<0?0:r,s=e.slice(t,n).replace(/\r\n?/g,`
@@ -307,8 +307,8 @@
 
 <header>
   <h1>FluidNC Board Mapping Wizard</h1>
-  <p>Prototype — resource-first walk (Phase A: bind board resources to roles) → draft config.yaml with TBD stubs (Phase B)</p>
   <select id="boardPicker" style="margin-left:auto"></select>
+  <input type="file" id="customBoardFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
   <button onclick="document.getElementById('configFileInput').click()">Load config.yaml…</button>
   <input type="file" id="configFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
 </header>
@@ -353,13 +353,20 @@
  *
  * BOARD_IDS is a manifest, not a directory listing -- fetch() can't
  * enumerate a folder's contents, so the wizard needs to be told which
- * board files exist. Keep this in sync with boards/*.board.yaml.
+ * board files exist. Rather than hand-maintaining this array, it's loaded
+ * at boot from boards/index.json (see loadBoardManifest() below), which is
+ * regenerated by tools/gen_board_index.py -- run that script and commit
+ * its output whenever a board.yaml is added/removed/renamed.
+ *
+ * This manifest only drives the *dropdown* (and detectBoardId()'s config-
+ * import auto-match below). loadBoard() itself just fetches
+ * boards/<id>.board.yaml directly and never consults BOARD_IDS, so a board
+ * that isn't in the manifest yet can still be loaded and tested via
+ * index.html?board=<id> -- see boot()'s use of getBoardIdFromUrl() further
+ * down. That's deliberate: it lets a contributor iterate on a brand-new
+ * board file locally without needing to regenerate the manifest first.
  * ------------------------------------------------------------------- */
-const BOARD_IDS = [
-  "6x_cnc_controller", "4x_cnc_controller", "corgi_cnc_controller",
-  "fluidnc_pen_laser_spi", "tmc2209_pen_laser_v2", "mks_dlc32_v2_1",
-  "btt_rodent_v1_0", "btt_rodent_v1_1", "doberman",
-];
+let BOARD_IDS = [];
 
 async function fetchYamlText(path) {
   const res = await fetch(path);
@@ -1421,7 +1428,28 @@ async function loadBoard(id) {
       `(e.g. "python3 -m http.server" from a terminal here, then open http://localhost:8000/index.html).</div>`;
     return;
   }
-  board = jsyaml.load(boardText);
+  let doc;
+  try {
+    doc = jsyaml.load(boardText);
+  } catch (e) {
+    document.getElementById("resourceCol").innerHTML = `<div class="note">` +
+      `Couldn't parse boards/${escapeAttr(id)}.board.yaml (${escapeAttr(e.message)}).</div>`;
+    return;
+  }
+  // hotspots/<id>.hotspots.yaml is a repo-relative convention that only
+  // makes sense for boards actually living in boards/ under this id --
+  // applyBoardDoc() is also used for locally-picked custom board files
+  // (see loadCustomBoardFile() below), which have no such counterpart.
+  await applyBoardDoc(doc, id);
+}
+
+/* Shared tail of loadBoard()/loadCustomBoardFile(): takes an already-
+ * parsed board document (and, optionally, the repo id used to look up its
+ * hotspots.yaml sidecar -- pass null/undefined to skip that lookup, as a
+ * custom locally-picked board.yaml has none) and applies it as the
+ * currently-loaded board. */
+async function applyBoardDoc(doc, hotspotId) {
+  board = doc;
   bindings = {};
   paramValues = {};
   pinAttrs = {};
@@ -1440,13 +1468,47 @@ async function loadBoard(id) {
       (chip.gpio || []).forEach(g => { chipGpioCaps[g.pin] = g; });
     }
   }
-  const hotspotText = await fetchYamlTextOptional(`hotspots/${id}.hotspots.yaml`);
-  hotspotData = hotspotText ? jsyaml.load(hotspotText) : null;
+  hotspotData = null;
+  if (hotspotId) {
+    const hotspotText = await fetchYamlTextOptional(`hotspots/${hotspotId}.hotspots.yaml`);
+    hotspotData = hotspotText ? jsyaml.load(hotspotText) : null;
+  }
   computeResourcePins();
   renderResources();
   renderHotspotPane();
   wireHotspotHoverLinks();
   generateDraft();
+}
+
+/* Reads a locally-picked board.yaml file (via the "Custom..." picker
+ * option, see its wiring near the picker setup below) and loads it exactly
+ * like a repo board, minus the hotspots.yaml lookup (no repo id to look
+ * one up by) and the boards/index.json manifest (this file was never in
+ * it -- that's the point: it lets a contributor try out a board.yaml
+ * before it even lives in boards/, without needing an HTTP-served copy of
+ * it there). Reading the file directly like this needs no HTTP serving of
+ * the file itself (FileReader works from a file:// picker dialog same as
+ * anywhere else) -- only the chip-file lookup above still needs this page
+ * itself to be served over HTTP, same as everywhere else in the wizard. */
+function loadCustomBoardFile(file) {
+  const reader = new FileReader();
+  reader.onload = async () => {
+    let doc;
+    try {
+      doc = jsyaml.load(reader.result);
+    } catch (e) {
+      document.getElementById("resourceCol").innerHTML = `<div class="note">` +
+        `Couldn't parse ${escapeAttr(file.name)} (${escapeAttr(e.message)}).</div>`;
+      return;
+    }
+    syncUrlToBoard(null); // no repo id to represent a local file with
+    await applyBoardDoc(doc, null);
+  };
+  reader.onerror = () => {
+    document.getElementById("resourceCol").innerHTML = `<div class="note">` +
+      `Couldn't read ${escapeAttr(file.name)}.</div>`;
+  };
+  reader.readAsText(file);
 }
 
 /* Builds resourcePins (resourceKey -> [pin, ...]) from the board's own
@@ -1823,7 +1885,7 @@ function renderHotspotPane() {
   }
   mainEl.style.gridTemplateColumns = "320px 1fr max-content";
   col.style.display = "";
-  col.innerHTML = `<div class="note">Click a highlighted region to jump to its row on the left. (Prototype — board photos/hotspots only exist for the Corgi board so far.)</div>
+  col.innerHTML = `<div class="note">Click a highlighted region to selct its row on the left.</div>
     <div id="hotspotImgWrap">
       <div id="hotspotImgPad">
         <img id="hotspotImg" src="${escapeAttr(hotspotData.image)}" alt="board photo">
@@ -3650,12 +3712,65 @@ const placeholderOpt = document.createElement("option");
 placeholderOpt.value = "";
 placeholderOpt.textContent = "— Select a board —";
 picker.appendChild(placeholderOpt);
-BOARD_IDS.forEach(id => {
-  const o = document.createElement("option");
-  o.value = id; o.textContent = id;
-  picker.appendChild(o);
+
+// "Custom..." is a fixed option (not part of BOARD_IDS/the manifest) that
+// picks a board.yaml straight off the local filesystem via a file input --
+// see loadCustomBoardFile() above and its handler wiring below. Its <option>
+// is created here but deliberately appended to the picker at the END of
+// loadBoardManifest() below (after the real boards), and indented with a
+// couple of leading NBSPs (plain CSS padding on <option> is ignored by
+// some browsers, e.g. Safari) so it visually reads as the odd one out
+// tucked below the real board list, not just one more board among them.
+const CUSTOM_OPT_VALUE = "__custom__";
+const customOpt = document.createElement("option");
+customOpt.value = CUSTOM_OPT_VALUE;
+customOpt.style.paddingLeft = "1.5em";
+customOpt.textContent = "  Custom (choose a local file)...";
+
+const customBoardFileInput = document.getElementById("customBoardFileInput");
+picker.onchange = () => {
+  if (picker.value === CUSTOM_OPT_VALUE) {
+    customBoardFileInput.click();
+    return;
+  }
+  if (picker.value) { loadBoard(picker.value); syncUrlToBoard(picker.value); }
+};
+customBoardFileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  customBoardFileInput.value = ""; // allow re-picking the same file later
+  if (!file) {
+    // User cancelled the file dialog -- picker is still showing "Custom...",
+    // which has nothing loaded behind it, so fall back to whatever real
+    // board (if any) is currently loaded, or the placeholder if none is.
+    picker.value = (board && board.board && BOARD_IDS.includes(board.board.id)) ? board.board.id : "";
+    return;
+  }
+  loadCustomBoardFile(file);
 });
-picker.onchange = () => { if (picker.value) { loadBoard(picker.value); syncUrlToBoard(picker.value); } };
+
+/* Fetches boards/index.json (see tools/gen_board_index.py) and populates
+ * BOARD_IDS + the dropdown from it. A missing/unreadable manifest degrades
+ * to an empty dropdown rather than breaking boot -- direct-URL loading via
+ * ?board=<id> still works either way (see boot() below), and the picker
+ * itself just won't have anything to search until the manifest is fixed. */
+async function loadBoardManifest() {
+  try {
+    const res = await fetch("boards/index.json");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    BOARD_IDS = await res.json();
+  } catch (e) {
+    console.warn(`Couldn't load boards/index.json (${e.message}); board dropdown will be empty. Run tools/gen_board_index.py.`);
+    BOARD_IDS = [];
+  }
+  BOARD_IDS.forEach(id => {
+    const o = document.createElement("option");
+    o.value = id; o.textContent = id;
+    picker.appendChild(o);
+  });
+  // Appended last, after the real (manifest-driven) boards -- see the
+  // comment by customOpt's creation above.
+  picker.appendChild(customOpt);
+}
 
 /* ---------------------------------------------------------------------
  * URL-based board selection: index.html?board=<id> preselects and loads
@@ -3695,24 +3810,24 @@ async function boot() {
       `(e.g. "python3 -m http.server" from a terminal here, then open http://localhost:8000/index.html).</div>`;
     return;
   }
+  await loadBoardManifest();
   // Normally no board is preselected/auto-loaded -- the user picks one
   // explicitly via the picker (or loads an existing config.yaml, which
   // auto-detects and selects its board for them, see configFileInput's
   // change handler) -- UNLESS a ?board=<id> URL param names one (see
   // getBoardIdFromUrl()/syncUrlToBoard() above), for linking directly into
   // the wizard with a board already selected.
+  //
+  // Deliberately NOT gated on BOARD_IDS.includes(urlBoardId): loadBoard()
+  // fetches boards/<id>.board.yaml directly and reports its own error if
+  // that fetch fails, so a board that exists on disk but isn't in the
+  // manifest yet (e.g. a contributor testing a brand-new board.yaml before
+  // running tools/gen_board_index.py) still loads via the URL param -- see
+  // the comment above BOARD_IDS's declaration.
   const urlBoardId = getBoardIdFromUrl();
-  if (urlBoardId && BOARD_IDS.includes(urlBoardId)) {
-    document.getElementById("boardPicker").value = urlBoardId;
-    await loadBoard(urlBoardId);
-    return;
-  }
   if (urlBoardId) {
-    // Named board doesn't exist (typo, or a board removed/renamed since a
-    // link was published) -- fall back to the normal empty-picker state
-    // rather than silently ignoring the mistake.
-    document.getElementById("boardNote").innerHTML =
-      `<b>URL named board "${escapeAttr(urlBoardId)}", which isn't a recognized board id.</b> Pick a board above to begin, or load an existing config.yaml.`;
+    if (BOARD_IDS.includes(urlBoardId)) document.getElementById("boardPicker").value = urlBoardId;
+    await loadBoard(urlBoardId);
     return;
   }
   document.getElementById("boardNote").textContent = "Pick a board above to begin, or load an existing config.yaml.";

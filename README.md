@@ -139,11 +139,28 @@ print('board.yaml ok')
 
 (same pattern for `hotspots.schema.json` against your hotspots.yaml, if you
 made one). Then serve the repo locally (see "Running it locally" above) and
-load your new board in the wizard -- confirm every resource you expect shows
-up with a sensible name, and (if you added one) that the photo pane and its
-click-to-highlight linking both work.
+load your new board -- open
+`http://localhost:8000/index.html?board=your_board` directly (substituting
+your board's `id`). You don't need to add it to the dropdown to test it:
+that URL loads `boards/your_board.board.yaml` straight off disk regardless
+of whether it's in the manifest yet (see step 4). Confirm every resource
+you expect shows up with a sensible name, and (if you added one) that the
+photo pane and its click-to-highlight linking both work.
 
-### 4. Open a pull request
+### 4. Regenerate the board manifest
+
+The dropdown itself is populated from `boards/index.json`, a generated
+manifest (the wizard is static and can't list the `boards/` folder on its
+own). Regenerate it so your new board shows up for other people, not just
+via the direct URL:
+
+```
+python3 tools/gen_board_index.py
+```
+
+Commit the updated `boards/index.json` along with your board file(s).
+
+### 5. Open a pull request
 
 Include, in the PR description:
 

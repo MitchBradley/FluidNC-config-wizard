@@ -1,0 +1,11 @@
+[
+  "4x_cnc_controller",
+  "6x_cnc_controller",
+  "btt_rodent_v1_0",
+  "btt_rodent_v1_1",
+  "corgi_cnc_controller",
+  "doberman",
+  "fluidnc_pen_laser_spi",
+  "mks_dlc32_v2_1",
+  "tmc2209_pen_laser_v2"
+]

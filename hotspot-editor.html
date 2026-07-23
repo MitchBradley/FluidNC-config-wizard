@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>FluidNC Board Hotspot Editor — Prototype</title>
+<title>FluidNC Board Hotspot Editor</title>
 <style>
   :root {
     --bg: #14191c; --panel: #1c262c; --border: #2c3a42; --text: #d8e2e6;
@@ -124,7 +124,7 @@
 </head>
 <body>
 
-<h1>FluidNC Board Hotspot Editor — Prototype</h1>
+<h1>FluidNC Board Hotspot Editor</h1>
 
 <div class="layout">
   <div class="col">
@@ -189,9 +189,9 @@
 
 <script>
 /* ---------------------------------------------------------------------
- * Prototype hotspot editor for the FluidNC config wizard's eventual
- * "click on a picture of the board" embellishment. Standalone from the
- * wizard itself -- this tool's only job is producing a small sidecar file
+ * Hotspot editor for the FluidNC config wizard's "click on a picture of
+ * the board" embellishment. Separate from the wizard itself -- this
+ * tool job is to producing a sidecar file
  * (board_id + image + a list of {generic_name, x%, y%, w%, h%} rectangles --
  * one hotspot, one name, even for a pin shared by two logical roles: each
  * role gets its own separate hotspot on the photo, not a shared box with
@@ -862,9 +862,8 @@ document.addEventListener("mouseup", () => { renderOutput(); });
 
 /* ---------------------------------------------------------------------
  * Output (hand-rolled YAML -- the data model here is simple enough that
- * pulling in a full YAML library for this standalone prototype isn't
- * worth it; a real integration would presumably reuse the wizard's own
- * jsyaml.dump()).
+ * pulling in a full YAML library isn't worth it - but we should consider
+ * reuse the wizard's jsyaml.dump()).
  * ------------------------------------------------------------------- */
 function boardIdGuess() {
   // Best-effort: look for a line like "id: some_board" in the pasted text,
@@ -915,9 +914,8 @@ function renderOutput() {
  * previously-drawn file can be reopened and tweaked rather than always
  * starting from scratch. Hand-rolled parser matching renderOutput()'s
  * hand-rolled format exactly (line-oriented, fixed key set) -- consistent
- * with the rest of this standalone prototype not pulling in a real YAML
- * library. Not a general YAML parser: it only understands the specific
- * shape this tool itself writes.
+ * with not pulling in a real YAML library. Not a general YAML parser:
+ * it only understands the specific shape this tool itself writes.
  * ------------------------------------------------------------------- */
 function parseHotspotsYaml(text) {
   const lines = text.split("\n");
