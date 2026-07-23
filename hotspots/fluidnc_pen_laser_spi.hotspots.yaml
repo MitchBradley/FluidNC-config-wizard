@@ -1,0 +1,67 @@
+board_id: fluidnc_pen_laser_spi
+image: images/fluidnc_pen_laser_spi.jpg
+hotspots:
+  - generic_name: "Motor1"
+    rect: {x: 13.00, y: 91.00, w: 20.00, h: 6.00}
+    label_rect: {x: 13.00, y: 97.00, w: 20.00, h: 8.00}
+    label_orientation: horizontal
+  - generic_name: "Motor2"
+    rect: {x: 38.00, y: 91.00, w: 20.00, h: 6.00}
+    label_rect: {x: 38.00, y: 97.00, w: 20.00, h: 8.00}
+    label_orientation: horizontal
+  - generic_name: "Motor3"
+    rect: {x: 83.00, y: 58.00, w: 13.00, h: 5.00}
+    label_rect: {x: 83.00, y: 63.00, w: 13.00, h: 5.00}
+    label_orientation: horizontal
+  - generic_name: "In39"
+    rect: {x: 91.00, y: 12.00, w: 8.00, h: 7.00}
+    label_rect: {x: 99.00, y: 12.00, w: 9.00, h: 7.00}
+    label_orientation: horizontal
+  - generic_name: "In36"
+    rect: {x: 91.00, y: 19.00, w: 8.00, h: 7.00}
+    label_rect: {x: 99.00, y: 19.00, w: 9.00, h: 7.00}
+    label_orientation: horizontal
+  - generic_name: "In35"
+    rect: {x: 91.00, y: 28.00, w: 9.00, h: 7.00}
+    label_rect: {x: 99.00, y: 28.00, w: 9.00, h: 7.00}
+    label_orientation: horizontal
+  - generic_name: "In34"
+    rect: {x: 91.00, y: 35.00, w: 9.00, h: 6.00}
+    label_rect: {x: 99.00, y: 35.00, w: 9.00, h: 6.00}
+    label_orientation: horizontal
+  - generic_name: "In33"
+    rect: {x: 91.00, y: 41.00, w: 9.00, h: 7.00}
+    label_rect: {x: 99.00, y: 41.00, w: 9.00, h: 7.00}
+    label_orientation: horizontal
+  - generic_name: "In32"
+    rect: {x: 91.00, y: 48.00, w: 9.00, h: 7.00}
+    label_rect: {x: 99.00, y: 48.00, w: 9.00, h: 7.00}
+    label_orientation: horizontal
+  - generic_name: "5V Out22"
+    rect: {x: 89.00, y: 72.00, w: 11.00, h: 6.00}
+    label_rect: {x: 100.00, y: 72.00, w: 11.00, h: 6.00}
+    label_orientation: horizontal
+  - generic_name: "5V Out2"
+    rect: {x: 89.00, y: 78.00, w: 11.00, h: 7.00}
+    label_rect: {x: 100.00, y: 78.00, w: 11.00, h: 7.00}
+    label_orientation: horizontal
+  - generic_name: "5V Out27"
+    rect: {x: 89.00, y: 85.00, w: 11.00, h: 7.00}
+    label_rect: {x: 100.00, y: 85.00, w: 11.00, h: 7.00}
+    label_orientation: horizontal
+  - generic_name: "Expander"
+    rect: {x: 75.00, y: 16.00, w: 9.00, h: 24.00}
+    label_rect: {x: 84.00, y: 16.00, w: 9.00, h: 24.00}
+    label_orientation: horizontal
+  - generic_name: "3.3V IO4"
+    rect: {x: 63.00, y: 29.00, w: 12.00, h: 4.00}
+    label_rect: {x: 63.00, y: 25.00, w: 12.00, h: 4.00}
+    label_orientation: horizontal
+  - generic_name: "3.3V IO15"
+    rect: {x: 63.00, y: 33.00, w: 12.00, h: 4.00}
+    label_rect: {x: 63.00, y: 38.00, w: 12.00, h: 4.00}
+    label_orientation: horizontal
+  - generic_name: "5V Out21"
+    rect: {x: 96.00, y: 58.00, w: 7.00, h: 5.00}
+    label_rect: {x: 103.00, y: 58.00, w: 7.00, h: 5.00}
+    label_orientation: horizontal

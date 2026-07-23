@@ -29,11 +29,32 @@ motor_sockets:
       generic_name: Motor3
       driver_class: onboard_fixed
       fixed_motor_type: rc_servo
-      pins: { output_pin: gpio.22 }
+      pins: { output_pin: gpio.21 }
 generic_pins:
   - { label: "X Limit", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: raw } }
   - { label: "Y Limit", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Probe", generic_name: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Probe", generic_name: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: raw } }
+  - { label: "Probe", generic_name: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: raw } }
   - { label: "Probe", generic_name: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: raw } }
-  - { label: "5V Out 1", generic_name: "5V Out21", mcu_pin: gpio.21, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "5V Out 2", generic_name: "5V Out27", mcu_pin: gpio.27, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 1", generic_name: "5V Out22", mcu_pin: gpio.22, direction: output, output_profile: { drive_type: totem_pole } }
   - { label: "5V Out 3", generic_name: "5V Out2", mcu_pin: gpio.2,  direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 2", generic_name: "5V Out27", mcu_pin: gpio.27, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "5V Out 4", generic_name: "5V Out21", mcu_pin: gpio.21, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "3.3V IO", generic_name: "3.3V IO4", mcu_pin: gpio.4, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }
+  - { label: "3.3V IO", generic_name: "3.3V IO15", mcu_pin: gpio.15, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }
+
+expansion_uarts:
+  - label: "Expander"
+    generic_name: "Expander"
+    connector_type: "Inline Pins"
+    txd_pin: gpio.4
+    rxd_pin: gpio.15
+    baud: 1000000
+    mode: "8N1"
+    notes: >
+      Wiki: "Inline pins for pendants and expanders" (FluidDial, Airedale).
+
+      connector is 1 (see rs485_channels.notes for the resulting real,
+      accepted conflict on boards that DO have such drivers, e.g. the 4x
+      controller).
