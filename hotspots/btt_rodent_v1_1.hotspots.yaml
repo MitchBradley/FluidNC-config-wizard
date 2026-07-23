@@ -73,15 +73,15 @@ hotspots:
     rect: {x: 93.00, y: 47.00, w: 5.00, h: 16.00}
     label_rect: {x: 98.00, y: 47.00, w: 6.00, h: 18.00}
     label_orientation: vertical
-  - generic_name: "Status LED R"
+  - generic_name: "LED R"
     rect: {x: 9.00, y: 0.00, w: 3.00, h: 13.00}
     label_rect: {x: 9.00, y: -15.00, w: 3.00, h: 14.00}
     label_orientation: vertical
-  - generic_name: "Status LED G"
+  - generic_name: "LED G"
     rect: {x: 12.00, y: 0.00, w: 3.00, h: 13.00}
     label_rect: {x: 12.00, y: -15.00, w: 3.00, h: 14.00}
     label_orientation: vertical
-  - generic_name: "Status LED B"
+  - generic_name: "LED B"
     rect: {x: 15.00, y: 0.00, w: 3.00, h: 13.00}
     label_rect: {x: 15.00, y: -15.00, w: 3.00, h: 15.00}
     label_orientation: vertical

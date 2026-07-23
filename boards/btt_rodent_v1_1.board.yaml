@@ -79,9 +79,9 @@ generic_pins:
   - { label: "SPINDLE_EN", generic_name: "IO25", mcu_pin: gpio.25, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole, voltage_max: 3.3 }, notes: "Wiki's suggested use is spindle enable; not compatible with typical opto-isolated VFD digital inputs (see board-level notes)." }
   - { label: "DIRECTION", generic_name: "IO15", mcu_pin: gpio.15, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole, voltage_max: 3.3 }, notes: "Wiki's suggested use is spindle direction. Shares gpio.15 with the RS485 channel's tx_pin -- usable as one or the other, not both while RS485 is in use." }
   - { label: "SPINDLE_FB", generic_name: "IO14", mcu_pin: gpio.14, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole, voltage_max: 3.3 }, notes: "Wiki's suggested use is spindle feedback. Shares gpio.14 with the RS485 channel's rts_pin -- usable as one or the other, not both while RS485 is in use." }
-  - { label: "Status LED R", generic_name: "Status LED R", mcu_pin: i2so.3, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "Status LED G", generic_name: "Status LED G", mcu_pin: i2so.14, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "Status LED B", generic_name: "Status LED B", mcu_pin: i2so.11, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Status LED R", generic_name: "LED R", mcu_pin: i2so.3, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Status LED G", generic_name: "LED G", mcu_pin: i2so.14, direction: output, output_profile: { drive_type: totem_pole } }
+  - { label: "Status LED B", generic_name: "LED B", mcu_pin: i2so.11, direction: output, output_profile: { drive_type: totem_pole } }
   - { label: "I2C SCL", generic_name: "IO26", mcu_pin: gpio.26, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole, voltage_max: 5.0 }, notes: "I2C SCL pin usable as GPIO, pulled to 5V through 10K" }
   - { label: "I2C SDA", generic_name: "IO27", mcu_pin: gpio.27, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole, voltage_max: 5.0 }, notes: "I2C SDA pin usable as GPIO, pulled to 5V through 10K" }
 rs485_channels:
