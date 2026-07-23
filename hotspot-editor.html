@@ -1093,8 +1093,8 @@ function loadHotspotsFromText(text, sourceName) {
   // loaded AFTER this message is already showing -- not just suppressed
   // up front when it's already loaded at the time this message is built.
   note.innerHTML = `${escapeHtml(sourceName || "file")} - ${result.hotspots.length} hotspots.`
-    + (result.image ? `<br><br> <span class="tag-warn" id="loadImageWarn" style="display:${imageAlreadyLoaded ? "none" : ""}">` +
-      `Load the image file to continue editing visually.</span>` : "");
+    + (result.image ? `<span class="tag-warn" id="loadImageWarn" style="display:${imageAlreadyLoaded ? "none" : ""}">` +
+      `<br><br>Load the image file to continue editing visually.</span>` : "");
   note.className = "note note-info";
 }
 
