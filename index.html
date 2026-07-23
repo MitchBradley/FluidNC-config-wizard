@@ -40,6 +40,11 @@
   :root {
     --bg: #0f1417; --panel: #171e23; --border: #2a343b; --text: #dbe4e8;
     --muted: #7d8f98; --accent: #4fb5c9; --tbd: #d9a441; --fixed: #5c7d63; --danger: #e0616b;
+    /* Halfway between --muted and --text -- for secondary-but-still-worth-
+       reading text (section headers, per-row sub info, the fixed-
+       peripherals list) that needs to stay visually subordinate to actual
+       resource names/values without being as low-contrast as --muted. */
+    --muted-strong: #aebcc4;
   }
   * { box-sizing: border-box; }
   body {
@@ -75,7 +80,7 @@
   section { margin-bottom: 22px; }
   section h2 {
     font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
-    color: var(--muted); margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+    color: var(--muted-strong); margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
   }
   .row {
     display: grid; grid-template-columns: 1fr 200px; gap: 10px; align-items: center;
@@ -83,7 +88,7 @@
   }
   .row .lbl { display: flex; flex-direction: column; }
   .row .lbl .name { font-weight: 600; }
-  .row .lbl .sub { color: var(--muted); font-size: 11.5px; margin-top: 1px; }
+  .row .lbl .sub { color: var(--muted-strong); font-size: 11.5px; margin-top: 1px; }
   .row.gpio-conflict select { opacity: 0.5; cursor: not-allowed; }
   .row select { width: 100%; }
   .row.output-row, .row.cascade-row { grid-template-columns: 1fr 260px; }
@@ -108,8 +113,8 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 5px;
   }
   .fixed-fact { color: var(--text); font-weight: 600; }
-  .fixed-list { font-size: 12px; color: var(--muted); line-height: 1.6; }
-  .fixed-list code { color: var(--fixed); background: none; }
+  .fixed-list { font-size: 12px; color: var(--muted-strong); line-height: 1.6; }
+  .fixed-list code { color: #71b599; background: none; }
   code { background: #0a1013; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
   pre#draft {
     background: #0a1013; border: 1px solid var(--border); border-radius: 6px;
@@ -129,7 +134,7 @@
   .summary .stat.done b { color: #6fbf73; }
   .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
   .note {
-    font-size: 12px; color: var(--muted); background: var(--panel);
+    font-size: 14px; line-height: 1.5; color: var(--text); background: var(--panel);
     border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 16px;
   }
   .inline-field {
@@ -2085,10 +2090,9 @@ function renderResources() {
 
   const note = document.createElement("div");
   note.className = "note";
-  note.innerHTML = `<b>${board.board.name}</b> (${board.board.manufacturer}) — ` +
-    `stepping engine(s): <code>${(board.stepping.engines||[]).join(", ")}</code>. ` +
-    `Each row below is one physical board resource (from the board file). Pick the FluidNC ` +
-    `role it plays, or leave it Unused. This is Phase A — resource → role binding.`;
+  note.innerHTML = `<b>${board.board.name}</b><br>` +
+    `<br>For each physical board resource below, ` +
+    `choose it's FluidNC role (or leave Unused).`;
   col.appendChild(note);
 
   // Kinematics has NO left-pane row -- the left pane is pure board-resource
@@ -2109,23 +2113,6 @@ function renderResources() {
   // with FluidNC's own compiled-in defaults via the same defaultOverrides
   // mechanism used for board-specific hints -- rarely-changed settings the
   // user need not think about, but can still edit inline if they want to.
-
-  // Fixed peripherals — informational only, not assignable.
-  if (board.fixed_peripherals) {
-    const sec = document.createElement("section");
-    sec.innerHTML = `<h2>Fixed peripherals (already known, not assignable)</h2>`;
-    const list = document.createElement("div");
-    list.className = "fixed-list";
-    const fp = board.fixed_peripherals;
-    const lines = [];
-    if (fp.spi) lines.push(`SPI bus: <code>${JSON.stringify(fp.spi)}</code>`);
-    if (fp.sdcard) lines.push(`SD card: <code>${JSON.stringify(fp.sdcard)}</code>`);
-    if (fp.i2so) lines.push(`I2SO shift register: <code>${JSON.stringify(fp.i2so)}</code>`);
-    if (fp.dedicated_uarts) fp.dedicated_uarts.forEach(u => lines.push(`Dedicated UART (${u.label}): <code>${JSON.stringify(u)}</code>`));
-    list.innerHTML = lines.join("<br>");
-    sec.appendChild(list);
-    col.appendChild(sec);
-  }
 
   // Motor sockets
   if (board.motor_sockets && board.motor_sockets.sockets) {
@@ -2231,6 +2218,25 @@ function renderResources() {
         { value: "expansion_uart", label: `Expansion UART (scl=tx, sda=rx, uart${defaultSecondaryUartNum(board)})` },
       ], ic.label));
     });
+    col.appendChild(sec);
+  }
+
+  // Fixed peripherals — informational only, not assignable. Placed last
+  // (moved here per explicit request) so it's out of the way below the
+  // actually-actionable resource sections above.
+  if (board.fixed_peripherals) {
+    const sec = document.createElement("section");
+    sec.innerHTML = `<h2>Fixed peripherals (not assignable)</h2>`;
+    const list = document.createElement("div");
+    list.className = "fixed-list";
+    const fp = board.fixed_peripherals;
+    const lines = [];
+    if (fp.spi) lines.push(`SPI bus: <code>${JSON.stringify(fp.spi)}</code>`);
+    if (fp.sdcard) lines.push(`SD card: <code>${JSON.stringify(fp.sdcard)}</code>`);
+    if (fp.i2so) lines.push(`I2SO shift register: <code>${JSON.stringify(fp.i2so)}</code>`);
+    if (fp.dedicated_uarts) fp.dedicated_uarts.forEach(u => lines.push(`Dedicated UART (${u.label}): <code>${JSON.stringify(u)}</code>`));
+    list.innerHTML = lines.join("<br>");
+    sec.appendChild(list);
     col.appendChild(sec);
   }
 }
