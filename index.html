@@ -72,10 +72,16 @@
   .header-picker { flex: 1; text-align: center; }
   .header-right { margin-left: auto; display: flex; align-items: baseline; gap: 16px; }
   select, button {
-    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    color: var(--text); border: 1px solid var(--border);
     border-radius: 5px; padding: 6px 10px; font-size: 13px; font-family: inherit;
   }
-  button { cursor: pointer; }
+  select { background: var(--panel); }
+  /* #505050, not var(--panel) (#171e23, near-black) -- var(--panel) reads as
+     visually almost indistinguishable from the page's own --bg (#0f1417)
+     specifically on BUTTONS, where the only other cue a control exists is a
+     1px border; select gets a native OS dropdown affordance that doesn't
+     have the same problem, so it keeps --panel. */
+  button { background: #505050; cursor: pointer; }
   button:hover { border-color: var(--accent); }
   button.primary { background: var(--accent); color: #06181c; font-weight: 600; border-color: var(--accent); }
   /* Draft (right) column is sized to just fit ~60 monospace characters
@@ -397,8 +403,6 @@
   </div>
   <div class="header-right">
     <input type="file" id="customBoardFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
-    <button onclick="document.getElementById('configFileInput').click()">Load config.yaml…</button>
-    <input type="file" id="configFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
   </div>
 </header>
 
@@ -418,10 +422,12 @@
   <div class="col right">
     <div class="summary" id="summary"></div>
     <div class="toolbar">
-      <button class="primary" onclick="copyDraft()">Copy</button>
+      <button onclick="copyDraft()">Copy</button>
       <button onclick="downloadDraft()">Download .yaml</button>
+      <button onclick="document.getElementById('configFileInput').click()">Load config.yaml…</button>
+      <input type="file" id="configFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
     </div>
-    <pre id="draft">Bind some resources on the left -- the draft updates live.</pre>
+    <pre id="draft"></pre>
   </div>
 </main>
 
@@ -2039,23 +2045,29 @@ function renderHotspotPane() {
     labelSpan.appendChild(labelText);
     el.appendChild(labelSpan);
     overlay.appendChild(el);
-    if (h.label_rect) {
-      // Separate box for the ASSIGNED ROLE (once one exists), positioned in
-      // the same % coordinate space as the connector rect (i.e. relative to
-      // the RAW photo, not nested inside the connector box), so it can sit
-      // anywhere on the photo -- typically just outside a small/crowded
-      // connector where there's no room for both its own name and a role.
-      // Text is populated/hidden live by refreshHotspotStates() below,
-      // since the assigned role can change on every binding edit.
-      const roleSpan = document.createElement("span");
-      // label_rect's OWN orientation -- label_orientation if present, else
-      // inferred from label_rect's own aspect ratio. Independent of rect's
-      // orientation above.
-      roleSpan.className = "hotspot-role-label" + (boxOrientation(h.label_rect, h.label_orientation) === "vertical" ? " vertical" : "");
-      roleSpan.dataset.genericName = h.generic_name;
-      roleSpan.dataset.pct = JSON.stringify(h.label_rect);
-      overlay.appendChild(roleSpan);
-    }
+    // Separate box for the ASSIGNED ROLE (once one exists) -- when the
+    // hotspot has its own editor-authored label_rect, positioned there (in
+    // the same % coordinate space as the connector rect, i.e. relative to
+    // the RAW photo, not nested inside the connector box), so it can sit
+    // anywhere on the photo -- typically just outside a small/crowded
+    // connector where there's no room for both its own name and a role.
+    // WITHOUT a label_rect, this now falls back to rect's own coordinates
+    // instead of not existing at all -- same box, same size, appended AFTER
+    // (so it paints on top, same z-index): once a role is assigned, the
+    // role text overlays/replaces the connector-name chip that was showing
+    // there, rather than the role never appearing on the photo at all.
+    // Text is populated/hidden live by refreshHotspotStates() below (empty
+    // -> CSS :empty hides the element entirely -- see that rule's comment),
+    // since the assigned role can change on every binding edit.
+    const roleBox = h.label_rect || h.rect;
+    const roleSpan = document.createElement("span");
+    // roleBox's OWN orientation -- label_orientation if present, else
+    // inferred from roleBox's own aspect ratio (rect's, in the fallback
+    // case). Independent of rect_orientation above.
+    roleSpan.className = "hotspot-role-label" + (boxOrientation(roleBox, h.label_orientation) === "vertical" ? " vertical" : "");
+    roleSpan.dataset.genericName = h.generic_name;
+    roleSpan.dataset.pct = JSON.stringify(roleBox);
+    overlay.appendChild(roleSpan);
   });
   updateHotspotLayout(); // no-ops until the img's `load` fires if it hasn't already (e.g. cached image)
   refreshHotspotStates();

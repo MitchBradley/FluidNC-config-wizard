@@ -1,0 +1,17 @@
+# Python bytecode cache -- regenerated automatically, never useful to commit.
+__pycache__/
+*.pyc
+
+# macOS Finder metadata.
+.DS_Store
+
+# Editor/IDE noise.
+*.swp
+*.swo
+
+# Leftover node_modules from ad-hoc jsdom-based test harnesses (see
+# PROGRESS.md) -- these are always `npm install`ed fresh into the repo root
+# for a quick verification pass, then cleaned up, but .gitignore them
+# defensively in case a cleanup step is ever skipped.
+node_modules/
+package-lock.json

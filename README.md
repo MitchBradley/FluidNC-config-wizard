@@ -71,6 +71,15 @@ If you run it locally, you will be able to create and test your own
 board and hotspots files for boards that are not yet supported by
 the upstream tool.
 
+If you're using the hotspot editor (see "2. hotspots/<id>.hotspots.yaml"
+below), use `tools/dev_server.py` instead of `python3 -m http.server` --
+same usage (`python3 tools/dev_server.py 8000`), but it also disables
+browser caching (so edits to a board/hotspots/image file are reflected on
+reload without a hard-refresh) and adds an upload endpoint the hotspot
+editor's "Save to hotspots/…" button uses to write the generated
+`<id>.hotspots.yaml` straight into this repo's `hotspots/` folder, instead
+of you downloading it and moving it into place by hand.
+
 ## Reporting problems
 
 Please use this repo's [Issues](../../issues) tab:

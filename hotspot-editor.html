@@ -27,7 +27,10 @@
     border-radius: 4px; padding: 4px 6px;
   }
   button {
-    font: inherit; cursor: pointer; background: var(--panel); color: var(--text);
+    /* #505050, not var(--panel) -- var(--panel) reads as visually almost
+       indistinguishable from the page's own --bg on buttons, where a 1px
+       border is the only other cue a control exists. */
+    font: inherit; cursor: pointer; background: #505050; color: var(--text);
     border: 1px solid var(--border); border-radius: 4px; padding: 4px 10px;
   }
   button:hover { border-color: var(--accent); color: var(--accent); }
@@ -260,6 +263,13 @@
     <div class="toolbar" style="padding:0 0 6px; border:none">
       <button id="loadBtn">Load hotspots file…</button>
       <input type="file" id="loadFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
+      <!-- First -- the most frequently used action in practice. Only works
+           when served via tools/dev_server.py (not plain
+           `python3 -m http.server`, which has no upload endpoint) -- see
+           that script's own docstring. Writes straight to this repo's
+           hotspots/ folder, skipping the download-then-manually-move-the-
+           file step downloadBtn still requires. -->
+      <button id="saveServerBtn" title="Requires running tools/dev_server.py (not plain http.server) -- writes straight to hotspots/<id>.hotspots.yaml on disk">Save to hotspots/…</button>
       <button id="copyBtn">Copy</button>
       <button id="downloadBtn">Download YAML</button>
       <button id="downloadImgBtn">Download image</button>
@@ -498,6 +508,15 @@ function renderLabels() {
   col.querySelectorAll(".unplace-btn").forEach(btn => {
     btn.onclick = () => unplaceLabel(btn.dataset.label);
   });
+  // Once every resource has been placed, the natural next step is saving --
+  // give "Save to hotspots/…" the same cyan/accent styling .note-instruct
+  // uses for imperative instructions, so the toolbar itself points at what
+  // to do next. Requires labels.length > 0 so an empty/not-yet-loaded board
+  // (where placed.size and labels.length are both trivially 0) doesn't
+  // light it up too.
+  document.getElementById("saveServerBtn").classList.toggle(
+    "primary", labels.length > 0 && placed.size === labels.length
+  );
 }
 
 function unplaceLabel(label) {
@@ -1410,6 +1429,39 @@ document.getElementById("downloadBtn").onclick = () => {
 document.getElementById("clearBtn").onclick = () => {
   hotspots = []; selectedId = null; armedLabel = null; drawingLabelForId = null;
   renderLabels(); renderHotspots(); renderOutput();
+};
+
+// POSTs the generated YAML straight to hotspots/<id>.hotspots.yaml on disk,
+// via tools/dev_server.py's upload endpoint (see that script's docstring --
+// plain `python3 -m http.server` has no such endpoint and this will just
+// fail with a network/404 error, caught below). Deliberately requires a
+// REAL board id (boardIdFromText(), not the boardIdGuess() fallback that
+// defaults to "corgi_cnc_controller") -- saving under a guessed id could
+// silently overwrite an unrelated board's real hotspots file.
+document.getElementById("saveServerBtn").onclick = async () => {
+  const btn = document.getElementById("saveServerBtn");
+  const original = btn.textContent;
+  const resetLater = () => setTimeout(() => { btn.textContent = original; }, 2000);
+  const id = boardIdFromText();
+  if (!id) {
+    btn.textContent = "No board id -- load board.yaml first";
+    resetLater();
+    return;
+  }
+  const filename = `${id}.hotspots.yaml`;
+  try {
+    const resp = await fetch(`/__save_hotspots__/${encodeURIComponent(filename)}`, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: document.getElementById("output").textContent,
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+    btn.textContent = `Saved hotspots/${filename}`;
+  } catch (e) {
+    btn.textContent = "Save failed (running tools/dev_server.py?)";
+    console.error("Save to hotspots/ failed:", e);
+  }
+  resetLater();
 };
 
 renderLabels();
