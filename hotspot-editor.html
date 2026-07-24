@@ -420,7 +420,13 @@ document.getElementById("loadBoardFileInput").onchange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => loadLabelsFromText(reader.result, file.name);
+  reader.onload = () => {
+    loadLabelsFromText(reader.result, file.name);
+    // Vice-versa: no image loaded yet -- try to auto-load the matching
+    // images/<id>.<ext>, guessed from the board.yaml's own "id:" line (see
+    // maybeAutoLoadImage(), defined further down but hoisted).
+    maybeAutoLoadImage();
+  };
   reader.readAsText(file);
   e.target.value = "";
 };
@@ -513,44 +519,102 @@ function escapeAttr(s) { return String(s).replace(/&/g,"&amp;").replace(/"/g,"&q
 // image (see downloadImage()) from ballooning in size.
 const MAX_IMG_DIM = 1600;
 
+// Shared by both the manual file-picker path and the auto-load-a-matching-
+// file path below -- takes any Blob (a File from the picker, or one handed
+// back by fetch()) since FileReader.readAsDataURL() works on either. Returns
+// a Promise that resolves once the image is actually showing, so callers
+// that need to sequence after it (none currently do, but auto-load ordering
+// is fiddly enough that this seemed worth keeping available) can await it.
+function loadImageBlob(blob, label) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const probe = new Image();
+      probe.onload = () => {
+        let { naturalWidth: w, naturalHeight: h } = probe;
+        let src = reader.result;
+        const longEdge = Math.max(w, h);
+        if (longEdge > MAX_IMG_DIM) {
+          const scale = MAX_IMG_DIM / longEdge;
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(w * scale);
+          canvas.height = Math.round(h * scale);
+          canvas.getContext("2d").drawImage(probe, 0, 0, canvas.width, canvas.height);
+          src = canvas.toDataURL("image/jpeg", 0.9);
+        }
+        document.getElementById("boardImg").src = src;
+        const note = document.getElementById("imgLoadNote");
+        note.textContent = `${label} (${w}x${h}${longEdge > MAX_IMG_DIM ? ", downscaled for editing" : ""}).`;
+        note.className = "note note-info";
+        note.style.display = "";
+        updateDrawHint();
+        document.getElementById("drawHint").style.display = "";
+        document.getElementById("loadImgFileBtn").classList.remove("primary");
+        // Hides the "load the image file" callout inside the hotspots-loaded
+        // success message (see loadHotspotsFromText()), if that message is
+        // currently showing it -- covers loading the image AFTER the
+        // hotspots.yaml, not just before (which loadHotspotsFromText()
+        // itself already accounts for at message-build time).
+        const imgWarn = document.getElementById("loadImageWarn");
+        if (imgWarn) imgWarn.style.display = "none";
+        resolve();
+      };
+      probe.src = reader.result;
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Tries each candidate path in order (same-origin fetch -- works when this
+// tool is served over http(s) from the repo root, same as the wizard itself
+// and per README's "Running it locally"; silently does nothing if fetch
+// fails/404s for all of them, e.g. opened via file:// or a board/image that
+// genuinely doesn't exist yet). Returns the first successful Response paired
+// with the path that produced it, or null.
+async function fetchFirstOk(paths) {
+  for (const p of paths) {
+    try {
+      const r = await fetch(p);
+      if (r.ok) return { path: p, response: r };
+    } catch (e) { /* fetch unsupported/blocked (file://, CORS, offline) -- ignore, just skip this candidate */ }
+  }
+  return null;
+}
+
+// Board.yaml loaded first -> try to auto-load its matching photo. Only fires
+// when no image is loaded yet, and only when the board.yaml actually had a
+// real "id:" line (boardIdFromText(), NOT the boardIdGuess() fallback --
+// guessing wrong here would silently load some OTHER board's real photo).
+async function maybeAutoLoadImage() {
+  if (document.getElementById("boardImg").getAttribute("src")) return; // already loaded
+  const id = boardIdFromText();
+  if (!id) return;
+  const found = await fetchFirstOk(["jpg", "jpeg", "png", "webp", "gif"].map(ext => `images/${id}.${ext}`));
+  if (!found) return;
+  const blob = await found.response.blob();
+  loadImageBlob(blob, `${found.path} (auto-loaded)`);
+}
+
+// Image loaded first -> try to auto-load its matching board.yaml, guessed
+// from the image's own filename (stripped of extension) under the same
+// <id>.<ext> naming convention images/ and boards/ both follow. Only fires
+// when no board/label list is loaded yet.
+async function maybeAutoLoadBoardFile(idGuess) {
+  if (labels.length || !idGuess) return;
+  const found = await fetchFirstOk([`boards/${idGuess}.board.yaml`]);
+  if (!found) return;
+  const text = await found.response.text();
+  loadLabelsFromText(text, `${found.path} (auto-loaded)`);
+}
+
 document.getElementById("loadImgFileBtn").onclick = () => document.getElementById("loadImgFileInput").click();
 document.getElementById("loadImgFileInput").onchange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const probe = new Image();
-    probe.onload = () => {
-      let { naturalWidth: w, naturalHeight: h } = probe;
-      let src = reader.result;
-      const longEdge = Math.max(w, h);
-      if (longEdge > MAX_IMG_DIM) {
-        const scale = MAX_IMG_DIM / longEdge;
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(w * scale);
-        canvas.height = Math.round(h * scale);
-        canvas.getContext("2d").drawImage(probe, 0, 0, canvas.width, canvas.height);
-        src = canvas.toDataURL("image/jpeg", 0.9);
-      }
-      document.getElementById("boardImg").src = src;
-      const note = document.getElementById("imgLoadNote");
-      note.textContent = `${file.name} (${w}x${h}${longEdge > MAX_IMG_DIM ? ", downscaled for editing" : ""}).`;
-      note.className = "note note-info";
-      note.style.display = "";
-      updateDrawHint();
-      document.getElementById("drawHint").style.display = "";
-      document.getElementById("loadImgFileBtn").classList.remove("primary");
-      // Hides the "load the image file" callout inside the hotspots-loaded
-      // success message (see loadHotspotsFromText()), if that message is
-      // currently showing it -- covers loading the image AFTER the
-      // hotspots.yaml, not just before (which loadHotspotsFromText()
-      // itself already accounts for at message-build time).
-      const imgWarn = document.getElementById("loadImageWarn");
-      if (imgWarn) imgWarn.style.display = "none";
-    };
-    probe.src = reader.result;
-  };
-  reader.readAsDataURL(file);
+  loadImageBlob(file, file.name);
+  // Vice-versa: no board loaded yet -- try to auto-load the matching
+  // boards/<id>.board.yaml, guessed from this image's own filename.
+  if (!labels.length) maybeAutoLoadBoardFile(file.name.replace(/\.[^./\\]+$/, ""));
   e.target.value = ""; // allow reloading the same filename twice in a row
 };
 
@@ -1062,12 +1126,25 @@ function renderHotspots() {
  * pulling in a full YAML library isn't worth it - but we should consider
  * reuse the wizard's jsyaml.dump()).
  * ------------------------------------------------------------------- */
-function boardIdGuess() {
-  // Best-effort: look for a line like "id: some_board" in the pasted text,
-  // in case the user pastes a real board.yaml instead of the plain label
-  // list -- purely a convenience, not required.
+function boardIdFromText() {
+  // Best-effort: look for a line like "id: some_board" in the loaded text,
+  // in case it's a real board.yaml rather than a plain label list. Returns
+  // null (not a fallback guess) when no such line is found -- used by the
+  // auto-load-the-matching-image feature below, which must NOT fall back to
+  // a made-up id (see boardIdGuess()): guessing wrong there would silently
+  // fetch and load some OTHER board's real photo instead of just failing
+  // visibly with "no image loaded yet".
   const m = rawBoardYamlText.match(/^\s*id:\s*(\S+)/m);
-  return m ? m[1] : "corgi_cnc_controller";
+  return m ? m[1] : null;
+}
+
+function boardIdGuess() {
+  // Same lookup, but with a fallback placeholder id -- used only by
+  // renderOutput() (the board_id:/image: lines of the generated YAML need
+  // SOME id even before a real board.yaml has been loaded) and the
+  // downloaded-file naming helpers, where a wrong guess is harmless (the
+  // contributor is about to rename/fix it by hand anyway).
+  return boardIdFromText() || "corgi_cnc_controller";
 }
 
 /* ---------------------------------------------------------------------
