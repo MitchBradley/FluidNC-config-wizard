@@ -98,6 +98,27 @@
     position: absolute; top: -18px; left: -2px; background: var(--accent); color: #0b1114;
     font-size: 10px; padding: 1px 4px; border-radius: 3px; white-space: nowrap; pointer-events: none;
   }
+  /* Matches index.html's .hotspot-label/.hotspot-label-text exactly (the
+     WIZARD's preview of this same "resource box" -- distinct from
+     .label-preview above, which mirrors .hotspot-role-label instead) --
+     the connector's own name, shown filling the box itself, not just the
+     small corner .tag badge above. top:0/bottom:0 (a fully DETERMINATE
+     height), not a translate-centering trick -- same lesson learned on
+     .label-preview and on index.html's own .hotspot-label: auto height
+     doesn't reliably fit vertical-rl text. */
+  .rect .resource-preview {
+    position: absolute; top: 0; bottom: 0; left: 2px; right: 2px; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; line-height: 1.3; color: #f2f6f8;
+    text-align: center; white-space: normal; word-break: break-word;
+    overflow: visible; box-sizing: border-box;
+  }
+  .rect .resource-preview-text {
+    background: rgba(10,16,19,.72); padding: 1px 4px; border-radius: 2px;
+  }
+  .rect .resource-preview.vertical {
+    writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg);
+  }
   .rect.selected .tag { background: #6fbf73; }
   .rect .handle {
     position: absolute; width: 10px; height: 10px; right: -6px; bottom: -6px;
@@ -117,31 +138,41 @@
     border: 2px dashed #c98fe0; background: rgba(201,143,224,.14); cursor: move;
   }
   .rect.label-rect .tag { background: #c98fe0; }
-  /* del stays at the base .rect .del position (top-right) rather than being
-     pushed to the bottom row -- on a narrow label box, a bottom-row del
-     (right-anchored) and .orient-btn (left-anchored, wider text) could
-     overlap and leave the del button unreachable underneath orient-btn. */
-  /* Lives INSIDE the box, centered -- both because that's roughly where the
-     actual label text will end up once rendered for real (this box's whole
-     purpose), and because centering (rather than the earlier bottom-left
-     corner placement) keeps it clamped to the box's own width/height no
-     matter how small the box is, so it can never reach the resize handle
-     just outside the box's bottom-right edge. */
+  /* Matches index.html's .hotspot-role-label exactly (background/color/
+     font-size/centering/wrap) -- see this element's own creation comment
+     in renderHotspots() for why. width:100%/height:100% (a fully
+     DETERMINATE size), not a translate-based centering trick -- learned
+     the hard way on .hotspot-label in the wizard itself: an absolutely
+     positioned box with only top:50%+translateY (auto height) doesn't
+     reliably give vertical-rl text enough room before wrapping, since
+     height becomes the wrapping constraint under that writing mode. */
+  .rect.label-rect .label-preview {
+    position: absolute; inset: 0; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%; box-sizing: border-box;
+    font-size: 13px; line-height: 1.25; color: #000; background: palegreen;
+    text-align: center; white-space: normal; word-break: break-word;
+    overflow: visible; border-radius: 2px;
+  }
+  .rect.label-rect .label-preview.vertical {
+    writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg);
+  }
+  /* del stays at the base .rect .del position (top-right); tag sits
+     top-left; handle sits bottom-right (all outside the box, see their own
+     rules). orient-btn now takes the one remaining outside corner
+     (bottom-left) -- it used to live centered INSIDE the box, doubling as
+     a rotated preview of "vertical" text, but that meant it sat exactly
+     on top of .label-preview above (same centering), completely covering
+     the real preview text with its own opaque pill. Now that
+     .label-preview shows the actual rotated text for real, orient-btn
+     doesn't need to preview anything itself -- just a small, plain,
+     always-horizontal toggle badge, out of the way like its sibling
+     controls. */
   .rect.label-rect .orient-btn {
-    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    position: absolute; bottom: -18px; left: -2px;
     background: #c98fe0; color: #0b1114;
     font-size: 10px; line-height: 14px; padding: 0 4px; border-radius: 3px; cursor: pointer;
-    white-space: nowrap; max-width: calc(100% - 4px); overflow: hidden; text-overflow: ellipsis;
-  }
-  /* Oriented to match the label's own current text-flow state, same
-     writing-mode/rotate technique the wizard itself uses for a vertical
-     role label -- doubles as a visual preview of what "vertical" will
-     actually look like, and is naturally narrower, which helps on exactly
-     the narrow boxes where this control used to cause trouble. */
-  .rect.label-rect .orient-btn.vertical {
-    writing-mode: vertical-rl; text-orientation: mixed;
-    transform: translate(-50%, -50%) rotate(180deg);
-    padding: 4px 0; max-width: none; max-height: calc(100% - 4px);
+    white-space: nowrap;
   }
   pre#output {
     font-size: 11px; font-family: ui-monospace, monospace; white-space: pre-wrap; word-break: break-word;
@@ -647,7 +678,7 @@ function updateDrawHint() {
     hint.className = "note note-warn";
   } else {
     hint.innerHTML = `Click/drag to draw a hotspot rectangle for the resource selected on the left.` +
-      `<br><br>First draw a green rectangle for the resource name, the click "+ label box" to draw a ` +
+      `<br><br>First draw a green rectangle for the resource name, the click "+ role box" to draw a ` +
       `magenta rectangle for the FluidNC role name.`;
     hint.className = "note note-instruct";
   }
@@ -659,13 +690,26 @@ overlay.addEventListener("mousedown", (e) => {
   beginNoSelect();
   if (drawingLabelForId !== null) {
     // Armed via a hotspot's "label" button -- this drag places/replaces
-    // THAT hotspot's labelRect, not a new connector hotspot.
+    // THAT hotspot's labelRect, not a new connector hotspot. Also styled
+    // "label-rect" (not just "drawing-temp") and given its own live
+    // .label-preview child, same as a committed labelRect gets in
+    // renderHotspots() -- without this, the box being actively dragged out
+    // showed only the plain temp-rectangle highlight with no text/green
+    // fill at all until the mouse was released, which read as broken
+    // rather than just "not finished yet".
     const r = overlayRect();
     drawing = { startX: e.clientX - r.left, startY: e.clientY - r.top, forLabelId: drawingLabelForId };
     const el = document.createElement("div");
-    el.className = "rect drawing-temp";
+    el.className = "rect drawing-temp label-rect";
+    const forHotspot = hotspots.find(x => x.id === drawingLabelForId);
+    const preview = document.createElement("div");
+    preview.className = "label-preview";
+    preview.textContent = forHotspot ? forHotspot.label : "";
+    el.appendChild(preview);
     overlay.appendChild(el);
     drawing.el = el;
+    drawing.previewEl = preview;
+    drawing.previewClass = "label-preview";
     renderHotspots();
     return;
   }
@@ -682,8 +726,23 @@ overlay.addEventListener("mousedown", (e) => {
   // class would make renderHotspots() sweep it away the instant anything
   // else triggers a re-render mid-drag (deselecting an old hotspot, etc).
   el.className = "rect drawing-temp";
+  // Live preview of the connector's own name, same as a committed resource
+  // box gets (see .resource-preview above) -- including the live aspect-
+  // ratio-driven vertical/horizontal toggle (see the shared mousemove
+  // handler below), since the RESOURCE box's own shape now seeds
+  // labelOrientation at creation time (see the mouseup handler), not just
+  // a separately-drawn label box's shape.
+  const resPreview = document.createElement("div");
+  resPreview.className = "resource-preview";
+  const resPreviewText = document.createElement("div");
+  resPreviewText.className = "resource-preview-text";
+  resPreviewText.textContent = armedLabel;
+  resPreview.appendChild(resPreviewText);
+  el.appendChild(resPreview);
   overlay.appendChild(el);
   drawing.el = el;
+  drawing.previewEl = resPreview;
+  drawing.previewClass = "resource-preview";
   selectedId = null;
   renderHotspots(); // safe: renderHotspots() only clears/rebuilds ".hotspot" elements, not this ".drawing-temp" one
 });
@@ -695,6 +754,14 @@ document.addEventListener("mousemove", (e) => {
     const left = Math.min(drawing.startX, x), top = Math.min(drawing.startY, y);
     const w = Math.abs(x - drawing.startX), h = Math.abs(y - drawing.startY);
     Object.assign(drawing.el.style, { left: left + "px", top: top + "px", width: w + "px", height: h + "px" });
+    // Live-preview either box's orientation as it's dragged out, using the
+    // same "taller than wide -> vertical" heuristic the real commit (see
+    // the mouseup handler below) seeds labelOrientation with -- so the
+    // preview text actually flips to match what the box will be seeded as
+    // the instant its aspect ratio crosses over, not just after release.
+    if (drawing.previewEl) {
+      drawing.previewEl.className = drawing.previewClass + (h > w ? " vertical" : "");
+    }
   } else if (dragging) {
     const dx = e.clientX - dragging.startX, dy = e.clientY - dragging.startY;
     const hs = hotspots.find(h => h.id === dragging.hotspotId);
@@ -745,7 +812,7 @@ document.addEventListener("mouseup", (e) => {
           // Initial orientation follows the aspect ratio of the box as
           // drawn (taller than wide -> vertical text is presumably the
           // intent) -- this only runs here, at label-box CREATION time (the
-          // "+ label box" control only exists when there's no labelRect
+          // "+ role box" control only exists when there's no labelRect
           // yet, see its render code below), never re-evaluated when the
           // box is later resized via its handle; after creation, only the
           // explicit orient-btn toggle changes it.
@@ -760,7 +827,17 @@ document.addEventListener("mouseup", (e) => {
             w: snapPct(w / off.width * 100), h: snapPct(h / off.height * 100),
           },
           label: armedLabel,
-          labelRect: null, labelOrientation: "horizontal",
+          // Provisional orientation from the RESOURCE box's own aspect
+          // ratio, same "taller than wide -> vertical" heuristic the label
+          // box uses (see its own comment above) -- this box's own
+          // .resource-preview is now shown immediately (before any label
+          // box exists), so it needs a real orientation from the start
+          // rather than always defaulting to horizontal until/unless a
+          // label box happens to get drawn later. Still just a starting
+          // point: drawing a label box afterwards re-seeds labelOrientation
+          // from THAT box's own shape instead (overwriting this), and the
+          // orient-btn can always override either way by hand.
+          labelRect: null, labelOrientation: h > w ? "vertical" : "horizontal",
         };
         hotspots.push(hotspot);
         armedLabel = null;
@@ -807,6 +884,18 @@ function renderHotspots() {
     tag.textContent = h.label;
     el.appendChild(tag);
 
+    // Interior preview of the connector's own name -- see .resource-preview's
+    // CSS comment. Same h.labelOrientation field the role box's orient-btn
+    // toggles (a single per-hotspot setting, not one per box -- matches the
+    // wizard, which also applies it to both its own boxes).
+    const resPreview = document.createElement("div");
+    resPreview.className = "resource-preview" + (h.labelOrientation === "vertical" ? " vertical" : "");
+    const resPreviewText = document.createElement("div");
+    resPreviewText.className = "resource-preview-text";
+    resPreviewText.textContent = h.label;
+    resPreview.appendChild(resPreviewText);
+    el.appendChild(resPreview);
+
     el.addEventListener("mousedown", (e) => {
       e.stopPropagation();
       e.preventDefault();
@@ -848,7 +937,7 @@ function renderHotspots() {
       });
       el.appendChild(handle);
 
-      // "+ label box" button: arms drawingLabelForId so the NEXT drag on the
+      // "+ role box" button: arms drawingLabelForId so the NEXT drag on the
       // overlay places this hotspot's labelRect, rather than creating a new
       // connector hotspot. Only offered when there's no labelRect yet --
       // once one exists, it has its own move/resize/delete handles (below)
@@ -856,7 +945,7 @@ function renderHotspots() {
       if (!h.labelRect) {
         const labelBtn = document.createElement("div");
         labelBtn.className = "label-btn";
-        labelBtn.textContent = "+ label box";
+        labelBtn.textContent = "+ role box";
         labelBtn.addEventListener("mousedown", (e) => e.stopPropagation());
         labelBtn.onclick = (e) => {
           e.stopPropagation();
@@ -881,6 +970,20 @@ function renderHotspots() {
         left: lpx.left + "px", top: lpx.top + "px",
         width: lpx.width + "px", height: lpx.height + "px",
       });
+      // Fills the box exactly the way the wizard's own .hotspot-role-label
+      // will (same background/color/centering/wrap/vertical-writing-mode
+      // treatment -- see index.html), so sizing this box here directly
+      // previews whether real role text will fit. The wizard shows the
+      // ASSIGNED FLUIDNC ROLE here, which doesn't exist yet at hotspot-
+      // authoring time -- h.label (this connector's own generic_name) is
+      // the best available stand-in, and is often close in length to
+      // whatever role ends up assigned. Appended first/underneath the
+      // del/handle/orient-btn controls (added below), and pointer-events:
+      // none, so it never blocks interacting with them.
+      const preview = document.createElement("div");
+      preview.className = "label-preview" + (h.labelOrientation === "vertical" ? " vertical" : "");
+      preview.textContent = h.label;
+      lel.appendChild(preview);
       const ltag = document.createElement("div");
       ltag.className = "tag";
       ltag.textContent = h.label;
@@ -918,8 +1021,11 @@ function renderHotspots() {
         });
         lel.appendChild(handle);
 
+        // No ".vertical" class anymore -- see the CSS rule's own comment;
+        // this is now always a plain, flat, out-of-the-way toggle badge,
+        // never rotated (.label-preview shows the real rotated preview).
         const orientBtn = document.createElement("div");
-        orientBtn.className = "orient-btn" + (h.labelOrientation === "vertical" ? " vertical" : "");
+        orientBtn.className = "orient-btn";
         orientBtn.textContent = h.labelOrientation === "vertical" ? "vertical" : "horizontal";
         orientBtn.addEventListener("mousedown", (e) => e.stopPropagation());
         orientBtn.onclick = (e) => {
@@ -976,7 +1082,7 @@ function renderOutput() {
     y += `    rect: {x: ${h.rect.x.toFixed(2)}, y: ${h.rect.y.toFixed(2)}, w: ${h.rect.w.toFixed(2)}, h: ${h.rect.h.toFixed(2)}}\n`;
     if (h.labelRect) {
       // Optional: only present when the developer drew a separate box for
-      // the role text (see "+ label box" button) -- omitted entirely
+      // the role text (see "+ role box" button) -- omitted entirely
       // otherwise, so the wizard's fallback (label text inside the
       // connector box itself) stays in effect for ordinary-sized connectors.
       y += `    label_rect: {x: ${h.labelRect.x.toFixed(2)}, y: ${h.labelRect.y.toFixed(2)}, w: ${h.labelRect.w.toFixed(2)}, h: ${h.labelRect.h.toFixed(2)}}\n`;
