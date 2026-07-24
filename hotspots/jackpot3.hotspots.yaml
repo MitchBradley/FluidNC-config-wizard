@@ -1,0 +1,39 @@
+board_id: jackpot3
+image: images/jackpot3.jpg
+hotspots:
+  - generic_name: "Motor1"
+    rect: {x: 80.00, y: 2.00, w: 13.00, h: 8.00}
+  - generic_name: "Motor2"
+    rect: {x: 65.00, y: 1.00, w: 14.00, h: 9.00}
+  - generic_name: "Motor3"
+    rect: {x: 50.00, y: 1.00, w: 13.00, h: 9.00}
+  - generic_name: "Motor5"
+    rect: {x: 22.00, y: 1.00, w: 12.00, h: 9.00}
+  - generic_name: "Motor6"
+    rect: {x: 8.00, y: 1.00, w: 11.00, h: 9.00}
+  - generic_name: "Motor4"
+    rect: {x: 37.00, y: 1.00, w: 12.00, h: 9.00}
+  - generic_name: "In25"
+    rect: {x: 90.00, y: 89.00, w: 3.00, h: 9.00}
+  - generic_name: "In33"
+    rect: {x: 88.00, y: 89.00, w: 2.00, h: 9.00}
+  - generic_name: "In32"
+    rect: {x: 85.00, y: 89.00, w: 3.00, h: 9.00}
+  - generic_name: "In35"
+    rect: {x: 83.00, y: 89.00, w: 2.00, h: 9.00}
+  - generic_name: "In34"
+    rect: {x: 80.00, y: 89.00, w: 3.00, h: 9.00}
+  - generic_name: "In39"
+    rect: {x: 78.00, y: 89.00, w: 2.00, h: 9.00}
+  - generic_name: "In36"
+    rect: {x: 75.00, y: 89.00, w: 3.00, h: 9.00}
+  - generic_name: "FET27"
+    rect: {x: 85.00, y: 64.00, w: 15.00, h: 12.00}
+  - generic_name: "FET0"
+    rect: {x: 84.00, y: 53.00, w: 16.00, h: 11.00}
+  - generic_name: "FET2"
+    rect: {x: 84.00, y: 42.00, w: 16.00, h: 11.00}
+  - generic_name: "FET26"
+    rect: {x: 85.00, y: 76.00, w: 15.00, h: 12.00}
+  - generic_name: "Expansion Module Socket"
+    rect: {x: 42.00, y: 48.00, w: 9.00, h: 24.00}
