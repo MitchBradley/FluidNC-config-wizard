@@ -82,8 +82,8 @@ See `schema/hotspots.schema.json` for the authoritative field-by-field
 description. Summary:
 
 ```yaml
-board_id: corgi_cnc_controller       # must match the board.yaml's id
-image: images/corgi_cnc_controller.jpg
+board_id: corgi       # must match the board.yaml's id
+image: images/corgi.jpg
 hotspots:
   - generic_name: "RS485"            # must match a board.yaml generic_name
     rect: {x: 90.00, y: 36.00, w: 7.00, h: 11.00}

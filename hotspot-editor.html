@@ -313,7 +313,7 @@
  * - Kept deliberately separate from board.schema.json itself: hotspot
  *   coordinates are a presentation-layer fact about a particular photo,
  *   not a hardware fact, so this sidecar is meant to live alongside a
- *   board file (e.g. corgi_cnc_controller.hotspots.yaml), never inside it.
+ *   board file (e.g. corgi.hotspots.yaml), never inside it.
  * ------------------------------------------------------------------- */
 
 /* ---------------------------------------------------------------------
@@ -1221,7 +1221,7 @@ function boardIdGuess() {
   // SOME id even before a real board.yaml has been loaded) and the
   // downloaded-file naming helpers, where a wrong guess is harmless (the
   // contributor is about to rename/fix it by hand anyway).
-  return boardIdFromText() || "corgi_cnc_controller";
+  return boardIdFromText() || "corgi";
 }
 
 /* ---------------------------------------------------------------------
@@ -1436,7 +1436,7 @@ document.getElementById("clearBtn").onclick = () => {
 // plain `python3 -m http.server` has no such endpoint and this will just
 // fail with a network/404 error, caught below). Deliberately requires a
 // REAL board id (boardIdFromText(), not the boardIdGuess() fallback that
-// defaults to "corgi_cnc_controller") -- saving under a guessed id could
+// defaults to "corgi") -- saving under a guessed id could
 // silently overwrite an unrelated board's real hotspots file.
 document.getElementById("saveServerBtn").onclick = async () => {
   const btn = document.getElementById("saveServerBtn");

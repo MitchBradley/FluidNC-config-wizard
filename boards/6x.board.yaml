@@ -1,5 +1,5 @@
 board:
-  id: 6x_cnc_controller
+  id: 6x
   name: "6x CNC Controller"
   manufacturer: "Dring Engineering Services"
   mcu_chip: esp32

@@ -1,5 +1,5 @@
-board_id: corgi_cnc_controller
-image: images/corgi_cnc_controller.jpg
+board_id: corgi
+image: images/corgi.jpg
 hotspots:
   - generic_name: "Driver1"
     rect: {x: 14.00, y: 92.00, w: 12.00, h: 6.00}
@@ -34,6 +34,7 @@ hotspots:
   - generic_name: "RS485"
     rect: {x: 90.00, y: 36.00, w: 7.00, h: 11.00}
     label_rect: {x: 97.00, y: 36.00, w: 10.00, h: 11.00}
+    rect_orientation: horizontal
     label_orientation: horizontal
   - generic_name: "FET12"
     rect: {x: 90.00, y: 50.00, w: 7.00, h: 7.00}
@@ -44,6 +45,7 @@ hotspots:
   - generic_name: "Expander"
     rect: {x: 88.00, y: 79.00, w: 9.00, h: 12.00}
     label_rect: {x: 97.00, y: 79.00, w: 10.00, h: 11.00}
+    rect_orientation: horizontal
     label_orientation: horizontal
   - generic_name: "In2"
     rect: {x: 6.00, y: 0.00, w: 8.00, h: 6.00}

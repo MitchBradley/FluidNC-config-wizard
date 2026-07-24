@@ -1,5 +1,5 @@
 board:
-  id: 4x_cnc_controller
+  id: 4x
   name: "4x CNC Controller (Integrated ESP32 and TMC2209)"
   manufacturer: "Dring Engineering Services"
   mcu_chip: esp32
