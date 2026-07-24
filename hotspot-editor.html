@@ -850,6 +850,21 @@ document.addEventListener("mouseup", (e) => {
     }
     drawingLabelForId = null;
   }
+  // Moving/resizing an EXISTING rect (as opposed to drawing a new one, the
+  // `if (drawing)` branch above) changes rect/labelRect coordinates during
+  // the mousemove handler but doesn't touch #output live -- renderOutput()
+  // here picks that up once the drag actually completes. Gated on
+  // `dragging` being set (i.e. a move/resize was genuinely in progress) --
+  // this used to be an unconditional `document.addEventListener("mouseup",
+  // () => renderOutput())`, which fired on EVERY mouseup anywhere in the
+  // document, including releasing a text-selection drag inside #output
+  // itself. renderOutput() replaces #output's textContent wholesale, which
+  // destroys the DOM text node the user had just selected -- so a drag-
+  // select there appeared to work (visible while held) and then vanish the
+  // instant the mouse button came up (Ctrl-C still worked mid-drag, before
+  // this handler ran). Scoping the call to genuine drags fixes that without
+  // losing the coordinate-drag case it was there for.
+  if (dragging) renderOutput();
   dragging = null;
   endNoSelect();
 });
@@ -1041,8 +1056,6 @@ function renderHotspots() {
   });
   document.getElementById("hotspotCount").textContent = hotspots.length;
 }
-
-document.addEventListener("mouseup", () => { renderOutput(); });
 
 /* ---------------------------------------------------------------------
  * Output (hand-rolled YAML -- the data model here is simple enough that

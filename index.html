@@ -140,6 +140,22 @@
        whatever <pre>'s UA-default font happens to be per browser. */
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     width: 50ch; max-width: 100%; box-sizing: content-box;
+    /* The draft text is drag-selectable (so the user can copy a snippet,
+       not just the whole file via the Copy button) -- but #draft is full
+       of real interactive controls (input.inline-field, select.attr-field,
+       .inline-btn, etc, see generateDraft()), and on Chrome/Windows a
+       mouse-drag text selection that starts or ends over one of those
+       controls gets silently collapsed the instant the mouse button is
+       released (reported: highlight vanishes on mouseup, though Ctrl-C
+       while still held down does copy it -- i.e. the browser's internal
+       selection object is fine, only the visible-highlight/finalize step
+       is glitching). Not reproduced on Chrome/macOS. Making every such
+       control unselectable (below) keeps a selection's start/end points
+       from ever landing inside one, which avoids the finalize glitch. */
+    user-select: text;
+  }
+  pre#draft input, pre#draft select, pre#draft button {
+    user-select: none; -webkit-user-select: none;
   }
   .tbd-token { color: var(--tbd); font-weight: 700; }
   .summary { display: flex; gap: 18px; margin-bottom: 12px; font-size: 12.5px; }
