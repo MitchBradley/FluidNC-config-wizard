@@ -61,7 +61,6 @@ hotspots:
   - generic_name: "5V Out5"
     rect: {x: 73.00, y: 6.00, w: 4.00, h: 10.00}
     label_rect: {x: 73.00, y: -7.00, w: 4.00, h: 13.00}
-    label_orientation: horizontal
   - generic_name: "5V Out46"
     rect: {x: 77.00, y: 6.00, w: 5.00, h: 10.00}
     label_rect: {x: 77.00, y: -7.00, w: 5.00, h: 13.00}
@@ -70,10 +69,10 @@ hotspots:
     label_rect: {x: 82.00, y: -7.00, w: 5.00, h: 13.00}
   - generic_name: "FET4"
     rect: {x: 85.00, y: 52.00, w: 7.00, h: 7.00}
-    label_rect: {x: 92.00, y: 53.00, w: 14.00, h: 6.00}
+    label_rect: {x: 92.00, y: 52.00, w: 13.00, h: 7.00}
   - generic_name: "FET5"
     rect: {x: 85.00, y: 59.00, w: 7.00, h: 6.00}
-    label_rect: {x: 92.00, y: 60.00, w: 14.00, h: 5.00}
+    label_rect: {x: 92.00, y: 59.00, w: 13.00, h: 6.00}
   - generic_name: "Spindle 10V"
     rect: {x: 85.00, y: 33.00, w: 7.00, h: 5.00}
     label_rect: {x: 92.00, y: 33.00, w: 13.00, h: 5.00}
@@ -94,11 +93,14 @@ hotspots:
     label_rect: {x: 46.00, y: 56.00, w: 2.00, h: 11.00}
   - generic_name: "Expander"
     rect: {x: 85.00, y: 77.00, w: 9.00, h: 12.00}
-    label_rect: {x: 85.00, y: 90.00, w: 20.00, h: 8.00}
+    label_rect: {x: 94.00, y: 77.00, w: 11.00, h: 12.00}
+    rect_orientation: horizontal
+    label_orientation: horizontal
   - generic_name: "IO14"
     rect: {x: 52.00, y: 68.00, w: 2.00, h: 7.00}
     label_rect: {x: 52.00, y: 56.00, w: 2.00, h: 11.00}
   - generic_name: "RS485"
-    rect: {x: 86.00, y: 41.00, w: 8.00, h: 10.00}
+    rect: {x: 85.00, y: 41.00, w: 7.00, h: 10.00}
     label_rect: {x: 92.00, y: 41.00, w: 13.00, h: 10.00}
+    rect_orientation: horizontal
     
