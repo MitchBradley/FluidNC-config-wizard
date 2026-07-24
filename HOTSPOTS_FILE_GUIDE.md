@@ -87,8 +87,9 @@ image: images/corgi_cnc_controller.jpg
 hotspots:
   - generic_name: "RS485"            # must match a board.yaml generic_name
     rect: {x: 90.00, y: 36.00, w: 7.00, h: 11.00}
+    rect_orientation: horizontal     # optional -- see below
     label_rect: {x: 97.00, y: 36.00, w: 10.00, h: 11.00}   # optional
-    label_orientation: horizontal    # only meaningful if label_rect present
+    label_orientation: horizontal    # optional, only meaningful if label_rect present
 ```
 
 Key points worth calling out explicitly (they're easy to get wrong if
@@ -107,6 +108,15 @@ hand-editing rather than using the editor):
 - `label_rect` is optional; omit it for an ordinary connector where the
   name fits fine directly inside `rect`. Only add it when you need the label
   positioned separately from the clickable box.
+- `rect_orientation`/`label_orientation` are both optional and fully
+  independent of each other -- one governs the text inside `rect` (the
+  connector's own name), the other the text inside `label_rect` (once one
+  exists). Omit either (or both) and the wizard infers that box's text
+  direction from its own aspect ratio (taller than wide -> vertical); only
+  set one explicitly when you need to override what the aspect ratio alone
+  would produce. The hotspot editor only ever writes these when you've
+  manually toggled a box's own orientation button -- it never writes an
+  inferred value, so most hotspots in a real file have neither field.
 - Every hotspot should have exactly one `generic_name` ("one hotspot, one
   name"). If a single physical pin genuinely serves two different resources
   (see BOARD_FILE_GUIDE.md's note on shared pins), give each resource its

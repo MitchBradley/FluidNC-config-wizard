@@ -4,43 +4,33 @@ hotspots:
   - generic_name: "Driver1"
     rect: {x: 14.00, y: 92.00, w: 12.00, h: 6.00}
     label_rect: {x: 14.00, y: 98.00, w: 12.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "Driver2"
     rect: {x: 27.00, y: 92.00, w: 12.00, h: 6.00}
     label_rect: {x: 27.00, y: 98.00, w: 12.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "Driver3"
     rect: {x: 40.00, y: 92.00, w: 11.00, h: 6.00}
     label_rect: {x: 40.00, y: 98.00, w: 11.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "Driver4"
     rect: {x: 52.00, y: 92.00, w: 12.00, h: 6.00}
     label_rect: {x: 52.00, y: 98.00, w: 12.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "Driver5"
     rect: {x: 65.00, y: 92.00, w: 11.00, h: 6.00}
     label_rect: {x: 65.00, y: 98.00, w: 11.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "Driver6"
     rect: {x: 77.00, y: 92.00, w: 11.00, h: 6.00}
     label_rect: {x: 77.00, y: 98.00, w: 11.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "5V Out14"
     rect: {x: 90.00, y: 8.00, w: 7.00, h: 7.00}
     label_rect: {x: 97.00, y: 8.00, w: 10.00, h: 7.00}
-    label_orientation: horizontal
   - generic_name: "Spindle Out14"
     rect: {x: 90.00, y: 16.00, w: 7.00, h: 6.00}
     label_rect: {x: 97.00, y: 17.00, w: 10.00, h: 5.00}
-    label_orientation: horizontal
   - generic_name: "Spindle Out15"
     rect: {x: 90.00, y: 23.00, w: 7.00, h: 5.00}
     label_rect: {x: 97.00, y: 23.00, w: 10.00, h: 5.00}
-    label_orientation: horizontal
   - generic_name: "Spindle 10V"
     rect: {x: 90.00, y: 29.00, w: 7.00, h: 5.00}
     label_rect: {x: 97.00, y: 29.00, w: 10.00, h: 5.00}
-    label_orientation: horizontal
   - generic_name: "RS485"
     rect: {x: 90.00, y: 36.00, w: 7.00, h: 11.00}
     label_rect: {x: 97.00, y: 36.00, w: 10.00, h: 11.00}
@@ -48,11 +38,9 @@ hotspots:
   - generic_name: "FET12"
     rect: {x: 90.00, y: 50.00, w: 7.00, h: 7.00}
     label_rect: {x: 97.00, y: 50.00, w: 10.00, h: 7.00}
-    label_orientation: horizontal
   - generic_name: "FET4"
     rect: {x: 90.00, y: 58.00, w: 7.00, h: 7.00}
     label_rect: {x: 97.00, y: 58.00, w: 10.00, h: 7.00}
-    label_orientation: horizontal
   - generic_name: "Expander"
     rect: {x: 88.00, y: 79.00, w: 9.00, h: 12.00}
     label_rect: {x: 97.00, y: 79.00, w: 10.00, h: 11.00}
@@ -60,44 +48,33 @@ hotspots:
   - generic_name: "In2"
     rect: {x: 6.00, y: 0.00, w: 8.00, h: 6.00}
     label_rect: {x: 5.00, y: -16.00, w: 10.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "In26"
     rect: {x: 14.00, y: 0.00, w: 8.00, h: 6.00}
     label_rect: {x: 13.00, y: -8.00, w: 10.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "In33"
     rect: {x: 22.00, y: 0.00, w: 8.00, h: 6.00}
     label_rect: {x: 21.00, y: -16.00, w: 10.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "In32"
     rect: {x: 30.00, y: 0.00, w: 8.00, h: 6.00}
     label_rect: {x: 29.00, y: -8.00, w: 10.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "In35"
     rect: {x: 38.00, y: 0.00, w: 8.00, h: 6.00}
     label_rect: {x: 37.00, y: -16.00, w: 10.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "In34"
     rect: {x: 46.00, y: 0.00, w: 8.00, h: 6.00}
     label_rect: {x: 45.00, y: -8.00, w: 10.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "In39"
     rect: {x: 54.00, y: 0.00, w: 8.00, h: 6.00}
     label_rect: {x: 53.00, y: -16.00, w: 10.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "In36"
     rect: {x: 62.00, y: 0.00, w: 8.00, h: 6.00}
     label_rect: {x: 61.00, y: -8.00, w: 10.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "5V Out12"
     rect: {x: 71.00, y: 1.00, w: 6.00, h: 6.00}
     label_rect: {x: 69.00, y: -16.00, w: 10.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "5V Out4"
     rect: {x: 77.00, y: 1.00, w: 6.00, h: 6.00}
     label_rect: {x: 75.00, y: -8.00, w: 10.00, h: 8.00}
-    label_orientation: horizontal
   - generic_name: "5V Out13"
     rect: {x: 83.00, y: 1.00, w: 6.00, h: 6.00}
     label_rect: {x: 81.00, y: -16.00, w: 10.00, h: 8.00}
-    label_orientation: horizontal

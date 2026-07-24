@@ -323,10 +323,11 @@
     white-space: normal; word-break: break-word;
     text-align: center; overflow: visible; box-sizing: border-box;
   }
-  /* .vertical mirrors .hotspot-role-label.vertical below -- same
-     label_orientation field, applied to BOTH the connector's own name
-     (this element) and its assigned-role label, so a hotspot drawn
-     tall-and-narrow reads consistently rotated in both places. Switches
+  /* .vertical mirrors .hotspot-role-label.vertical below, but the two are
+     driven by INDEPENDENT fields -- this one by rect_orientation (or, if
+     absent, rect's own aspect ratio; see boxOrientation()), the role
+     label by label_orientation/label_rect's own aspect ratio. No coupling:
+     rect and label_rect can each be oriented differently. Switches
      from top:50%+translateY (base .hotspot-label's centering, height left
      "auto") to top:0/bottom:0 + flex centering, same as
      .hotspot-role-label already does -- NEEDED, not just cosmetic: in
@@ -362,9 +363,11 @@
      box's own corner, since small/crowded connectors often have no room
      for both their own name and the assigned role. Text content/visibility
      is refreshed live by refreshHotspotStates(), same as the connector
-     box's assigned/unassigned coloring. label_orientation: "vertical"
-     rotates the text to read bottom-to-top; still allowed to overflow past
-     the rect for now (same "fix later" stance as the corner chip). */
+     box's assigned/unassigned coloring. label_orientation: "vertical" (or,
+     if absent, label_rect's own aspect ratio -- see boxOrientation(),
+     independent of rect_orientation above) rotates the text to read
+     bottom-to-top; still allowed to overflow past the rect for now (same
+     "fix later" stance as the corner chip). */
   .hotspot-role-label {
     position: absolute; z-index: 2; pointer-events: none; padding: 1px 4px;
     /* Same --hotspot-scale AND base size as .hotspot-label above -- kept in
@@ -1962,6 +1965,16 @@ function updateHotspotLayout() {
   });
 }
 
+// rect and label_rect each have their own INDEPENDENT orientation: if
+// rect_orientation/label_orientation is present in hotspots.yaml, it
+// overrides; if absent, the orientation is inferred from that specific
+// box's own aspect ratio. Mirrors hotspot-editor.html's own
+// effectiveOrientation() -- no coupling between the two boxes at all.
+function boxOrientation(box, override) {
+  if (override === "vertical" || override === "horizontal") return override;
+  return box && box.h > box.w ? "vertical" : "horizontal";
+}
+
 function renderHotspotPane() {
   const mainEl = document.querySelector("main");
   const col = document.getElementById("hotspotCol");
@@ -2016,9 +2029,10 @@ function renderHotspotPane() {
     // unassigned coloring already uses, so it never needs a separate
     // initial value.
     const labelSpan = document.createElement("span");
-    // Same label_orientation field .hotspot-role-label below uses, now
-    // applied here too -- see this class's own CSS comment for why.
-    labelSpan.className = "hotspot-label" + (h.label_orientation === "vertical" ? " vertical" : "");
+    // rect's OWN orientation -- rect_orientation if present, else inferred
+    // from rect's own aspect ratio (see boxOrientation()). Independent of
+    // label_rect's orientation below; see this class's own CSS comment.
+    labelSpan.className = "hotspot-label" + (boxOrientation(h.rect, h.rect_orientation) === "vertical" ? " vertical" : "");
     const labelText = document.createElement("span"); // see .hotspot-label-text's comment -- carries just the background/padding, hugging the text
     labelText.className = "hotspot-label-text";
     labelText.textContent = h.generic_name;
@@ -2034,7 +2048,10 @@ function renderHotspotPane() {
       // Text is populated/hidden live by refreshHotspotStates() below,
       // since the assigned role can change on every binding edit.
       const roleSpan = document.createElement("span");
-      roleSpan.className = "hotspot-role-label" + (h.label_orientation === "vertical" ? " vertical" : "");
+      // label_rect's OWN orientation -- label_orientation if present, else
+      // inferred from label_rect's own aspect ratio. Independent of rect's
+      // orientation above.
+      roleSpan.className = "hotspot-role-label" + (boxOrientation(h.label_rect, h.label_orientation) === "vertical" ? " vertical" : "");
       roleSpan.dataset.genericName = h.generic_name;
       roleSpan.dataset.pct = JSON.stringify(h.label_rect);
       overlay.appendChild(roleSpan);
