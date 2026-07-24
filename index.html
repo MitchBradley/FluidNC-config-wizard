@@ -3788,7 +3788,41 @@ function escapeHtml(s) {
 }
 
 function copyDraft() {
-  navigator.clipboard.writeText(lastPlainYaml);
+  const btn = event && event.target ? event.target : document.querySelector('button[onclick="copyDraft()"]');
+  const flash = (ok) => {
+    if (!btn) return;
+    const original = btn.dataset.origLabel || btn.textContent;
+    btn.dataset.origLabel = original;
+    btn.textContent = ok ? "Copied!" : "Copy failed";
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  };
+  // Fallback used both when navigator.clipboard is unavailable (e.g. non-secure
+  // origin -- clipboard-write requires https or localhost) and when it exists
+  // but silently rejects (seen on Chrome/Windows: permissions-policy or an
+  // enterprise clipboard restriction can reject writeText() with no visible
+  // error). document.execCommand("copy") is deprecated but still broadly
+  // supported and works from a plain user-gesture click handler.
+  const fallbackCopy = () => {
+    const ta = document.createElement("textarea");
+    ta.value = lastPlainYaml;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    flash(ok);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(lastPlainYaml).then(
+      () => flash(true),
+      () => fallbackCopy()
+    );
+  } else {
+    fallbackCopy();
+  }
 }
 
 function downloadDraft() {
