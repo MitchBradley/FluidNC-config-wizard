@@ -770,10 +770,16 @@ overlay.addEventListener("mousedown", (e) => {
     drawing = { startX: e.clientX - r.left, startY: e.clientY - r.top, forLabelId: drawingLabelForId };
     const el = document.createElement("div");
     el.className = "rect drawing-temp label-rect";
-    const forHotspot = hotspots.find(x => x.id === drawingLabelForId);
     const preview = document.createElement("div");
     preview.className = "label-preview";
-    preview.textContent = forHotspot ? forHotspot.label : "";
+    // Literal placeholder text, not this hotspot's own generic_name -- the
+    // role box holds the FluidNC ROLE assigned later (at binding time in
+    // the wizard, not authoring time here), which is usually a different
+    // length than the connector's own name. "Assigned FluidNC Role" is a
+    // closer stand-in for typical role text length, so sizing this box
+    // against it previews realistic fit better than the connector's name
+    // would (see the matching change on the committed-box preview below).
+    preview.textContent = "Assigned FluidNC Role";
     el.appendChild(preview);
     overlay.appendChild(el);
     drawing.el = el;
@@ -1099,14 +1105,16 @@ function renderHotspots() {
       // treatment -- see index.html), so sizing this box here directly
       // previews whether real role text will fit. The wizard shows the
       // ASSIGNED FLUIDNC ROLE here, which doesn't exist yet at hotspot-
-      // authoring time -- h.label (this connector's own generic_name) is
-      // the best available stand-in, and is often close in length to
-      // whatever role ends up assigned. Appended first/underneath the
-      // del/handle/orient-btn controls (added below), and pointer-events:
-      // none, so it never blocks interacting with them.
+      // authoring time -- rather than h.label (this connector's own
+      // generic_name, which can be a very different length, e.g. "Driver1"
+      // vs. "Y2 Motor Direction"), a literal placeholder string is used
+      // instead as a closer length approximation of typical role text.
+      // Appended first/underneath the del/handle/orient-btn controls (added
+      // below), and pointer-events: none, so it never blocks interacting
+      // with them.
       const preview = document.createElement("div");
       preview.className = "label-preview" + (effectiveOrientation(h.labelRect, h.labelOrientation) === "vertical" ? " vertical" : "");
-      preview.textContent = h.label;
+      preview.textContent = "Assigned FluidNC Role";
       lel.appendChild(preview);
       const ltag = document.createElement("div");
       ltag.className = "tag";
