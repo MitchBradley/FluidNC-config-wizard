@@ -6,6 +6,7 @@
   "corgi_cnc_controller",
   "doberman",
   "fluidnc_pen_laser_spi",
+  "jackpot3",
   "mks_dlc32_v2_1",
   "tmc2209_pen_laser_v2",
 ]
