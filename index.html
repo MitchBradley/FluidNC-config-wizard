@@ -307,6 +307,24 @@
     white-space: normal; word-break: break-word;
     text-align: center; overflow: visible; box-sizing: border-box;
   }
+  /* .vertical mirrors .hotspot-role-label.vertical below -- same
+     label_orientation field, applied to BOTH the connector's own name
+     (this element) and its assigned-role label, so a hotspot drawn
+     tall-and-narrow reads consistently rotated in both places. Switches
+     from top:50%+translateY (base .hotspot-label's centering, height left
+     "auto") to top:0/bottom:0 + flex centering, same as
+     .hotspot-role-label already does -- NEEDED, not just cosmetic: in
+     vertical-rl, the element's HEIGHT becomes the text's wrapping
+     constraint (its inline-size), and an "auto" height doesn't reliably
+     expand to fit vertical text across browsers, so the base rule's
+     wrapped even inside a visually tall-enough box. Pinning height to the
+     rect's own full height (top:0;bottom:0) gives vertical text the same
+     generous room horizontal text already got from the rect's WIDTH. */
+  .hotspot-label.vertical {
+    top: 0; bottom: 0; transform: rotate(180deg);
+    display: flex; align-items: center; justify-content: center;
+    writing-mode: vertical-rl; text-orientation: mixed;
+  }
   /* This OUTER element intentionally spans the full rect width (see the
      comment above on why -- left/right, not left+transform) and stays
      background-less; the dark backing chip lives on this INNER span
@@ -1938,7 +1956,16 @@ function renderHotspotPane() {
     hotspotBounds = null;
     return;
   }
-  mainEl.style.gridTemplateColumns = "320px 1fr max-content";
+  // 420px, not the narrower 320px this used to be -- .row.output-row/
+  // .cascade-row reserve a fixed 260px + 10px gap for their controls, and
+  // .col's own padding (18px 24px) eats another 48px, so at 320px total
+  // there was only ~2px left over for the label column itself. That was
+  // narrow enough to force-wrap any label containing a space (e.g. btt
+  // rodent's "LED R"/"LED G"/"LED B") while single-word labels of similar
+  // length just silently overflowed instead -- not obviously "too narrow"
+  // unless a resource happened to have a space in its name. 420px leaves
+  // a comfortable ~100px for the label column on output/cascade rows.
+  mainEl.style.gridTemplateColumns = "420px 1fr max-content";
   col.style.display = "";
   col.innerHTML = `<div class="note note-instruct">Click a highlighted region to select its row on the left.</div>
     <div id="hotspotImgWrap">
@@ -1973,7 +2000,9 @@ function renderHotspotPane() {
     // unassigned coloring already uses, so it never needs a separate
     // initial value.
     const labelSpan = document.createElement("span");
-    labelSpan.className = "hotspot-label";
+    // Same label_orientation field .hotspot-role-label below uses, now
+    // applied here too -- see this class's own CSS comment for why.
+    labelSpan.className = "hotspot-label" + (h.label_orientation === "vertical" ? " vertical" : "");
     const labelText = document.createElement("span"); // see .hotspot-label-text's comment -- carries just the background/padding, hugging the text
     labelText.className = "hotspot-label-text";
     labelText.textContent = h.generic_name;
