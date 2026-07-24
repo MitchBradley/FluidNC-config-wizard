@@ -149,10 +149,6 @@ rs485_channels:
       config; this file follows the example config as the more concrete
       source and flags the "io15" mention as unresolved (see board-level
       notes gap #3) rather than guessing which is authoritative.
-  - { label: "CNC I/O Module Socket - GPIO.14", generic_name: "IO14", mcu_pin: gpio.14, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }
-  - { label: "CNC I/O Module Socket - GPIO.13", generic_name: "IO13", mcu_pin: gpio.13, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }
-  - { label: "CNC I/O Module Socket - GPIO.10", generic_name: "IO10", mcu_pin: gpio.10, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }
-  - { label: "CNC I/O Module Socket - GPIO.15", generic_name: "IO15", mcu_pin: gpio.15, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }
 
 expansion_uarts:
   - label: "Expansion Port"
