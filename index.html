@@ -1080,6 +1080,14 @@ function specForKey(key) {
   switch (key) {
     case "soft_limits":
       return { type: "enum", options: [["true","true — Yes"], ["false","false — No"]], default: "false", defaultKind: "firmware" };
+    // Per-MOTOR (schema's motorBlock $def -- a sibling of the driver-type
+    // key/limit_neg_pin/limit_pos_pin/limit_all_pin/pulloff_mm inside each
+    // motor0:/motor1: block), not per-axis like soft_limits above -- each
+    // motor has its own limit switch wiring, so each gets its own hard-
+    // limits enable too. Schema default false, same firmware-default
+    // pattern as soft_limits.
+    case "hard_limits":
+      return { type: "enum", options: [["true","true — Yes"], ["false","false — No"]], default: "false", defaultKind: "firmware" };
     // Machine::Start's 3 fields (src/Machine/MachineConfig.h) -- must_home
     // is left with no override (an open decision), deactivate_parking/
     // check_limits get one in generateDraft() (pre-populated, editable).
@@ -2916,6 +2924,13 @@ function generateDraft() {
     annotate(axis, slot, socket.label);
     axis[slot] = axis[slot] || {};
     axis[slot][block.key] = block.body;
+    // hard_limits is a sibling of the driver-type key above (and of
+    // limit_neg_pin/limit_pos_pin/limit_all_pin, added later in the
+    // allPins loop below if a limit switch gets bound to this motor) --
+    // per-MOTOR, not per-axis (see specForKey's own comment on this key),
+    // so it's stubbed here alongside the driver body, once per bound motor
+    // socket, regardless of whether a limit pin ends up bound to it.
+    axis[slot].hard_limits = "TBD";
     if (socket.extra && socket.extra.r_sense_ohms_hint != null) {
       paramDefaultOverrides[`axes.${letter}.${slot}.${block.key}.r_sense_ohms`] = {
         default: socket.extra.r_sense_ohms_hint,
@@ -3623,6 +3638,18 @@ function importConfig(doc, rawText) {
         if (motorDoc[field] == null) return;
         claimPin(motorDoc[field], `limit:${letter}:${slot}:${which}`, `axes.${letter}.${slot}.${field}`);
       });
+      // hard_limits (and any other future plain per-motor scalar) --
+      // motorDoc's own direct fields, distinct from the driver body's
+      // scalars (copyScalarParams(driverBody, ...) above -- the driver
+      // body itself is skipped automatically here too, since
+      // copyScalarParams() already ignores any object-valued field, not
+      // just ones named in skipKeys) and from the 3 limit pin fields just
+      // claimed. Not gated on the driver-type match check above (unlike the
+      // driver body's own tuning fields) -- this key's path
+      // (axes.<letter>.<slot>.hard_limits) doesn't depend on which driver
+      // type is in use, so it's always safe to copy back.
+      copyScalarParams(motorDoc, `axes.${letter}.${slot}`,
+        new Set(["limit_neg_pin", "limit_pos_pin", "limit_all_pin"]));
     });
 
     copyScalarParams(axisDoc, `axes.${letter}`, axisNonMotorKeys);
