@@ -208,6 +208,12 @@
     padding: 0 4px; margin: 0 1px;
   }
   .inline-field.filled { color: #6fbf73; border-color: #6fbf73; }
+  /* Duplicate tool_num across two spindle sections -- see toolNumConflicts'
+     declaration comment. Overrides .filled's green (a conflicted field is
+     still "answered", just answered wrong) -- order here matters: this rule
+     must come after .filled so its color/border wins when both classes are
+     present, which they always are together for a conflicted field. */
+  .inline-field.conflict { color: var(--danger); border-color: var(--danger); background: rgba(224,97,107,.12); }
   .inline-field:focus { outline: none; border-color: var(--accent); }
   input.inline-field { width: 9ch; }
   select.inline-field { max-width: 22ch; }
@@ -421,6 +427,11 @@
   </div>
   <div class="col right">
     <div class="summary" id="summary"></div>
+    <!-- Populated/shown only when two spindle sections' tool_num fields
+         currently share a value -- see generateDraft()'s toolNumConflicts
+         block. Hidden (not just empty) otherwise, same convention as
+         #importReport. -->
+    <div class="note note-error" id="toolNumConflictNote" style="display:none"></div>
     <div class="toolbar">
       <button onclick="copyDraft()">Copy</button>
       <button onclick="downloadDraft()">Download .yaml</button>
@@ -540,7 +551,17 @@ const COMMON_TUNING_FIELDS = new Set([
   "tool_num", "speed_map", "off_on_alarm", "atc", "m6_macro", "s0_with_disable",
   "disable_with_s0", "spinup_ms", "spindown_ms", "pwm_hz", "min_pulse_us", "max_pulse_us",
 ]);
-const STUB_FIELD_LITERALS = { tool_num: 0 }; // every other stub field -> "TBD"
+// Every spindle's tuning stub field opens as "TBD", same as every other
+// role's tuning fields (see COMMON_TUNING_FIELDS below and buildSpindleTypes())
+// -- this used to special-case tool_num to a baked-in literal 0, which made
+// it the one spindle field the wizard's normal inline-field/"def"/"clear"
+// machinery never touched, so it couldn't be changed from the UI at all
+// (only by hand-editing the exported YAML). specForKey's own
+// `case "tool_num": return numeric(0, "firmware")` already existed and was
+// simply unused while this literal shadowed it -- removing the special case
+// lets that spec take over, so tool_num now gets the same editable widget
+// (pre-fillable with 0 via the "def" button, but genuinely changeable) every
+// other tuning field already has.
 const STATUS_OUTPUT_PINS = [
   ["idle", "Idle"], ["run", "Run"], ["hold", "Hold"], ["alarm", "Alarm"], ["door", "Door"],
 ];
@@ -638,7 +659,7 @@ function buildSpindleTypes(schema) {
         const key = stripPinSuffix(fullKey);
         pins.push([key, SPINDLE_PIN_LABEL_OVERRIDES[key] || titleLabel(key)]);
       } else if (COMMON_TUNING_FIELDS.has(fullKey)) {
-        stubFields.push([fullKey, fullKey in STUB_FIELD_LITERALS ? STUB_FIELD_LITERALS[fullKey] : "TBD"]);
+        stubFields.push([fullKey, "TBD"]);
       }
     });
     result[typeId] = {
@@ -948,6 +969,14 @@ let board = null;          // parsed board object
 let bindings = {};         // resourceKey -> role value string
 let paramValues = {};      // JSON-pointer-ish path (e.g. "axes.x.steps_per_mm") -> user-entered value
 let pinAttrs = {};         // path -> { level: ""|"low"|"high", pull: ""|"pu"|"pd" }
+// Set of paramValues paths (always "<SpindleCfgKey>.tool_num") whose CURRENT
+// value collides with another spindle section's tool_num -- recomputed every
+// generateDraft() call (see there), read by paramWidgetHtml() to flag the
+// affected inputs. FluidNC requires tool numbers to be unique; the wizard
+// only suggests distinct ones (see generateDraft()'s next-available-number
+// block) but a user can freely type over that suggestion at any time, so
+// this is a live check, not a one-time suggestion.
+let toolNumConflicts = new Set();
 let kinematicsType = "Cartesian"; // selected top-level kinematics system, defaults to Cartesian
 /* Start: is another machine-level (not board-resource-tied) section, same
  * category as Kinematics -- confirmed against the connected FluidNC source
@@ -1050,6 +1079,14 @@ function specForKey(key) {
   if (/^analog\d+_hz$/.test(key)) return numeric(5000, "firmware");
   switch (key) {
     case "soft_limits":
+      return { type: "enum", options: [["true","true — Yes"], ["false","false — No"]], default: "false", defaultKind: "firmware" };
+    // Per-MOTOR (schema's motorBlock $def -- a sibling of the driver-type
+    // key/limit_neg_pin/limit_pos_pin/limit_all_pin/pulloff_mm inside each
+    // motor0:/motor1: block), not per-axis like soft_limits above -- each
+    // motor has its own limit switch wiring, so each gets its own hard-
+    // limits enable too. Schema default false, same firmware-default
+    // pattern as soft_limits.
+    case "hard_limits":
       return { type: "enum", options: [["true","true — Yes"], ["false","false — No"]], default: "false", defaultKind: "firmware" };
     // Machine::Start's 3 fields (src/Machine/MachineConfig.h) -- must_home
     // is left with no override (an open decision), deactivate_parking/
@@ -1274,10 +1311,28 @@ function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverride
 // blanking a text input), so reusing it for the default button would
 // silently no-op on any field whose default happens to be "". Goes
 // straight to paramValues instead of through that ambiguous convention.
-function setParamDefault(path, key) {
+// domDefault is the "def" button's own data-default attribute -- the
+// ALREADY-MERGED value (specForKey(key)'s generic default, overridden by
+// paramDefaultOverrides when one applies -- e.g. a board-specific
+// r_sense_ohms, or a spindle's next-available tool_num, see generateDraft())
+// shown to the user on the button itself and used as the field's
+// placeholder. Recomputing from specForKey(key) alone here (the previous
+// behavior) silently ignored any such override -- clicking "def" would
+// apply the generic value even though the button visibly promised a
+// different (correct, per-instance) one. Passed as a plain HTML attribute
+// string, so it needs the same type coercion setParam() already does for
+// typed-in values.
+function setParamDefault(path, key, domDefault) {
   const spec = specForKey(key);
-  if (spec.default === undefined) return;
-  paramValues[path] = spec.default;
+  const raw = domDefault !== undefined ? domDefault : spec.default;
+  if (raw === undefined) return;
+  if (spec.type === "number") {
+    paramValues[path] = Number(raw);
+  } else if (spec.type === "enum" && (raw === "true" || raw === "false" || raw === true || raw === false)) {
+    paramValues[path] = raw === "true" || raw === true;
+  } else {
+    paramValues[path] = raw;
+  }
   generateDraft();
 }
 
@@ -1311,7 +1366,13 @@ function escapeAttr(s) {
 
 function paramWidgetHtml(slot) {
   const has = Object.prototype.hasOwnProperty.call(paramValues, slot.path);
-  const cls = "inline-field" + (has ? " filled" : "");
+  // Duplicate tool_num across two spindle sections -- see toolNumConflicts'
+  // own declaration comment. Flagged with the same "conflict" class the
+  // left pane's GPIO-conflict rows use (border/background -> --danger),
+  // adapted here to an inline-field rather than a whole row.
+  const conflicted = toolNumConflicts.has(slot.path);
+  const cls = "inline-field" + (has ? " filled" : "") + (conflicted ? " conflict" : "");
+  const conflictTitle = conflicted ? ` title="Tool number ${escapeAttr(paramValues[slot.path])} is also used by another spindle -- FluidNC requires each to be unique"` : "";
   let html;
   if (slot.spec.type === "enum") {
     const cur = has ? String(paramValues[slot.path]) : "";
@@ -1319,7 +1380,7 @@ function paramWidgetHtml(slot) {
     slot.spec.options.forEach(([val, label]) => {
       opts += `<option value="${escapeAttr(val)}"${val === cur ? " selected" : ""}>${escapeHtml(label)}</option>`;
     });
-    html = `<select class="${cls}" data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}">${opts}</select>`;
+    html = `<select class="${cls}"${conflictTitle} data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}">${opts}</select>`;
   } else {
     const cur = has ? paramValues[slot.path] : "";
     const type = slot.spec.type === "number" ? "number" : "text";
@@ -1331,7 +1392,7 @@ function paramWidgetHtml(slot) {
     // still-open field despite the border/text color already having
     // changed. Only ever shown for a real UNANSWERED field.
     const placeholder = has ? "" : (slot.spec.placeholder || "TBD");
-    html = `<input class="${cls}" type="${type}"${step} placeholder="${escapeAttr(placeholder)}" value="${escapeAttr(cur)}" data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}">`;
+    html = `<input class="${cls}" type="${type}"${step}${conflictTitle} placeholder="${escapeAttr(placeholder)}" value="${escapeAttr(cur)}" data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}">`;
   }
   if (slot.spec.default !== undefined) {
     const kindLabel = slot.spec.defaultKind === "firmware" ? "FluidNC firmware default"
@@ -2863,6 +2924,13 @@ function generateDraft() {
     annotate(axis, slot, socket.label);
     axis[slot] = axis[slot] || {};
     axis[slot][block.key] = block.body;
+    // hard_limits is a sibling of the driver-type key above (and of
+    // limit_neg_pin/limit_pos_pin/limit_all_pin, added later in the
+    // allPins loop below if a limit switch gets bound to this motor) --
+    // per-MOTOR, not per-axis (see specForKey's own comment on this key),
+    // so it's stubbed here alongside the driver body, once per bound motor
+    // socket, regardless of whether a limit pin ends up bound to it.
+    axis[slot].hard_limits = "TBD";
     if (socket.extra && socket.extra.r_sense_ohms_hint != null) {
       paramDefaultOverrides[`axes.${letter}.${slot}.${block.key}.r_sense_ohms`] = {
         default: socket.extra.r_sense_ohms_hint,
@@ -3106,6 +3174,40 @@ function generateDraft() {
     cfg[sectionSentinel(key)] = sectionEnabled[key] ? OPTIONAL_SECTIONS[key].stub() : null;
   });
 
+  // Spindle tool_num: suggest the next tool number not already assigned to
+  // another spindle section in THIS config, rather than always 0 -- a
+  // config with more than one spindle-like section (Pwm/Laser/.../
+  // ModbusVFD are all direct top-level keys, each with its own tool_num
+  // child; never nested deeper) would otherwise have every one of them
+  // suggest the same "0". Two passes: first collect tool numbers already
+  // ANSWERED (a real committed value in paramValues, not just the cfg-level
+  // "TBD" sentinel every unanswered field always shows regardless -- cfg
+  // itself never carries the user's actual answer, only paramValues does,
+  // see collectAndInjectSlots), then walk the still-open ones in cfg's own
+  // key order (== bind order) assigning each the lowest number not yet
+  // used -- adding its own suggestion to the used set before moving to the
+  // next, so several still-open spindles suggest distinct numbers too, not
+  // just distinct from already-answered ones.
+  {
+    const usedToolNums = new Set();
+    Object.keys(cfg).forEach(k => {
+      const v = cfg[k];
+      if (!v || typeof v !== "object" || v.tool_num !== "TBD") return;
+      const val = paramValues[`${k}.tool_num`];
+      if (typeof val === "number") usedToolNums.add(val);
+    });
+    Object.keys(cfg).forEach(k => {
+      const v = cfg[k];
+      if (!v || typeof v !== "object" || v.tool_num !== "TBD") return;
+      const path = `${k}.tool_num`;
+      if (Object.prototype.hasOwnProperty.call(paramValues, path)) return; // already answered -- no suggestion needed
+      let n = 0;
+      while (usedToolNums.has(n)) n++;
+      usedToolNums.add(n);
+      paramDefaultOverrides[path] = { default: n, defaultKind: "suggested" };
+    });
+  }
+
   // Work on a clone for the interactive view: it gets its pin leaves
   // overwritten with a "PINSLOT" sentinel (so we can splice in attribute
   // widgets at those positions) while every "TBD" slot is left untouched
@@ -3118,6 +3220,40 @@ function generateDraft() {
   const yamlText = dequoteAxisKeys(annotateYaml(jsyaml.dump(liveCfg, { lineWidth: -1, noRefs: true })));
   const unresolved = paramSlots.filter(s => !Object.prototype.hasOwnProperty.call(paramValues, s.path)).length;
 
+  // Tool-number uniqueness check: recomputed live every render (same
+  // "recompute from current state on every pass" approach the GPIO-conflict
+  // pass uses, just applied to a free-text field instead of a pin picker --
+  // the user can type any number into any spindle's tool_num at any time,
+  // so this can never be a one-time/at-creation-only check). Groups every
+  // ANSWERED tool_num slot by its current value; any group with more than
+  // one member is a conflict. toolNumConflicts (module-level, read by
+  // paramWidgetHtml() above) becomes the flat set of paths to flag; the
+  // note below lists the actual duplicated numbers and which sections share
+  // each one.
+  const toolNumByValue = new Map(); // value -> [sectionKey, ...]
+  paramSlots.forEach(slot => {
+    if (slot.key !== "tool_num" || !Object.prototype.hasOwnProperty.call(paramValues, slot.path)) return;
+    const val = paramValues[slot.path];
+    if (!toolNumByValue.has(val)) toolNumByValue.set(val, []);
+    toolNumByValue.get(val).push(slot.path.slice(0, -".tool_num".length));
+  });
+  toolNumConflicts = new Set();
+  const toolNumConflictGroups = [];
+  toolNumByValue.forEach((sections, val) => {
+    if (sections.length < 2) return;
+    toolNumConflictGroups.push([val, sections]);
+    sections.forEach(sectionKey => toolNumConflicts.add(`${sectionKey}.tool_num`));
+  });
+  const toolNumConflictNote = document.getElementById("toolNumConflictNote");
+  if (toolNumConflictGroups.length) {
+    toolNumConflictNote.innerHTML = "Duplicate spindle tool number" + (toolNumConflictGroups.length > 1 ? "s" : "") + ": " +
+      toolNumConflictGroups.map(([val, sections]) => `<b>${escapeHtml(String(val))}</b> used by ${sections.map(escapeHtml).join(" and ")}`).join("; ") +
+      " -- FluidNC requires each spindle's tool number to be unique.";
+    toolNumConflictNote.style.display = "";
+  } else {
+    toolNumConflictNote.style.display = "none";
+  }
+
   document.getElementById("summary").innerHTML = `
     <div class="stat done"><b>${Object.values(bindings).filter(v=>v&&v!=="unused").length}</b>resource(s) bound</div>
     <div class="stat"><b>${countResources()}</b>total resources</div>
@@ -3129,7 +3265,7 @@ function generateDraft() {
     el.onchange = () => setParam(el.dataset.path, el.dataset.key, el.value);
   });
   document.querySelectorAll("#draft .default-btn").forEach(btn => {
-    btn.onclick = () => setParamDefault(btn.dataset.path, btn.dataset.key);
+    btn.onclick = () => setParamDefault(btn.dataset.path, btn.dataset.key, btn.dataset.default);
   });
   document.querySelectorAll("#draft .clear-btn").forEach(btn => {
     btn.onclick = () => setParam(btn.dataset.path, btn.dataset.key, "");
@@ -3502,6 +3638,18 @@ function importConfig(doc, rawText) {
         if (motorDoc[field] == null) return;
         claimPin(motorDoc[field], `limit:${letter}:${slot}:${which}`, `axes.${letter}.${slot}.${field}`);
       });
+      // hard_limits (and any other future plain per-motor scalar) --
+      // motorDoc's own direct fields, distinct from the driver body's
+      // scalars (copyScalarParams(driverBody, ...) above -- the driver
+      // body itself is skipped automatically here too, since
+      // copyScalarParams() already ignores any object-valued field, not
+      // just ones named in skipKeys) and from the 3 limit pin fields just
+      // claimed. Not gated on the driver-type match check above (unlike the
+      // driver body's own tuning fields) -- this key's path
+      // (axes.<letter>.<slot>.hard_limits) doesn't depend on which driver
+      // type is in use, so it's always safe to copy back.
+      copyScalarParams(motorDoc, `axes.${letter}.${slot}`,
+        new Set(["limit_neg_pin", "limit_pos_pin", "limit_all_pin"]));
     });
 
     copyScalarParams(axisDoc, `axes.${letter}`, axisNonMotorKeys);
