@@ -27,7 +27,10 @@
     border-radius: 4px; padding: 4px 6px;
   }
   button {
-    font: inherit; cursor: pointer; background: var(--panel); color: var(--text);
+    /* #505050, not var(--panel) -- var(--panel) reads as visually almost
+       indistinguishable from the page's own --bg on buttons, where a 1px
+       border is the only other cue a control exists. */
+    font: inherit; cursor: pointer; background: #505050; color: var(--text);
     border: 1px solid var(--border); border-radius: 4px; padding: 4px 10px;
   }
   button:hover { border-color: var(--accent); color: var(--accent); }
@@ -98,6 +101,27 @@
     position: absolute; top: -18px; left: -2px; background: var(--accent); color: #0b1114;
     font-size: 10px; padding: 1px 4px; border-radius: 3px; white-space: nowrap; pointer-events: none;
   }
+  /* Matches index.html's .hotspot-label/.hotspot-label-text exactly (the
+     WIZARD's preview of this same "resource box" -- distinct from
+     .label-preview above, which mirrors .hotspot-role-label instead) --
+     the connector's own name, shown filling the box itself, not just the
+     small corner .tag badge above. top:0/bottom:0 (a fully DETERMINATE
+     height), not a translate-centering trick -- same lesson learned on
+     .label-preview and on index.html's own .hotspot-label: auto height
+     doesn't reliably fit vertical-rl text. */
+  .rect .resource-preview {
+    position: absolute; top: 0; bottom: 0; left: 2px; right: 2px; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; line-height: 1.3; color: #f2f6f8;
+    text-align: center; white-space: normal; word-break: break-word;
+    overflow: visible; box-sizing: border-box;
+  }
+  .rect .resource-preview-text {
+    background: rgba(10,16,19,.72); padding: 1px 4px; border-radius: 2px;
+  }
+  .rect .resource-preview.vertical {
+    writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg);
+  }
   .rect.selected .tag { background: #6fbf73; }
   .rect .handle {
     position: absolute; width: 10px; height: 10px; right: -6px; bottom: -6px;
@@ -117,31 +141,46 @@
     border: 2px dashed #c98fe0; background: rgba(201,143,224,.14); cursor: move;
   }
   .rect.label-rect .tag { background: #c98fe0; }
-  /* del stays at the base .rect .del position (top-right) rather than being
-     pushed to the bottom row -- on a narrow label box, a bottom-row del
-     (right-anchored) and .orient-btn (left-anchored, wider text) could
-     overlap and leave the del button unreachable underneath orient-btn. */
-  /* Lives INSIDE the box, centered -- both because that's roughly where the
-     actual label text will end up once rendered for real (this box's whole
-     purpose), and because centering (rather than the earlier bottom-left
-     corner placement) keeps it clamped to the box's own width/height no
-     matter how small the box is, so it can never reach the resize handle
-     just outside the box's bottom-right edge. */
-  .rect.label-rect .orient-btn {
-    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  /* Matches index.html's .hotspot-role-label exactly (background/color/
+     font-size/centering/wrap) -- see this element's own creation comment
+     in renderHotspots() for why. width:100%/height:100% (a fully
+     DETERMINATE size), not a translate-based centering trick -- learned
+     the hard way on .hotspot-label in the wizard itself: an absolutely
+     positioned box with only top:50%+translateY (auto height) doesn't
+     reliably give vertical-rl text enough room before wrapping, since
+     height becomes the wrapping constraint under that writing mode. */
+  .rect.label-rect .label-preview {
+    position: absolute; inset: 0; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%; box-sizing: border-box;
+    font-size: 13px; line-height: 1.25; color: #000; background: palegreen;
+    text-align: center; white-space: normal; word-break: break-word;
+    overflow: visible; border-radius: 2px;
+  }
+  .rect.label-rect .label-preview.vertical {
+    writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg);
+  }
+  /* del stays at the base .rect .del position (top-right); tag sits
+     top-left; handle sits bottom-right (all outside the box, see their own
+     rules). orient-btn now takes the one remaining outside corner
+     (bottom-left) -- it used to live centered INSIDE the box, doubling as
+     a rotated preview of "vertical" text, but that meant it sat exactly
+     on top of .label-preview above (same centering), completely covering
+     the real preview text with its own opaque pill. Now that
+     .label-preview shows the actual rotated text for real, orient-btn
+     doesn't need to preview anything itself -- just a small, plain,
+     always-horizontal toggle badge, out of the way like its sibling
+     controls. */
+  /* Not scoped to .label-rect -- the resource (rect) box now has its own
+     independent orientation toggle too (see effectiveOrientation() in the
+     script), sharing this same bottom-left corner position/styling since
+     that corner is free on both box types (del/label-btn occupy top,
+     handle occupies bottom-right). */
+  .rect .orient-btn {
+    position: absolute; bottom: -18px; left: -2px;
     background: #c98fe0; color: #0b1114;
     font-size: 10px; line-height: 14px; padding: 0 4px; border-radius: 3px; cursor: pointer;
-    white-space: nowrap; max-width: calc(100% - 4px); overflow: hidden; text-overflow: ellipsis;
-  }
-  /* Oriented to match the label's own current text-flow state, same
-     writing-mode/rotate technique the wizard itself uses for a vertical
-     role label -- doubles as a visual preview of what "vertical" will
-     actually look like, and is naturally narrower, which helps on exactly
-     the narrow boxes where this control used to cause trouble. */
-  .rect.label-rect .orient-btn.vertical {
-    writing-mode: vertical-rl; text-orientation: mixed;
-    transform: translate(-50%, -50%) rotate(180deg);
-    padding: 4px 0; max-width: none; max-height: calc(100% - 4px);
+    white-space: nowrap;
   }
   pre#output {
     font-size: 11px; font-family: ui-monospace, monospace; white-space: pre-wrap; word-break: break-word;
@@ -224,6 +263,13 @@
     <div class="toolbar" style="padding:0 0 6px; border:none">
       <button id="loadBtn">Load hotspots file…</button>
       <input type="file" id="loadFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
+      <!-- First -- the most frequently used action in practice. Only works
+           when served via tools/dev_server.py (not plain
+           `python3 -m http.server`, which has no upload endpoint) -- see
+           that script's own docstring. Writes straight to this repo's
+           hotspots/ folder, skipping the download-then-manually-move-the-
+           file step downloadBtn still requires. -->
+      <button id="saveServerBtn" title="Requires running tools/dev_server.py (not plain http.server) -- writes straight to hotspots/<id>.hotspots.yaml on disk">Save to hotspots/…</button>
       <button id="copyBtn">Copy</button>
       <button id="downloadBtn">Download YAML</button>
       <button id="downloadImgBtn">Download image</button>
@@ -267,7 +313,7 @@
  * - Kept deliberately separate from board.schema.json itself: hotspot
  *   coordinates are a presentation-layer fact about a particular photo,
  *   not a hardware fact, so this sidecar is meant to live alongside a
- *   board file (e.g. corgi_cnc_controller.hotspots.yaml), never inside it.
+ *   board file (e.g. corgi.hotspots.yaml), never inside it.
  * ------------------------------------------------------------------- */
 
 /* ---------------------------------------------------------------------
@@ -390,7 +436,13 @@ document.getElementById("loadBoardFileInput").onchange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => loadLabelsFromText(reader.result, file.name);
+  reader.onload = () => {
+    loadLabelsFromText(reader.result, file.name);
+    // Vice-versa: no image loaded yet -- try to auto-load the matching
+    // images/<id>.<ext>, guessed from the board.yaml's own "id:" line (see
+    // maybeAutoLoadImage(), defined further down but hoisted).
+    maybeAutoLoadImage();
+  };
   reader.readAsText(file);
   e.target.value = "";
 };
@@ -457,6 +509,15 @@ function renderLabels() {
   col.querySelectorAll(".unplace-btn").forEach(btn => {
     btn.onclick = () => unplaceLabel(btn.dataset.label);
   });
+  // Once every resource has been placed, the natural next step is saving --
+  // give "Save to hotspots/…" the same cyan/accent styling .note-instruct
+  // uses for imperative instructions, so the toolbar itself points at what
+  // to do next. Requires labels.length > 0 so an empty/not-yet-loaded board
+  // (where placed.size and labels.length are both trivially 0) doesn't
+  // light it up too.
+  document.getElementById("saveServerBtn").classList.toggle(
+    "primary", labels.length > 0 && placed.size === labels.length
+  );
 }
 
 function unplaceLabel(label) {
@@ -483,44 +544,102 @@ function escapeAttr(s) { return String(s).replace(/&/g,"&amp;").replace(/"/g,"&q
 // image (see downloadImage()) from ballooning in size.
 const MAX_IMG_DIM = 1600;
 
+// Shared by both the manual file-picker path and the auto-load-a-matching-
+// file path below -- takes any Blob (a File from the picker, or one handed
+// back by fetch()) since FileReader.readAsDataURL() works on either. Returns
+// a Promise that resolves once the image is actually showing, so callers
+// that need to sequence after it (none currently do, but auto-load ordering
+// is fiddly enough that this seemed worth keeping available) can await it.
+function loadImageBlob(blob, label) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const probe = new Image();
+      probe.onload = () => {
+        let { naturalWidth: w, naturalHeight: h } = probe;
+        let src = reader.result;
+        const longEdge = Math.max(w, h);
+        if (longEdge > MAX_IMG_DIM) {
+          const scale = MAX_IMG_DIM / longEdge;
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(w * scale);
+          canvas.height = Math.round(h * scale);
+          canvas.getContext("2d").drawImage(probe, 0, 0, canvas.width, canvas.height);
+          src = canvas.toDataURL("image/jpeg", 0.9);
+        }
+        document.getElementById("boardImg").src = src;
+        const note = document.getElementById("imgLoadNote");
+        note.textContent = `${label} (${w}x${h}${longEdge > MAX_IMG_DIM ? ", downscaled for editing" : ""}).`;
+        note.className = "note note-info";
+        note.style.display = "";
+        updateDrawHint();
+        document.getElementById("drawHint").style.display = "";
+        document.getElementById("loadImgFileBtn").classList.remove("primary");
+        // Hides the "load the image file" callout inside the hotspots-loaded
+        // success message (see loadHotspotsFromText()), if that message is
+        // currently showing it -- covers loading the image AFTER the
+        // hotspots.yaml, not just before (which loadHotspotsFromText()
+        // itself already accounts for at message-build time).
+        const imgWarn = document.getElementById("loadImageWarn");
+        if (imgWarn) imgWarn.style.display = "none";
+        resolve();
+      };
+      probe.src = reader.result;
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Tries each candidate path in order (same-origin fetch -- works when this
+// tool is served over http(s) from the repo root, same as the wizard itself
+// and per README's "Running it locally"; silently does nothing if fetch
+// fails/404s for all of them, e.g. opened via file:// or a board/image that
+// genuinely doesn't exist yet). Returns the first successful Response paired
+// with the path that produced it, or null.
+async function fetchFirstOk(paths) {
+  for (const p of paths) {
+    try {
+      const r = await fetch(p);
+      if (r.ok) return { path: p, response: r };
+    } catch (e) { /* fetch unsupported/blocked (file://, CORS, offline) -- ignore, just skip this candidate */ }
+  }
+  return null;
+}
+
+// Board.yaml loaded first -> try to auto-load its matching photo. Only fires
+// when no image is loaded yet, and only when the board.yaml actually had a
+// real "id:" line (boardIdFromText(), NOT the boardIdGuess() fallback --
+// guessing wrong here would silently load some OTHER board's real photo).
+async function maybeAutoLoadImage() {
+  if (document.getElementById("boardImg").getAttribute("src")) return; // already loaded
+  const id = boardIdFromText();
+  if (!id) return;
+  const found = await fetchFirstOk(["jpg", "jpeg", "png", "webp", "gif"].map(ext => `images/${id}.${ext}`));
+  if (!found) return;
+  const blob = await found.response.blob();
+  loadImageBlob(blob, `${found.path} (auto-loaded)`);
+}
+
+// Image loaded first -> try to auto-load its matching board.yaml, guessed
+// from the image's own filename (stripped of extension) under the same
+// <id>.<ext> naming convention images/ and boards/ both follow. Only fires
+// when no board/label list is loaded yet.
+async function maybeAutoLoadBoardFile(idGuess) {
+  if (labels.length || !idGuess) return;
+  const found = await fetchFirstOk([`boards/${idGuess}.board.yaml`]);
+  if (!found) return;
+  const text = await found.response.text();
+  loadLabelsFromText(text, `${found.path} (auto-loaded)`);
+}
+
 document.getElementById("loadImgFileBtn").onclick = () => document.getElementById("loadImgFileInput").click();
 document.getElementById("loadImgFileInput").onchange = (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const probe = new Image();
-    probe.onload = () => {
-      let { naturalWidth: w, naturalHeight: h } = probe;
-      let src = reader.result;
-      const longEdge = Math.max(w, h);
-      if (longEdge > MAX_IMG_DIM) {
-        const scale = MAX_IMG_DIM / longEdge;
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(w * scale);
-        canvas.height = Math.round(h * scale);
-        canvas.getContext("2d").drawImage(probe, 0, 0, canvas.width, canvas.height);
-        src = canvas.toDataURL("image/jpeg", 0.9);
-      }
-      document.getElementById("boardImg").src = src;
-      const note = document.getElementById("imgLoadNote");
-      note.textContent = `${file.name} (${w}x${h}${longEdge > MAX_IMG_DIM ? ", downscaled for editing" : ""}).`;
-      note.className = "note note-info";
-      note.style.display = "";
-      updateDrawHint();
-      document.getElementById("drawHint").style.display = "";
-      document.getElementById("loadImgFileBtn").classList.remove("primary");
-      // Hides the "load the image file" callout inside the hotspots-loaded
-      // success message (see loadHotspotsFromText()), if that message is
-      // currently showing it -- covers loading the image AFTER the
-      // hotspots.yaml, not just before (which loadHotspotsFromText()
-      // itself already accounts for at message-build time).
-      const imgWarn = document.getElementById("loadImageWarn");
-      if (imgWarn) imgWarn.style.display = "none";
-    };
-    probe.src = reader.result;
-  };
-  reader.readAsDataURL(file);
+  loadImageBlob(file, file.name);
+  // Vice-versa: no board loaded yet -- try to auto-load the matching
+  // boards/<id>.board.yaml, guessed from this image's own filename.
+  if (!labels.length) maybeAutoLoadBoardFile(file.name.replace(/\.[^./\\]+$/, ""));
   e.target.value = ""; // allow reloading the same filename twice in a row
 };
 
@@ -648,7 +767,7 @@ function updateDrawHint() {
     hint.className = "note note-warn";
   } else {
     hint.innerHTML = `Click/drag to draw a hotspot rectangle for the resource selected on the left.` +
-      `<br><br>First draw a green rectangle for the resource name, the click "+ label box" to draw a ` +
+      `<br><br>First draw a green rectangle for the resource name, the click "+ role box" to draw a ` +
       `magenta rectangle for the FluidNC role name.`;
     hint.className = "note note-instruct";
   }
@@ -660,13 +779,32 @@ overlay.addEventListener("mousedown", (e) => {
   beginNoSelect();
   if (drawingLabelForId !== null) {
     // Armed via a hotspot's "label" button -- this drag places/replaces
-    // THAT hotspot's labelRect, not a new connector hotspot.
+    // THAT hotspot's labelRect, not a new connector hotspot. Also styled
+    // "label-rect" (not just "drawing-temp") and given its own live
+    // .label-preview child, same as a committed labelRect gets in
+    // renderHotspots() -- without this, the box being actively dragged out
+    // showed only the plain temp-rectangle highlight with no text/green
+    // fill at all until the mouse was released, which read as broken
+    // rather than just "not finished yet".
     const r = overlayRect();
     drawing = { startX: e.clientX - r.left, startY: e.clientY - r.top, forLabelId: drawingLabelForId };
     const el = document.createElement("div");
-    el.className = "rect drawing-temp";
+    el.className = "rect drawing-temp label-rect";
+    const preview = document.createElement("div");
+    preview.className = "label-preview";
+    // Literal placeholder text, not this hotspot's own generic_name -- the
+    // role box holds the FluidNC ROLE assigned later (at binding time in
+    // the wizard, not authoring time here), which is usually a different
+    // length than the connector's own name. "Assigned FluidNC Role" is a
+    // closer stand-in for typical role text length, so sizing this box
+    // against it previews realistic fit better than the connector's name
+    // would (see the matching change on the committed-box preview below).
+    preview.textContent = "Assigned FluidNC Role";
+    el.appendChild(preview);
     overlay.appendChild(el);
     drawing.el = el;
+    drawing.previewEl = preview;
+    drawing.previewClass = "label-preview";
     renderHotspots();
     return;
   }
@@ -683,8 +821,23 @@ overlay.addEventListener("mousedown", (e) => {
   // class would make renderHotspots() sweep it away the instant anything
   // else triggers a re-render mid-drag (deselecting an old hotspot, etc).
   el.className = "rect drawing-temp";
+  // Live preview of the connector's own name, same as a committed resource
+  // box gets (see .resource-preview above) -- including the live aspect-
+  // ratio-driven vertical/horizontal toggle (see the shared mousemove
+  // handler below), since the RESOURCE box's own shape now seeds
+  // labelOrientation at creation time (see the mouseup handler), not just
+  // a separately-drawn label box's shape.
+  const resPreview = document.createElement("div");
+  resPreview.className = "resource-preview";
+  const resPreviewText = document.createElement("div");
+  resPreviewText.className = "resource-preview-text";
+  resPreviewText.textContent = armedLabel;
+  resPreview.appendChild(resPreviewText);
+  el.appendChild(resPreview);
   overlay.appendChild(el);
   drawing.el = el;
+  drawing.previewEl = resPreview;
+  drawing.previewClass = "resource-preview";
   selectedId = null;
   renderHotspots(); // safe: renderHotspots() only clears/rebuilds ".hotspot" elements, not this ".drawing-temp" one
 });
@@ -696,6 +849,14 @@ document.addEventListener("mousemove", (e) => {
     const left = Math.min(drawing.startX, x), top = Math.min(drawing.startY, y);
     const w = Math.abs(x - drawing.startX), h = Math.abs(y - drawing.startY);
     Object.assign(drawing.el.style, { left: left + "px", top: top + "px", width: w + "px", height: h + "px" });
+    // Live-preview either box's orientation as it's dragged out, using the
+    // same "taller than wide -> vertical" heuristic the real commit (see
+    // the mouseup handler below) seeds labelOrientation with -- so the
+    // preview text actually flips to match what the box will be seeded as
+    // the instant its aspect ratio crosses over, not just after release.
+    if (drawing.previewEl) {
+      drawing.previewEl.className = drawing.previewClass + (h > w ? " vertical" : "");
+    }
   } else if (dragging) {
     const dx = e.clientX - dragging.startX, dy = e.clientY - dragging.startY;
     const hs = hotspots.find(h => h.id === dragging.hotspotId);
@@ -743,14 +904,13 @@ document.addEventListener("mouseup", (e) => {
             x: snapPct((left - off.left) / off.width * 100), y: snapPct((top - off.top) / off.height * 100),
             w: snapPct(w / off.width * 100), h: snapPct(h / off.height * 100),
           };
-          // Initial orientation follows the aspect ratio of the box as
-          // drawn (taller than wide -> vertical text is presumably the
-          // intent) -- this only runs here, at label-box CREATION time (the
-          // "+ label box" control only exists when there's no labelRect
-          // yet, see its render code below), never re-evaluated when the
-          // box is later resized via its handle; after creation, only the
-          // explicit orient-btn toggle changes it.
-          h2.labelOrientation = h > w ? "vertical" : "horizontal";
+          // No explicit orientation override yet -- effectiveOrientation()
+          // infers it live from this box's own aspect ratio (see that
+          // function's comment) until/unless the orient-btn sets one by
+          // hand. Reset to null (rather than leaving whatever stale value
+          // might be here from a previously-deleted labelRect) since this is
+          // a fresh box with a fresh shape.
+          h2.labelOrientation = null;
           selectedId = h2.id;
         }
       } else {
@@ -761,7 +921,13 @@ document.addEventListener("mouseup", (e) => {
             w: snapPct(w / off.width * 100), h: snapPct(h / off.height * 100),
           },
           label: armedLabel,
-          labelRect: null, labelOrientation: "horizontal",
+          // No explicit orientation override on either box yet --
+          // effectiveOrientation() infers each one live from its OWN
+          // current aspect ratio until/unless that box's own orient-btn
+          // sets one by hand (see effectiveOrientation()'s comment). rect
+          // and labelRect are fully independent here: drawing/resizing one
+          // never affects the other's orientation.
+          labelRect: null, rectOrientation: null, labelOrientation: null,
         };
         hotspots.push(hotspot);
         armedLabel = null;
@@ -774,11 +940,51 @@ document.addEventListener("mouseup", (e) => {
     }
     drawingLabelForId = null;
   }
+  // Moving/resizing an EXISTING rect (as opposed to drawing a new one, the
+  // `if (drawing)` branch above) changes rect/labelRect coordinates during
+  // the mousemove handler but doesn't touch #output live -- renderOutput()
+  // here picks that up once the drag actually completes. Gated on
+  // `dragging` being set (i.e. a move/resize was genuinely in progress) --
+  // this used to be an unconditional `document.addEventListener("mouseup",
+  // () => renderOutput())`, which fired on EVERY mouseup anywhere in the
+  // document, including releasing a text-selection drag inside #output
+  // itself. renderOutput() replaces #output's textContent wholesale, which
+  // destroys the DOM text node the user had just selected -- so a drag-
+  // select there appeared to work (visible while held) and then vanish the
+  // instant the mouse button came up (Ctrl-C still worked mid-drag, before
+  // this handler ran). Scoping the call to genuine drags fixes that without
+  // losing the coordinate-drag case it was there for.
+  if (dragging) renderOutput();
   dragging = null;
   endNoSelect();
 });
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// rect and labelRect each have their own INDEPENDENT orientation, stored as
+// h.rectOrientation/h.labelOrientation -- null (the common case) means "no
+// explicit override, infer live from this box's own current aspect ratio",
+// matching what the wizard does when rect_orientation/label_orientation is
+// absent from the YAML. Only set to an explicit "horizontal"/"vertical" by
+// hand, via that box's own orient-btn (see renderHotspots() below) -- once
+// set, it sticks regardless of later resizing, same as before this change,
+// except now there's no cross-talk between the two boxes' orientations at
+// all (there used to be a single shared field see-sawing between them).
+function effectiveOrientation(box, override) {
+  if (override === "vertical" || override === "horizontal") return override;
+  return box && box.h > box.w ? "vertical" : "horizontal";
+}
+
+// What effectiveOrientation() would return with NO override -- i.e. the
+// "default" this box's own shape alone implies. Used by the orient-btn
+// handlers below to detect "the user toggled it back to what auto would've
+// shown anyway", so the override can be cleared (back to null) instead of
+// staying pinned at an explicit value that's now redundant -- keeps
+// renderOutput() from writing a rect_orientation:/label_orientation: line
+// that doesn't actually override anything.
+function aspectOrientation(box) {
+  return box && box.h > box.w ? "vertical" : "horizontal";
+}
 
 function renderHotspots() {
   // Only clears/rebuilds committed hotspots (".hotspot") -- NOT the
@@ -807,6 +1013,19 @@ function renderHotspots() {
     tag.className = "tag";
     tag.textContent = h.label;
     el.appendChild(tag);
+
+    // Interior preview of the connector's own name -- see .resource-preview's
+    // CSS comment. h.rectOrientation is this box's OWN orientation override
+    // (independent of the role box's h.labelOrientation) -- null unless set
+    // by hand via this box's own orient-btn below, in which case it's
+    // inferred live from rect's current aspect ratio (effectiveOrientation()).
+    const resPreview = document.createElement("div");
+    resPreview.className = "resource-preview" + (effectiveOrientation(h.rect, h.rectOrientation) === "vertical" ? " vertical" : "");
+    const resPreviewText = document.createElement("div");
+    resPreviewText.className = "resource-preview-text";
+    resPreviewText.textContent = h.label;
+    resPreview.appendChild(resPreviewText);
+    el.appendChild(resPreview);
 
     el.addEventListener("mousedown", (e) => {
       e.stopPropagation();
@@ -849,7 +1068,26 @@ function renderHotspots() {
       });
       el.appendChild(handle);
 
-      // "+ label box" button: arms drawingLabelForId so the NEXT drag on the
+      // Orientation override toggle for THIS box (rect), independent of the
+      // role box's own toggle below -- see effectiveOrientation()'s comment.
+      const rectOrientBtn = document.createElement("div");
+      rectOrientBtn.className = "orient-btn";
+      rectOrientBtn.textContent = effectiveOrientation(h.rect, h.rectOrientation);
+      rectOrientBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+      rectOrientBtn.onclick = (e) => {
+        e.stopPropagation();
+        const next = effectiveOrientation(h.rect, h.rectOrientation) === "vertical" ? "horizontal" : "vertical";
+        // Toggling back to whatever the box's own aspect ratio already
+        // implies clears the override entirely (back to "auto") rather than
+        // pinning an explicit value that's now redundant -- see
+        // aspectOrientation()'s comment.
+        h.rectOrientation = (next === aspectOrientation(h.rect)) ? null : next;
+        renderHotspots();
+        renderOutput();
+      };
+      el.appendChild(rectOrientBtn);
+
+      // "+ role box" button: arms drawingLabelForId so the NEXT drag on the
       // overlay places this hotspot's labelRect, rather than creating a new
       // connector hotspot. Only offered when there's no labelRect yet --
       // once one exists, it has its own move/resize/delete handles (below)
@@ -857,7 +1095,7 @@ function renderHotspots() {
       if (!h.labelRect) {
         const labelBtn = document.createElement("div");
         labelBtn.className = "label-btn";
-        labelBtn.textContent = "+ label box";
+        labelBtn.textContent = "+ role box";
         labelBtn.addEventListener("mousedown", (e) => e.stopPropagation());
         labelBtn.onclick = (e) => {
           e.stopPropagation();
@@ -882,6 +1120,22 @@ function renderHotspots() {
         left: lpx.left + "px", top: lpx.top + "px",
         width: lpx.width + "px", height: lpx.height + "px",
       });
+      // Fills the box exactly the way the wizard's own .hotspot-role-label
+      // will (same background/color/centering/wrap/vertical-writing-mode
+      // treatment -- see index.html), so sizing this box here directly
+      // previews whether real role text will fit. The wizard shows the
+      // ASSIGNED FLUIDNC ROLE here, which doesn't exist yet at hotspot-
+      // authoring time -- rather than h.label (this connector's own
+      // generic_name, which can be a very different length, e.g. "Driver1"
+      // vs. "Y2 Motor Direction"), a literal placeholder string is used
+      // instead as a closer length approximation of typical role text.
+      // Appended first/underneath the del/handle/orient-btn controls (added
+      // below), and pointer-events: none, so it never blocks interacting
+      // with them.
+      const preview = document.createElement("div");
+      preview.className = "label-preview" + (effectiveOrientation(h.labelRect, h.labelOrientation) === "vertical" ? " vertical" : "");
+      preview.textContent = "Assigned FluidNC Role";
+      lel.appendChild(preview);
       const ltag = document.createElement("div");
       ltag.className = "tag";
       ltag.textContent = h.label;
@@ -919,13 +1173,21 @@ function renderHotspots() {
         });
         lel.appendChild(handle);
 
+        // No ".vertical" class anymore -- see the CSS rule's own comment;
+        // this is now always a plain, flat, out-of-the-way toggle badge,
+        // never rotated (.label-preview shows the real rotated preview).
+        // Independent of the rect box's own orient-btn above -- see
+        // effectiveOrientation()'s comment.
         const orientBtn = document.createElement("div");
-        orientBtn.className = "orient-btn" + (h.labelOrientation === "vertical" ? " vertical" : "");
-        orientBtn.textContent = h.labelOrientation === "vertical" ? "vertical" : "horizontal";
+        orientBtn.className = "orient-btn";
+        orientBtn.textContent = effectiveOrientation(h.labelRect, h.labelOrientation);
         orientBtn.addEventListener("mousedown", (e) => e.stopPropagation());
         orientBtn.onclick = (e) => {
           e.stopPropagation();
-          h.labelOrientation = h.labelOrientation === "vertical" ? "horizontal" : "vertical";
+          const next = effectiveOrientation(h.labelRect, h.labelOrientation) === "vertical" ? "horizontal" : "vertical";
+          // Same auto-clearing behavior as the rect box's own orient-btn --
+          // see aspectOrientation()'s comment.
+          h.labelOrientation = (next === aspectOrientation(h.labelRect)) ? null : next;
           renderHotspots();
           renderOutput();
         };
@@ -937,19 +1199,30 @@ function renderHotspots() {
   document.getElementById("hotspotCount").textContent = hotspots.length;
 }
 
-document.addEventListener("mouseup", () => { renderOutput(); });
-
 /* ---------------------------------------------------------------------
  * Output (hand-rolled YAML -- the data model here is simple enough that
  * pulling in a full YAML library isn't worth it - but we should consider
  * reuse the wizard's jsyaml.dump()).
  * ------------------------------------------------------------------- */
-function boardIdGuess() {
-  // Best-effort: look for a line like "id: some_board" in the pasted text,
-  // in case the user pastes a real board.yaml instead of the plain label
-  // list -- purely a convenience, not required.
+function boardIdFromText() {
+  // Best-effort: look for a line like "id: some_board" in the loaded text,
+  // in case it's a real board.yaml rather than a plain label list. Returns
+  // null (not a fallback guess) when no such line is found -- used by the
+  // auto-load-the-matching-image feature below, which must NOT fall back to
+  // a made-up id (see boardIdGuess()): guessing wrong there would silently
+  // fetch and load some OTHER board's real photo instead of just failing
+  // visibly with "no image loaded yet".
   const m = rawBoardYamlText.match(/^\s*id:\s*(\S+)/m);
-  return m ? m[1] : "corgi_cnc_controller";
+  return m ? m[1] : null;
+}
+
+function boardIdGuess() {
+  // Same lookup, but with a fallback placeholder id -- used only by
+  // renderOutput() (the board_id:/image: lines of the generated YAML need
+  // SOME id even before a real board.yaml has been loaded) and the
+  // downloaded-file naming helpers, where a wrong guess is harmless (the
+  // contributor is about to rename/fix it by hand anyway).
+  return boardIdFromText() || "corgi";
 }
 
 /* ---------------------------------------------------------------------
@@ -975,13 +1248,22 @@ function renderOutput() {
     y += `  - generic_name: ${JSON.stringify(h.label)}\n`;
     // rect and label_rect share the same {x,y,w,h} object shape, deliberately.
     y += `    rect: {x: ${h.rect.x.toFixed(2)}, y: ${h.rect.y.toFixed(2)}, w: ${h.rect.w.toFixed(2)}, h: ${h.rect.h.toFixed(2)}}\n`;
+    // rect_orientation is optional: written only when the contributor
+    // explicitly overrode it via rect's own orient-btn (h.rectOrientation
+    // non-null) -- otherwise omitted entirely, and the wizard infers it live
+    // from rect's own aspect ratio instead (see effectiveOrientation() /
+    // index.html's matching logic). Independent of label_orientation below.
+    if (h.rectOrientation) y += `    rect_orientation: ${h.rectOrientation}\n`;
     if (h.labelRect) {
       // Optional: only present when the developer drew a separate box for
-      // the role text (see "+ label box" button) -- omitted entirely
+      // the role text (see "+ role box" button) -- omitted entirely
       // otherwise, so the wizard's fallback (label text inside the
       // connector box itself) stays in effect for ordinary-sized connectors.
       y += `    label_rect: {x: ${h.labelRect.x.toFixed(2)}, y: ${h.labelRect.y.toFixed(2)}, w: ${h.labelRect.w.toFixed(2)}, h: ${h.labelRect.h.toFixed(2)}}\n`;
-      y += `    label_orientation: ${h.labelOrientation === "vertical" ? "vertical" : "horizontal"}\n`;
+      // label_orientation is likewise optional now -- only written when
+      // explicitly overridden (h.labelOrientation non-null); omitted when
+      // left on auto, same reasoning as rect_orientation above.
+      if (h.labelOrientation) y += `    label_orientation: ${h.labelOrientation}\n`;
     }
   });
   document.getElementById("output").textContent = y;
@@ -1015,14 +1297,14 @@ function parseHotspotsYaml(text) {
     // (every real file ever had exactly one anyway); either way the value
     // loaded here IS a generic name once re-saved.
     if ((m = line.match(/^-\s*generic_name:\s*"((?:[^"\\]|\\.)*)"/))) {
-      current = { id: nextId++, rect: { x: 0, y: 0, w: 0, h: 0 }, label: m[1].replace(/\\"/g, '"'), labelRect: null, labelOrientation: "horizontal" };
+      current = { id: nextId++, rect: { x: 0, y: 0, w: 0, h: 0 }, label: m[1].replace(/\\"/g, '"'), labelRect: null, rectOrientation: null, labelOrientation: null };
       parsed.push(current);
       return;
     }
     if ((m = line.match(/^-\s*(?:generic_names|labels):\s*\[(.*)\]/))) {
       const re = /"((?:[^"\\]|\\.)*)"/g;
       const lm = re.exec(m[1]);
-      current = { id: nextId++, rect: { x: 0, y: 0, w: 0, h: 0 }, label: lm ? lm[1].replace(/\\"/g, '"') : "", labelRect: null, labelOrientation: "horizontal" };
+      current = { id: nextId++, rect: { x: 0, y: 0, w: 0, h: 0 }, label: lm ? lm[1].replace(/\\"/g, '"') : "", labelRect: null, rectOrientation: null, labelOrientation: null };
       parsed.push(current);
       return;
     }
@@ -1031,6 +1313,10 @@ function parseHotspotsYaml(text) {
       current.rect = { x: parseFloat(m[1]), y: parseFloat(m[2]), w: parseFloat(m[3]), h: parseFloat(m[4]) };
       return;
     }
+    // Optional -- absent means "no override, infer live from rect's own
+    // aspect ratio" (see effectiveOrientation()). Independent of
+    // label_orientation below; either, both, or neither may be present.
+    if ((m = line.match(/^rect_orientation:\s*(\S+)/))) { current.rectOrientation = m[1]; return; }
     if ((m = line.match(/^label_rect:\s*\{x:\s*([-\d.]+),\s*y:\s*([-\d.]+),\s*w:\s*([-\d.]+),\s*h:\s*([-\d.]+)\}/))) {
       current.labelRect = { x: parseFloat(m[1]), y: parseFloat(m[2]), w: parseFloat(m[3]), h: parseFloat(m[4]) };
       return;
@@ -1144,6 +1430,39 @@ document.getElementById("downloadBtn").onclick = () => {
 document.getElementById("clearBtn").onclick = () => {
   hotspots = []; selectedId = null; armedLabel = null; drawingLabelForId = null;
   renderLabels(); renderHotspots(); renderOutput();
+};
+
+// POSTs the generated YAML straight to hotspots/<id>.hotspots.yaml on disk,
+// via tools/dev_server.py's upload endpoint (see that script's docstring --
+// plain `python3 -m http.server` has no such endpoint and this will just
+// fail with a network/404 error, caught below). Deliberately requires a
+// REAL board id (boardIdFromText(), not the boardIdGuess() fallback that
+// defaults to "corgi") -- saving under a guessed id could
+// silently overwrite an unrelated board's real hotspots file.
+document.getElementById("saveServerBtn").onclick = async () => {
+  const btn = document.getElementById("saveServerBtn");
+  const original = btn.textContent;
+  const resetLater = () => setTimeout(() => { btn.textContent = original; }, 2000);
+  const id = boardIdFromText();
+  if (!id) {
+    btn.textContent = "No board id -- load board.yaml first";
+    resetLater();
+    return;
+  }
+  const filename = `${id}.hotspots.yaml`;
+  try {
+    const resp = await fetch(`/__save_hotspots__/${encodeURIComponent(filename)}`, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: document.getElementById("output").textContent,
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+    btn.textContent = `Saved hotspots/${filename}`;
+  } catch (e) {
+    btn.textContent = "Save failed (running tools/dev_server.py?)";
+    console.error("Save to hotspots/ failed:", e);
+  }
+  resetLater();
 };
 
 renderLabels();

@@ -1,0 +1,51 @@
+board_id: tmc2209_pen_laser_v2
+image: images/tmc2209_pen_laser_v2.jpg
+hotspots:
+  - generic_name: "Motor1"
+    rect: {x: 13.00, y: 88.00, w: 20.00, h: 9.00}
+    label_rect: {x: 13.00, y: 97.00, w: 20.00, h: 13.00}
+  - generic_name: "Motor2"
+    rect: {x: 38.00, y: 88.00, w: 19.00, h: 9.00}
+    label_rect: {x: 38.00, y: 97.00, w: 19.00, h: 13.00}
+  - generic_name: "In36"
+    rect: {x: 88.00, y: 19.00, w: 10.00, h: 7.00}
+    label_rect: {x: 98.00, y: 18.00, w: 19.00, h: 8.00}
+  - generic_name: "In39"
+    rect: {x: 88.00, y: 12.00, w: 10.00, h: 7.00}
+    label_rect: {x: 98.00, y: 12.00, w: 19.00, h: 7.00}
+  - generic_name: "In35"
+    rect: {x: 88.00, y: 27.00, w: 10.00, h: 7.00}
+    label_rect: {x: 98.00, y: 27.00, w: 19.00, h: 7.00}
+  - generic_name: "In34"
+    rect: {x: 88.00, y: 34.00, w: 10.00, h: 7.00}
+    label_rect: {x: 98.00, y: 34.00, w: 19.00, h: 7.00}
+  - generic_name: "In33"
+    rect: {x: 88.00, y: 41.00, w: 10.00, h: 7.00}
+    label_rect: {x: 98.00, y: 41.00, w: 19.00, h: 7.00}
+  - generic_name: "5V Out27"
+    rect: {x: 88.00, y: 83.00, w: 10.00, h: 7.00}
+    label_rect: {x: 98.00, y: 83.00, w: 19.00, h: 7.00}
+  - generic_name: "5V Out2"
+    rect: {x: 88.00, y: 76.00, w: 10.00, h: 7.00}
+    label_rect: {x: 98.00, y: 76.00, w: 19.00, h: 7.00}
+  - generic_name: "5V Out21"
+    rect: {x: 79.00, y: 56.00, w: 8.00, h: 7.00}
+    label_rect: {x: 63.00, y: 56.00, w: 16.00, h: 7.00}
+  - generic_name: "Motor3"
+    rect: {x: 88.00, y: 56.00, w: 10.00, h: 7.00}
+    label_rect: {x: 98.00, y: 56.00, w: 19.00, h: 7.00}
+  - generic_name: "IO4"
+    rect: {x: 72.00, y: 25.00, w: 9.00, h: 6.00}
+    label_rect: {x: 53.00, y: 25.00, w: 19.00, h: 6.00}
+  - generic_name: "IO15"
+    rect: {x: 72.00, y: 31.00, w: 9.00, h: 6.00}
+    label_rect: {x: 53.00, y: 31.00, w: 19.00, h: 6.00}
+  - generic_name: "Expander"
+    rect: {x: 64.00, y: 9.00, w: 17.00, h: 16.00}
+    label_rect: {x: 40.00, y: 9.00, w: 23.00, h: 16.00}
+  - generic_name: "In32"
+    rect: {x: 88.00, y: 48.00, w: 10.00, h: 7.00}
+    label_rect: {x: 98.00, y: 48.00, w: 19.00, h: 7.00}
+  - generic_name: "5V Out22"
+    rect: {x: 88.00, y: 69.00, w: 10.00, h: 7.00}
+    label_rect: {x: 98.00, y: 69.00, w: 19.00, h: 7.00}

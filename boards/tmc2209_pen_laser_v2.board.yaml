@@ -87,7 +87,7 @@ generic_pins:
   - { label: "Inputs - 35", generic_name: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: rc_filtered, external_pullup_required: false } }
   - { label: "Inputs - 34", generic_name: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: rc_filtered, external_pullup_required: false } }
   - { label: "Inputs - 33", generic_name: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: rc_filtered, external_pullup_required: false } }
-  - { label: "Inputs - 32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: rc_filtered, external_pullup_required: false } }
+  - { label: "Inputs - 32", generic_name: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: rc_filtered, external_pullup_required: false } }
 
   # 3x 5V outputs ("3 5V outputs to control lasers and accessories"
   - { label: "Outputs - 22", generic_name: "5V Out22", mcu_pin: gpio.22, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0 } }

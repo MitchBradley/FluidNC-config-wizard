@@ -61,15 +61,19 @@
           "$ref": "#/$defs/percentBox",
           "description": "The clickable region drawn directly over the connector/pin itself in the photo."
         },
+        "rect_orientation": {
+          "type": "string",
+          "enum": ["horizontal", "vertical"],
+          "description": "Optional text flow direction for the connector's own name shown inside/at rect. If absent (the common case), the wizard infers it from rect's own aspect ratio (taller than wide -> vertical) -- only present when a contributor explicitly overrode that inference by hand in the hotspot editor. Fully independent of label_orientation below: rect and label_rect are each oriented from their own shape, with no coupling between them."
+        },
         "label_rect": {
           "$ref": "#/$defs/percentBox",
-          "description": "Optional. A separate box for the generic_name's text label, used when the connector is too small/crowded for the label to render legibly inside rect itself (the wizard's default behavior when label_rect is absent). Commonly placed adjacent to rect and may extend outside the photo's own 0-100 bounds (negative x/y, or x+w/y+h past 100) -- the wizard reserves padding for this at view time. When present, label_orientation should also be present."
+          "description": "Optional. A separate box for the generic_name's text label, used when the connector is too small/crowded for the label to render legibly inside rect itself (the wizard's default behavior when label_rect is absent). Commonly placed adjacent to rect and may extend outside the photo's own 0-100 bounds (negative x/y, or x+w/y+h past 100) -- the wizard reserves padding for this at view time."
         },
         "label_orientation": {
           "type": "string",
           "enum": ["horizontal", "vertical"],
-          "default": "horizontal",
-          "description": "Text flow direction inside label_rect. Only meaningful (and only ever written by the hotspot editor) when label_rect is present -- vertical is typically used for a narrow, tall label_rect (e.g. a label stacked above a single narrow connector) where horizontal text wouldn't fit legibly."
+          "description": "Optional text flow direction inside label_rect. Only meaningful when label_rect is present. If absent, the wizard infers it from label_rect's own aspect ratio (taller than wide -> vertical) -- only present when a contributor explicitly overrode that inference by hand in the hotspot editor. Independent of rect_orientation above."
         }
       },
       "allOf": [

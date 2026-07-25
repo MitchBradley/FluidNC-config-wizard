@@ -1,5 +1,5 @@
 board:
-  id: corgi_cnc_controller
+  id: corgi
   name: "Corgi CNC Controller"
   manufacturer: "Dring Engineering Services"
   mcu_chip: esp32
