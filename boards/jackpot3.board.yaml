@@ -1,0 +1,157 @@
+board:
+  id: jackpot3
+  name: "Jackpot3 CNC Controller"
+  manufacturer: "V1 Engineering"
+  mcu_chip: esp32
+  status: active
+
+meta:
+  vendor_docs_url: "https://docs.v1e.com/electronics/jackpot3/"
+  purchase_url: "https://www.v1e.com/products/jackpot3-cnc-controller"
+  notes: >
+    fluidcnc docs are for an older Jackport controller. The Jackpot3 is a newer design with a different pinout and more features.
+
+stepping:
+  engines: [i2s]
+  notes: "Motor driver wiring uses I2S-shifted outputs for the onboard TMC2226 sockets."
+
+fixed_peripherals:
+  spi:
+    miso_pin: gpio.19
+    mosi_pin: gpio.23
+    sck_pin: gpio.18
+  sdcard:
+    cs_pin: gpio.5
+    notes: "No physical card-detect pin is documented."
+  i2so:
+    bck_pin: gpio.22
+    data_pin: gpio.21
+    ws_pin: gpio.17
+    pin_count: 24
+    notes: "Inferred from the highest I2SO index used by the six motor sockets (I2SO.23)."
+  dedicated_uarts:
+    - label: "Onboard TMC UART"
+      txd_pin: gpio.16
+      rxd_pin: gpio.4
+      baud: 115200
+      mode: "8N1"
+
+motor_sockets:
+  sockets:
+    - label: "X"
+      generic_name: Motor1
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
+      extra: { bus: uart1, addr: 0 }
+    - label: "Y"
+      generic_name: Motor2
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
+      extra: { bus: uart1, addr: 1 }
+    - label: "Z"
+      generic_name: Motor3
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
+      extra: { bus: uart1, addr: 2 }
+    - label: "A"
+      generic_name: Motor4
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
+      extra: { bus: uart1, addr: 3 }
+    - label: "B"
+      generic_name: Motor5
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: i2so.18, direction_pin: i2so.17, disable_pin: i2so.16 }
+      extra: { bus: uart1, addr: 4 }
+    - label: "C"
+      generic_name: Motor6
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: i2so.21, direction_pin: i2so.20, disable_pin: i2so.23 }
+      extra: { bus: uart1, addr: 5 }
+
+generic_pins:
+  - label: "Inputs - gpio.25"
+    generic_name: "In25"
+    mcu_pin: gpio.25
+    direction: either
+    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    output_profile: { drive_type: totem_pole }
+    notes: "Active-low input with external pullup; can be repurposed as a general output if needed."
+  - label: "Inputs - gpio.33"
+    generic_name: "In33"
+    mcu_pin: gpio.33
+    direction: either
+    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    output_profile: { drive_type: totem_pole }
+    notes: "Active-low input with external pullup; can be repurposed as a general output if needed."
+  - label: "Inputs - gpio.32"
+    generic_name: "In32"
+    mcu_pin: gpio.32
+    direction: either
+    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    output_profile: { drive_type: totem_pole }
+    notes: "Active-low input with external pullup; can be repurposed as a general output if needed."
+  - label: "Inputs - gpio.35"
+    generic_name: "In35"
+    mcu_pin: gpio.35
+    direction: input
+    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    notes: "Active-low input with external pullup."
+  - label: "Inputs - gpio.34"
+    generic_name: "In34"
+    mcu_pin: gpio.34
+    direction: input
+    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    notes: "Active-low input with external pullup."
+  - label: "Inputs - gpio.39"
+    generic_name: "In39"
+    mcu_pin: gpio.39
+    direction: input
+    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    notes: "Active-low input with external pullup."
+  - label: "Probe - gpio.36"
+    generic_name: "In36"
+    mcu_pin: gpio.36
+    direction: input
+    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    notes: "Active-low probe input with external pullup."
+  - label: "Output - gpio.26"
+    generic_name: "FET26"
+    mcu_pin: gpio.26
+    direction: output
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 1.0 }
+    notes: "Selectable 5V/24V output; can pulse briefly during board startup."
+  - label: "Output - gpio.27"
+    generic_name: "FET27"
+    mcu_pin: gpio.27
+    direction: output
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 1.0 }
+  - label: "Output - gpio.0"
+    generic_name: "FET0"
+    mcu_pin: gpio.0
+    direction: output
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 1.0 }
+  - label: "Output - gpio.2"
+    generic_name: "FET2"
+    mcu_pin: gpio.2
+    direction: output
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 1.0 }
+
+expansion_sockets:
+  - label: "Expansion Module Socket"
+    generic_name: "Expansion Module Socket"
+    pins:
+      - { module_pin: "1", mcu_pin: gpio.12, direction: either }
+      - { module_pin: "2", mcu_pin: gpio.13, direction: either }
+      - { module_pin: "3", mcu_pin: gpio.14, direction: either }
+      - { module_pin: "4", mcu_pin: gpio.15, direction: either }
+    notes: >
+      4-pin module socket for add-on cards and pendant/expander wiring. Two pins
+      (gpio.12, gpio.15) are shared with the RJ11 expansion port; if that socket
+      is used, limit module usage to gpio.13 and gpio.14.

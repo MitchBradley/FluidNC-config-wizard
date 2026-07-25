@@ -1,3 +1,5 @@
+
+.venv/
 # Python bytecode cache -- regenerated automatically, never useful to commit.
 __pycache__/
 *.pyc
