@@ -1,0 +1,72 @@
+board_id: 6x
+image: images/6x.jpg
+hotspots:
+  - generic_name: "Driver1"
+    rect: {x: 21.00, y: 89.00, w: 11.00, h: 8.00}
+    label_rect: {x: 21.00, y: 98.00, w: 11.00, h: 9.00}
+  - generic_name: "Driver2"
+    rect: {x: 33.00, y: 89.00, w: 10.00, h: 9.00}
+    label_rect: {x: 33.00, y: 98.00, w: 10.00, h: 9.00}
+  - generic_name: "Driver3"
+    rect: {x: 44.00, y: 89.00, w: 10.00, h: 8.00}
+    label_rect: {x: 44.00, y: 98.00, w: 10.00, h: 9.00}
+  - generic_name: "Driver4"
+    rect: {x: 55.00, y: 89.00, w: 10.00, h: 8.00}
+    label_rect: {x: 55.00, y: 98.00, w: 10.00, h: 9.00}
+  - generic_name: "Driver5"
+    rect: {x: 66.00, y: 90.00, w: 10.00, h: 8.00}
+    label_rect: {x: 66.00, y: 98.00, w: 10.00, h: 9.00}
+  - generic_name: "Driver6"
+    rect: {x: 77.00, y: 89.00, w: 11.00, h: 8.00}
+    label_rect: {x: 77.00, y: 98.00, w: 11.00, h: 9.00}
+  - generic_name: "In2"
+    rect: {x: 11.00, y: 3.00, w: 4.00, h: 7.00}
+    label_rect: {x: 11.00, y: -20.00, w: 4.00, h: 23.00}
+  - generic_name: "In26"
+    rect: {x: 15.00, y: 3.00, w: 4.00, h: 7.00}
+    label_rect: {x: 15.00, y: -20.00, w: 4.00, h: 23.00}
+  - generic_name: "In32"
+    rect: {x: 23.00, y: 3.00, w: 4.00, h: 7.00}
+    label_rect: {x: 23.00, y: -20.00, w: 4.00, h: 23.00}
+  - generic_name: "In33"
+    rect: {x: 19.00, y: 3.00, w: 4.00, h: 7.00}
+    label_rect: {x: 19.00, y: -20.00, w: 4.00, h: 23.00}
+  - generic_name: "In34"
+    rect: {x: 32.00, y: 3.00, w: 3.00, h: 7.00}
+    label_rect: {x: 32.00, y: -20.00, w: 3.00, h: 22.00}
+  - generic_name: "In35"
+    rect: {x: 28.00, y: 2.00, w: 4.00, h: 7.00}
+    label_rect: {x: 28.00, y: -20.00, w: 4.00, h: 22.00}
+  - generic_name: "In36"
+    rect: {x: 39.00, y: 3.00, w: 4.00, h: 7.00}
+    label_rect: {x: 39.00, y: -20.00, w: 4.00, h: 22.00}
+  - generic_name: "In39"
+    rect: {x: 35.00, y: 3.00, w: 4.00, h: 7.00}
+    label_rect: {x: 35.00, y: -20.00, w: 4.00, h: 22.00}
+  - generic_name: "5V Out4"
+    rect: {x: 48.00, y: 3.00, w: 4.00, h: 7.00}
+    label_rect: {x: 48.00, y: -20.00, w: 4.00, h: 22.00}
+  - generic_name: "FET4"
+    rect: {x: 93.00, y: 23.00, w: 5.00, h: 8.00}
+    label_rect: {x: 98.00, y: 22.00, w: 11.00, h: 9.00}
+  - generic_name: "5V Out12"
+    rect: {x: 44.00, y: 3.00, w: 4.00, h: 7.00}
+    label_rect: {x: 44.00, y: -20.00, w: 4.00, h: 22.00}
+  - generic_name: "FET12"
+    rect: {x: 93.00, y: 14.00, w: 5.00, h: 8.00}
+    label_rect: {x: 98.00, y: 14.00, w: 11.00, h: 8.00}
+  - generic_name: "5V Out13"
+    rect: {x: 52.00, y: 3.00, w: 3.00, h: 7.00}
+    label_rect: {x: 52.00, y: -20.00, w: 3.00, h: 22.00}
+  - generic_name: "5V Out14"
+    rect: {x: 55.00, y: 3.00, w: 4.00, h: 7.00}
+    label_rect: {x: 55.00, y: -20.00, w: 4.00, h: 22.00}
+  - generic_name: "RS485"
+    rect: {x: 60.00, y: 2.00, w: 8.00, h: 9.00}
+    label_rect: {x: 60.00, y: -15.00, w: 8.00, h: 17.00}
+  - generic_name: "Spindle Out14"
+    rect: {x: 69.00, y: 3.00, w: 2.00, h: 8.00}
+    label_rect: {x: 69.00, y: -19.00, w: 2.00, h: 21.00}
+  - generic_name: "Spindle Out15"
+    rect: {x: 71.00, y: 2.00, w: 2.00, h: 9.00}
+    label_rect: {x: 71.00, y: -19.00, w: 2.00, h: 21.00}
