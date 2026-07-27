@@ -78,5 +78,4 @@ hotspots:
     label_rect: {x: 70.00, y: 70.00, w: 20.00, h: 4.00}
   - generic_name: "IO27"
     rect: {x: 64.00, y: 66.00, w: 6.00, h: 4.00}
-    label_rect: {x: 70.00, y: 65.00, w: 20.00, h: 5.0
-    
+    label_rect: {x: 70.00, y: 65.00, w: 20.00, h: 5.00}
