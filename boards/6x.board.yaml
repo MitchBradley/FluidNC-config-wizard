@@ -54,11 +54,10 @@ generic_pins:
   - { label: "Spindle Fwd", generic_name: "Spindle Out15", mcu_pin: gpio.15, direction: output, output_profile: { drive_type: open_collector } }
   - { label: "Spindle Rev", generic_name: "Spindle Out14", mcu_pin: gpio.14, direction: output, output_profile: { drive_type: open_collector } }
   - { label: "0-10V - 10v gpio.13", generic_name: "Spindle 10V", mcu_pin: gpio.6, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 10.0 }, notes: "PWM + analog filter + trim pot; adjustable max 5-10V, must be measured/set before connecting to a VFD." }
+    # Indivual pins on the module socket
+  - { label: "CNC I/O Module Socket - GPIO.25", generic_name: "IO25", mcu_pin: gpio.25, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }
+  - { label: "CNC I/O Module Socket - GPIO.27", generic_name: "IO27", mcu_pin: gpio.27, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }
 
 rs485_channels:
   - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
-expansion_sockets:
-  - label: "Expansion Module Socket"
-    pins:
-      - { module_pin: "1", mcu_pin: gpio.25, direction: bidirectional }
-      - { module_pin: "2", mcu_pin: gpio.27, direction: bidirectional }
+
