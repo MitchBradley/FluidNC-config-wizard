@@ -133,6 +133,10 @@
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 5px;
   }
   .fixed-fact { color: var(--text); font-weight: 600; }
+  /* Config-item doc tooltip (config_items.yaml, see lookupItemDoc()) --
+     dotted underline hints that hovering the key reveals its description,
+     without competing visually with the plain YAML text around it. */
+  .doc-key { border-bottom: 1px dotted var(--muted-strong); cursor: help; }
   .fixed-list { font-size: 12px; color: var(--muted-strong); line-height: 1.6; }
   .fixed-list code { color: #71b599; background: none; }
   code { background: #0a1013; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
@@ -708,6 +712,90 @@ async function loadRoleData() {
   SPINDLE_TYPES = buildSpindleTypes(schema);
   DIGITAL_OUTPUT_COUNT = countSlots(schema.$defs.userOutputsSection.properties, "digital");
   ANALOG_OUTPUT_COUNT = countSlots(schema.$defs.userOutputsSection.properties, "analog");
+
+  await loadConfigItemDocs();
+}
+
+// Config-item hover-tooltip text, sourced from FluidNC's own generated
+// docs/config_items.yaml (see FluidNC/tools/build_config_docs.py upstream --
+// produced from // @config / @default annotations next to each
+// handler.item(...) call, so it's authoritative, not hand-maintained here).
+// Purely a presentation enhancement: every lookup below degrades to "no
+// tooltip" (never an error) if this fetch fails or a given key isn't found,
+// so the wizard's core function never depends on it.
+//
+// TODO once a FluidNC release actually ships this file (per user direction,
+// not yet true as of this writing): fetch it from that release's own
+// docs/config_items.yaml instead of this repo-local copy, the same way
+// board.schema.json/fluidnc-config-schema.json are copied in from upstream
+// today -- for now this is a manually-synced copy (schema/config_items.yaml),
+// no fetch URL to point at yet since it doesn't exist in any real release.
+let CONFIG_ITEM_DOCS = {}; // sectionName -> { itemKey -> {description, default, type} }
+
+async function loadConfigItemDocs() {
+  const text = await fetchYamlTextOptional("schema/config_items.yaml");
+  if (!text) return;
+  try {
+    const parsed = jsyaml.load(text);
+    if (parsed && typeof parsed === "object") CONFIG_ITEM_DOCS = parsed;
+  } catch (e) {
+    console.warn("Couldn't parse schema/config_items.yaml -- config-item tooltips will be unavailable.", e);
+  }
+}
+
+// Maps a WIZARD-internal dotted path (as built by generateDraft()'s cfg
+// object, e.g. "axes.x.motor0.tmc_2209") to the matching SECTION key
+// config_items.yaml itself uses (e.g. "axes.<letter>.motorN.tmc_2209") --
+// the doc file uses literal placeholder segments for anything that varies
+// per-instance (axis letter, motor slot number, uart/uart_channel number),
+// while the wizard's own paths naturally contain the real, current value at
+// generateDraft() time. Spindle section names (PWM/Laser/BESC/HBridge/
+// OnOff/PlasmaSpindle/ModbusVFD) need no translation at all -- they already
+// match verbatim, since SPINDLE_TYPES' cfgKey values come directly from the
+// same schema $defs the doc generator's own C++ source annotations target.
+function docSectionForPath(path) {
+  if (!path) return "(top-level machine items)";
+  const segs = path.split(".");
+  segs.forEach((seg, i) => {
+    if (i === 1 && segs[0] === "axes" && AXES.includes(seg)) { segs[i] = "<letter>"; return; }
+    if (i === 2 && segs[0] === "axes" && /^motor[01]$/.test(seg)) { segs[i] = "motorN"; return; }
+    // HOMINGSELECT_<letter>/KINSELECT/SECTIONSELECT_<key> are the wizard's
+    // own internal sentinel KEYS (see homingSentinel()/sectionSentinel(),
+    // and cfg.kinematics = { KINSELECT: ... } in generateDraft()) -- they
+    // sit in `cfg` (and therefore in collectAndInjectSlots()'s path
+    // tracking) exactly where the real key belongs, but aren't real key
+    // names themselves; translate back to what config_items.yaml expects.
+    if (/^HOMINGSELECT_[a-z]+$/.test(seg)) { segs[i] = "homing"; return; }
+    if (seg === "KINSELECT") { segs[i] = kinematicsType; return; }
+    const sectionMatch = seg.match(/^SECTIONSELECT_([a-z_]+)$/);
+    if (sectionMatch) { segs[i] = sectionMatch[1]; return; }
+    if (/^uart\d+$/.test(seg)) { segs[i] = "uartN"; return; }
+    if (/^uart_channel\d+$/.test(seg)) { segs[i] = "uart_channelN"; return; }
+  });
+  return segs.join(".");
+}
+
+// parentPath/key split from a full dotted path (paramSlots/pinSlots/
+// keySlots entries all store the FULL path, e.g. "axes.x.motor0.run_amps",
+// same convention throughout this file) -- reconstructs the parentPath
+// collectAndInjectSlots() originally had before appending ".key", without
+// needing every call site to also stash it separately.
+function parentPathOf(fullPath, key) {
+  return fullPath.length > key.length ? fullPath.slice(0, -(key.length + 1)) : "";
+}
+
+// Returns tooltip-ready text ("description" alone, or with a trailing
+// "Default: X" line when the doc records one) for a field at the given
+// WIZARD path, or null if this key isn't documented (an unannotated field,
+// a wizard-internal structural key with no config_items.yaml entry of its
+// own, or the docs simply didn't load) -- always a soft miss, never an
+// error, per this feature's whole "presentation enhancement only" premise.
+function lookupItemDoc(parentPath, key) {
+  const section = CONFIG_ITEM_DOCS[docSectionForPath(parentPath)];
+  const item = section && section[key];
+  if (!item || !item.description) return null;
+  const desc = item.description.trim();
+  return item.default !== undefined ? `${desc}\n\nDefault: ${item.default}` : desc;
 }
 
 /* Generic two-step cascade lookup: given a step-1 category value, returns
@@ -991,6 +1079,7 @@ let kinematicsType = "Cartesian"; // selected top-level kinematics system, defau
  * compiled-in defaults, editable inline -- no separate left-pane UI state
  * needed for this section at all. */
 let chipGpioCaps = {};     // gpio number -> chip-file gpio fact object (see loadBoard()/pinWidgetHtml())
+let genericPinProfiles = {}; // basePin string (e.g. "gpio.2") -> this board's generic_pins input_profile object, if any (see loadBoard()/pinWidgetHtml())
 let hotspotData = null;    // parsed hotspots/<id>.hotspots.yaml, or null if this board has no photo hotspots yet
 // resourceKey -> [pin, pin, ...] -- every MCU pin string (e.g. "gpio.4",
 // "i2so.2") a given resource physically occupies, regardless of which role
@@ -1261,11 +1350,20 @@ function specForKey(key) {
  * where motorBlockFor()'s tmc_5160 branch records such an override during
  * the motor-socket loop in generateDraft(). Merged over specForKey(k)'s
  * result so unrelated fields are unaffected. */
-function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverrides) {
+// keySlots: EVERY key encountered, in the exact order jsyaml.dump() will
+// emit their lines (same Object.keys() traversal, so this holds regardless
+// of type -- TBD, pin, plain literal, or a nested object/section key).
+// Used only for the plain-text tooltip pass in buildInteractiveYaml() --
+// paramSlots/pinSlots already carry the same {path, key} shape for their
+// own widget-rendered lines, so this just extends that same bookkeeping to
+// the lines that stay plain text (config-item tooltips should cover ALL of
+// them, not just the ones that happen to still be open/editable).
+function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverrides, keySlots) {
   if (!node || typeof node !== "object") return;
   Object.keys(node).forEach(k => {
     const v = node[k];
     const p = path ? `${path}.${k}` : k;
+    if (keySlots) keySlots.push({ path: p, key: k });
     if (v === "TBD") {
       const override = defaultOverrides && defaultOverrides[p];
       // NOTE: also re-derive placeholder from the override's own default --
@@ -1298,7 +1396,7 @@ function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverride
       pinSlots.push({ path: p, key: k, basePin: v });
       node[k] = "PINSLOT";
     } else if (v && typeof v === "object") {
-      collectAndInjectSlots(v, p, paramSlots, pinSlots, defaultOverrides);
+      collectAndInjectSlots(v, p, paramSlots, pinSlots, defaultOverrides, keySlots);
     }
   });
 }
@@ -1372,7 +1470,13 @@ function paramWidgetHtml(slot) {
   // adapted here to an inline-field rather than a whole row.
   const conflicted = toolNumConflicts.has(slot.path);
   const cls = "inline-field" + (has ? " filled" : "") + (conflicted ? " conflict" : "");
-  const conflictTitle = conflicted ? ` title="Tool number ${escapeAttr(paramValues[slot.path])} is also used by another spindle -- FluidNC requires each to be unique"` : "";
+  // Doc tooltip (config_items.yaml, see lookupItemDoc()) combined with the
+  // tool_num conflict warning when both apply -- the conflict is the more
+  // urgent thing to notice, so it comes first.
+  const conflictText = conflicted ? `Tool number ${paramValues[slot.path]} is also used by another spindle -- FluidNC requires each to be unique` : null;
+  const docText = lookupItemDoc(parentPathOf(slot.path, slot.key), slot.key);
+  const combinedTitle = [conflictText, docText].filter(Boolean).join("\n\n");
+  const titleAttr = combinedTitle ? ` title="${escapeAttr(combinedTitle)}"` : "";
   let html;
   if (slot.spec.type === "enum") {
     const cur = has ? String(paramValues[slot.path]) : "";
@@ -1380,7 +1484,7 @@ function paramWidgetHtml(slot) {
     slot.spec.options.forEach(([val, label]) => {
       opts += `<option value="${escapeAttr(val)}"${val === cur ? " selected" : ""}>${escapeHtml(label)}</option>`;
     });
-    html = `<select class="${cls}"${conflictTitle} data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}">${opts}</select>`;
+    html = `<select class="${cls}"${titleAttr} data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}">${opts}</select>`;
   } else {
     const cur = has ? paramValues[slot.path] : "";
     const type = slot.spec.type === "number" ? "number" : "text";
@@ -1392,7 +1496,7 @@ function paramWidgetHtml(slot) {
     // still-open field despite the border/text color already having
     // changed. Only ever shown for a real UNANSWERED field.
     const placeholder = has ? "" : (slot.spec.placeholder || "TBD");
-    html = `<input class="${cls}" type="${type}"${step}${conflictTitle} placeholder="${escapeAttr(placeholder)}" value="${escapeAttr(cur)}" data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}">`;
+    html = `<input class="${cls}" type="${type}"${step}${titleAttr} placeholder="${escapeAttr(placeholder)}" value="${escapeAttr(cur)}" data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}">`;
   }
   if (slot.spec.default !== undefined) {
     const kindLabel = slot.spec.defaultKind === "firmware" ? "FluidNC firmware default"
@@ -1426,7 +1530,19 @@ function pinWidgetHtml(slot) {
     const caps = chipGpioCaps[num];
     if (caps) supportsPull = !!(caps.pullup || caps.pulldown);
   }
-  let html = `<span class="fixed-fact">${escapeHtml(slot.basePin)}</span>`;
+  // Board-level override: a generic_pins entry that explicitly documents
+  // external_pullup_required: false (the pin's own conditioning circuit
+  // already fixes its idle state -- e.g. an opto-isolated input with no
+  // external pull resistor fitted) means the MCU's internal pull-up/
+  // pull-down would do nothing useful here, so don't offer :pu/:pd at all,
+  // regardless of what the chip itself is capable of. Only overrides when
+  // the field is present and literally false -- absent (most boards/pins)
+  // or true leaves the chip-capability answer above untouched.
+  const profile = genericPinProfiles[slot.basePin];
+  if (profile && profile.external_pullup_required === false) supportsPull = false;
+  const pinDocText = lookupItemDoc(parentPathOf(slot.path, slot.key), slot.key);
+  const pinTitleAttr = pinDocText ? ` title="${escapeAttr(pinDocText)}"` : "";
+  let html = `<span class="fixed-fact"${pinTitleAttr}>${escapeHtml(slot.basePin)}</span>`;
   html += `<select class="attr-field${attrs.level ? " set" : ""}" data-path="${escapeAttr(slot.path)}" data-attr="level" title="Active level (:low / :high)">` +
     levelOpts.map(([v,l]) => `<option value="${v}"${attrs.level===v?" selected":""}>${l}</option>`).join("") + `</select>`;
   if (supportsPull) {
@@ -1444,10 +1560,36 @@ function pinWidgetHtml(slot) {
 const HOMING_SENTINEL_RE = new RegExp(`^HOMINGSELECT_(${AXES.join("|")})$`);
 const SECTION_SENTINEL_RE = new RegExp(`^SECTIONSELECT_(${Object.keys(OPTIONAL_SECTIONS).join("|")})$`);
 
-function buildInteractiveYaml(yamlText, paramSlots, pinSlots) {
+// Wraps every recognized "key:" at the start of a line (within an already-
+// HTML-escaped plain-text chunk -- called AFTER escapeHtml(), never before,
+// since it injects real <span> markup that escapeHtml() would otherwise
+// mangle) in a titled span carrying that key's config-item doc text, if
+// any. `keySlots` (built alongside paramSlots/pinSlots by
+// collectAndInjectSlots(), see its own comment) is consumed in lockstep,
+// one entry per regex match -- both walk the exact same document in the
+// exact same order, so they should always line up; the `slot.key === key`
+// guard below is a pure safety net (skip silently, don't advance `ki`) in
+// case that assumption is ever wrong, so a mismatch can only cost a missing
+// tooltip, never a wrong one or a rendering break -- this function's output
+// is ADDITIVE decoration on top of text that already rendered correctly
+// without it.
+function wrapDocKeys(escapedText, keySlots, kiRef) {
+  return escapedText.replace(/^(\s*)([A-Za-z_][A-Za-z0-9_]*):/gm, (whole, indent, key) => {
+    const slot = keySlots[kiRef.i];
+    if (!slot || slot.key !== key) return whole;
+    kiRef.i++;
+    const doc = lookupItemDoc(parentPathOf(slot.path, slot.key), slot.key);
+    return doc ? `${indent}<span class="doc-key" title="${escapeAttr(doc)}">${key}</span>:` : whole;
+  });
+}
+
+function buildInteractiveYaml(yamlText, paramSlots, pinSlots, keySlots) {
   const tokens = yamlText.split(/(TBD|PINSLOT|KINSELECT|HOMINGSELECT_[a-z]+|SECTIONSELECT_[a-z_]+)/);
   let html = "";
   let pi = 0, si = 0;
+  // Plain object (not a bare let) so wrapDocKeys() can advance it by
+  // reference -- a bare number param would just be copied, not mutated.
+  const ki = { i: 0 };
   let stripLeadingColon = false;
   tokens.forEach(tok => {
     const homingMatch = tok.match(HOMING_SENTINEL_RE);
@@ -1464,6 +1606,15 @@ function buildInteractiveYaml(yamlText, paramSlots, pinSlots) {
       // from the next plain-text chunk.
       html += kinWidgetHtml();
       stripLeadingColon = true;
+      // KINSELECT (like HOMINGSELECT_*/SECTIONSELECT_* below) sits in the
+      // KEY position of its own line, not a value -- collectAndInjectSlots()
+      // still recorded a keySlots entry for it (every key gets one,
+      // unconditionally), but that entry's text never appears in a plain
+      // chunk for wrapDocKeys() to find (tokens.split() extracted the whole
+      // word out as its own token, same as this branch matching it here).
+      // Skip over it so the NEXT keySlots entry (kinematics' first real
+      // tuning field) is what the next plain-text chunk actually matches.
+      ki.i++;
     } else if (homingMatch) {
       // Same KEY-replacement idea as KINSELECT (not a value-position
       // sentinel): this axis's homing entry is keyed by
@@ -1477,6 +1628,7 @@ function buildInteractiveYaml(yamlText, paramSlots, pinSlots) {
       // same reasoning as KINSELECT.
       html += homingWidgetHtml(homingMatch[1]);
       stripLeadingColon = true;
+      ki.i++; // same keySlots-skip reasoning as KINSELECT above
     } else if (sectionMatch) {
       // Same idea again, one level up: SECTIONSELECT_<key> is the sentinel
       // KEY for one of OPTIONAL_SECTIONS (parking/macros/oled/atc_manual),
@@ -1484,9 +1636,11 @@ function buildInteractiveYaml(yamlText, paramSlots, pinSlots) {
       // OPTIONAL_SECTIONS' own declaration comment.
       html += sectionWidgetHtml(sectionMatch[1]);
       stripLeadingColon = true;
+      ki.i++; // same keySlots-skip reasoning as KINSELECT above
     } else {
-      html += escapeHtml(stripLeadingColon ? tok.replace(/^:(\s*null)?/, "") : tok);
+      const text = stripLeadingColon ? tok.replace(/^:(\s*null)?/, "") : tok;
       stripLeadingColon = false;
+      html += wrapDocKeys(escapeHtml(text), keySlots, ki);
     }
   });
   return html;
@@ -1627,6 +1781,13 @@ async function applyBoardDoc(doc, hotspotId) {
       (chip.gpio || []).forEach(g => { chipGpioCaps[g.pin] = g; });
     }
   }
+  // Per-pin input_profile facts (board-level, not chip-level -- e.g. an
+  // opto-isolated input's external_pullup_required) currently only ever
+  // appear on generic_pins entries (see pinWidgetHtml()'s use of this).
+  genericPinProfiles = {};
+  (board.generic_pins || []).forEach(p => {
+    if (p.input_profile) genericPinProfiles[p.mcu_pin] = p.input_profile;
+  });
   hotspotData = null;
   if (hotspotId) {
     const hotspotText = await fetchYamlTextOptional(`hotspots/${hotspotId}.hotspots.yaml`);
@@ -3215,7 +3376,8 @@ function generateDraft() {
   const liveCfg = JSON.parse(JSON.stringify(cfg));
   const paramSlots = [];
   const pinSlots = [];
-  collectAndInjectSlots(liveCfg, "", paramSlots, pinSlots, paramDefaultOverrides);
+  const keySlots = [];
+  collectAndInjectSlots(liveCfg, "", paramSlots, pinSlots, paramDefaultOverrides, keySlots);
 
   const yamlText = dequoteAxisKeys(annotateYaml(jsyaml.dump(liveCfg, { lineWidth: -1, noRefs: true })));
   const unresolved = paramSlots.filter(s => !Object.prototype.hasOwnProperty.call(paramValues, s.path)).length;
@@ -3260,7 +3422,7 @@ function generateDraft() {
     <div class="stat tbd"><b>${unresolved}</b>remaining TBD (open params)</div>
   `;
 
-  document.getElementById("draft").innerHTML = buildInteractiveYaml(yamlText, paramSlots, pinSlots);
+  document.getElementById("draft").innerHTML = buildInteractiveYaml(yamlText, paramSlots, pinSlots, keySlots);
   document.querySelectorAll("#draft .inline-field").forEach(el => {
     el.onchange = () => setParam(el.dataset.path, el.dataset.key, el.value);
   });
@@ -3741,6 +3903,18 @@ function importConfig(doc, rawText) {
       // PINSLOT/attr treatment, and "ModbusVFD" itself isn't a real pin
       // leaf path -- nothing to attach attrs to here either way.
       claimPin(uartBlock.txd_pin, `vfd:${model}`, "ModbusVFD", null);
+      // ModbusVFD is deliberately excluded from SPINDLE_TYPES (see the
+      // comment by SPINDLE_LABELS -- it's unmodeled there since it has no
+      // pin-picker UI of its own), so it never goes through the generic
+      // "--- spindles ---" copyScalarParams() loop above. Its genuinely
+      // open tuning fields (spinup_ms/spindown_ms/tool_num) still need the
+      // same treatment here, or they silently reset to "TBD" on reimport
+      // even though the source file had real values. model/uart_num are
+      // re-derived above (from the RS485 role pick / claimPin), and
+      // modbus_id is emitted as a fixed, non-editable 1 by generateDraft
+      // (see its own comment) -- none of the three are real TBD slots, so
+      // skip them rather than leave dead paramValues entries.
+      copyScalarParams(doc.ModbusVFD, "ModbusVFD", new Set(["model", "uart_num", "modbus_id"]));
     } else {
       report.unrecognized.push("ModbusVFD: missing model/uart_num, or its referenced uartN: block, skipped");
     }
