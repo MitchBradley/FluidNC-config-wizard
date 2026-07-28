@@ -481,10 +481,10 @@
           ],
           "description": "raw: bare MCU GPIO with at most internal/board pull resistors, nothing else in the signal path. opto_isolated / rc_filtered / level_shifted / comparator: real signal-conditioning circuitry between the connector and the MCU pin."
         },
-        "external_pullup_required": {
+        "internal_pullup_required": {
           "type": "boolean",
           "default": false,
-          "description": "True if the circuit expects an external pull resistor (e.g. for an open-collector/NPN sensor) that the board does not itself provide."
+          "description": "True if the MCU's own configurable internal pull-up must be enabled for this pin to work, because the board's circuit provides no pull resistor of its own. False (the default) covers both \"the board circuit already has its own pull resistor\" and \"no pull is needed here at all\" -- either way, the wizard should not offer to enable the MCU's internal pull. NOT about external (off-board) pull resistors the end user might wire in themselves -- that's a wiring choice, not a fixed board fact, and isn't recorded here."
         },
         "voltage_max": {
           "type": "number",

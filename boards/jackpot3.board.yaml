@@ -80,46 +80,46 @@ generic_pins:
     generic_name: "In25"
     mcu_pin: gpio.25
     direction: either
-    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    input_profile: { conditioning: opto_isolated }
     output_profile: { drive_type: totem_pole }
     notes: "Active-low input with external pullup; can be repurposed as a general output if needed."
   - label: "Inputs - gpio.33"
     generic_name: "In33"
     mcu_pin: gpio.33
     direction: either
-    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    input_profile: { conditioning: opto_isolated }
     output_profile: { drive_type: totem_pole }
     notes: "Active-low input with external pullup; can be repurposed as a general output if needed."
   - label: "Inputs - gpio.32"
     generic_name: "In32"
     mcu_pin: gpio.32
     direction: either
-    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    input_profile: { conditioning: opto_isolated }
     output_profile: { drive_type: totem_pole }
     notes: "Active-low input with external pullup; can be repurposed as a general output if needed."
   - label: "Inputs - gpio.35"
     generic_name: "In35"
     mcu_pin: gpio.35
     direction: input
-    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    input_profile: { conditioning: opto_isolated }
     notes: "Active-low input with external pullup."
   - label: "Inputs - gpio.34"
     generic_name: "In34"
     mcu_pin: gpio.34
     direction: input
-    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    input_profile: { conditioning: opto_isolated }
     notes: "Active-low input with external pullup."
   - label: "Inputs - gpio.39"
     generic_name: "In39"
     mcu_pin: gpio.39
     direction: input
-    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    input_profile: { conditioning: opto_isolated }
     notes: "Active-low input with external pullup."
   - label: "Probe - gpio.36"
     generic_name: "In36"
     mcu_pin: gpio.36
     direction: input
-    input_profile: { conditioning: opto_isolated, external_pullup_required: false }
+    input_profile: { conditioning: opto_isolated }
     notes: "Active-low probe input with external pullup."
   - label: "Output - gpio.26"
     generic_name: "FET26"

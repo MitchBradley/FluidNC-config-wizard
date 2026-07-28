@@ -98,16 +98,16 @@ generic_pins:
   # inputs have external pullup resistors. You do not need the :pu
   # attribute" -- though the wiki's own example config uses :pu anyway
   # (redundant but harmless).
-  - { label: "Inputs - GPIO.42", generic_name: "In42", mcu_pin: gpio.42, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "Inputs - GPIO.41", generic_name: "In41", mcu_pin: gpio.41, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "Inputs - GPIO.40", generic_name: "In40", mcu_pin: gpio.40, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "Inputs - GPIO.39", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "Inputs - GPIO.38", generic_name: "In38", mcu_pin: gpio.38, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "Inputs - GPIO.37", generic_name: "In37", mcu_pin: gpio.37, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "Inputs - GPIO.36", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "Inputs - GPIO.48", generic_name: "In48", mcu_pin: gpio.48, direction: input, input_profile: { conditioning: opto_isolated, external_pullup_required: false } }
-  - { label: "Inputs - GPIO.47", generic_name: "In47", mcu_pin: gpio.47, direction: input, input_profile: { conditioning: opto_isolated,  external_pullup_required: false } }
-  - { label: "Inputs - GPIO.3", generic_name: "In3", mcu_pin: gpio.3, direction: input, input_profile: { conditioning: opto_isolated,  external_pullup_required: false } }
+  - { label: "Inputs - GPIO.42", generic_name: "In42", mcu_pin: gpio.42, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "Inputs - GPIO.41", generic_name: "In41", mcu_pin: gpio.41, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "Inputs - GPIO.40", generic_name: "In40", mcu_pin: gpio.40, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "Inputs - GPIO.39", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "Inputs - GPIO.38", generic_name: "In38", mcu_pin: gpio.38, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "Inputs - GPIO.37", generic_name: "In37", mcu_pin: gpio.37, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "Inputs - GPIO.36", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "Inputs - GPIO.48", generic_name: "In48", mcu_pin: gpio.48, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "Inputs - GPIO.47", generic_name: "In47", mcu_pin: gpio.47, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "Inputs - GPIO.3", generic_name: "In3", mcu_pin: gpio.3, direction: input, input_profile: { conditioning: opto_isolated } }
 
   # 4x 5V outputs, 74AHCT125-buffered, "left to right" order per wiki.
   # gpio.4/gpio.5 also each drive a MOSFET simultaneously (see below) --

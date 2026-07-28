@@ -1530,16 +1530,23 @@ function pinWidgetHtml(slot) {
     const caps = chipGpioCaps[num];
     if (caps) supportsPull = !!(caps.pullup || caps.pulldown);
   }
-  // Board-level override: a generic_pins entry that explicitly documents
-  // external_pullup_required: false (the pin's own conditioning circuit
-  // already fixes its idle state -- e.g. an opto-isolated input with no
-  // external pull resistor fitted) means the MCU's internal pull-up/
-  // pull-down would do nothing useful here, so don't offer :pu/:pd at all,
-  // regardless of what the chip itself is capable of. Only overrides when
-  // the field is present and literally false -- absent (most boards/pins)
-  // or true leaves the chip-capability answer above untouched.
+  // Board-level override: a generic_pins entry's own internal_pullup_required
+  // is true only when the MCU's configurable internal pull-up must be
+  // enabled because the board's circuit provides no pull resistor of its
+  // own (the only known case: corgi's opto-isolated gpio.2). Everywhere
+  // else it's false -- either the board circuit already has its own pull
+  // resistor (most of these opto-isolated inputs), or no pull applies at
+  // all -- and the MCU's internal pull-up/pull-down would do nothing
+  // useful, so don't offer :pu/:pd at all there, regardless of what the
+  // chip itself is capable of. Only overrides when the field is present
+  // and literally false -- absent (most boards/pins) or true leaves the
+  // chip-capability answer above untouched. NOTE: despite the similar
+  // name, this is unrelated to a switch's active-high/active-low :level --
+  // that depends on the conditioning circuit's conducting-level fact and
+  // the physical switch's NO/NC wiring, neither of which this field
+  // describes.
   const profile = genericPinProfiles[slot.basePin];
-  if (profile && profile.external_pullup_required === false) supportsPull = false;
+  if (profile && profile.internal_pullup_required === false) supportsPull = false;
   const pinDocText = lookupItemDoc(parentPathOf(slot.path, slot.key), slot.key);
   const pinTitleAttr = pinDocText ? ` title="${escapeAttr(pinDocText)}"` : "";
   let html = `<span class="fixed-fact"${pinTitleAttr}>${escapeHtml(slot.basePin)}</span>`;
@@ -1782,7 +1789,7 @@ async function applyBoardDoc(doc, hotspotId) {
     }
   }
   // Per-pin input_profile facts (board-level, not chip-level -- e.g. an
-  // opto-isolated input's external_pullup_required) currently only ever
+  // opto-isolated input's internal_pullup_required) currently only ever
   // appear on generic_pins entries (see pinWidgetHtml()'s use of this).
   genericPinProfiles = {};
   (board.generic_pins || []).forEach(p => {

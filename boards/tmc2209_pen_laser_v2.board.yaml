@@ -76,18 +76,18 @@ generic_pins:
   # Wiki, verbatim: "Inputs gpio.36 and gpio.39 ship setup for use with
   # stallguard. They have resistors soldered on SJ1 and SJ2. If you want to
   # use the terminal blocks, unsolder the resistors on SJ1 and SJ2." --
-  # external_pullup_required left false since SJ1/SJ2 are populated by
+  # internal_pullup_required left false since SJ1/SJ2 are populated by
   # default; if desoldered for physical-switch use, that stated onboard
   # pull is what's being removed (an external one may then be needed
   # depending on the switch used, but that's a wiring-choice detail, not a
   # fixed board fact recorded here).
-  - { label: "Inputs - 36 XLim / StallGuard", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: rc_filtered, external_pullup_required: false }, notes: "SJ1-populated by default for StallGuard use; unsolder SJ1 to use the physical limit terminal instead." }
-  - { label: "Inputs - 39 YLim / StallGuard", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: rc_filtered, external_pullup_required: false }, notes: "SJ2-populated by default for StallGuard use; unsolder SJ2 to use the physical limit terminal instead." }
+  - { label: "Inputs - 36 XLim / StallGuard", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: rc_filtered }, notes: "SJ1-populated by default for StallGuard use; unsolder SJ1 to use the physical limit terminal instead." }
+  - { label: "Inputs - 39 YLim / StallGuard", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: rc_filtered }, notes: "SJ2-populated by default for StallGuard use; unsolder SJ2 to use the physical limit terminal instead." }
 
-  - { label: "Inputs - 35", generic_name: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: rc_filtered, external_pullup_required: false } }
-  - { label: "Inputs - 34", generic_name: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: rc_filtered, external_pullup_required: false } }
-  - { label: "Inputs - 33", generic_name: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: rc_filtered, external_pullup_required: false } }
-  - { label: "Inputs - 32", generic_name: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: rc_filtered, external_pullup_required: false } }
+  - { label: "Inputs - 35", generic_name: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "Inputs - 34", generic_name: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "Inputs - 33", generic_name: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "Inputs - 32", generic_name: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: rc_filtered } }
 
   # 3x 5V outputs ("3 5V outputs to control lasers and accessories"
   - { label: "Outputs - 22", generic_name: "5V Out22", mcu_pin: gpio.22, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0 } }
