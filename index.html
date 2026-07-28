@@ -235,6 +235,12 @@
     border: 1px solid var(--border); border-radius: 3px; padding: 0 2px; margin-left: 1px;
   }
   .attr-field.set { color: var(--accent); border-color: var(--accent); }
+  /* Level picker on a pin whose active level is known but not yet chosen
+     (see pinWidgetHtml()'s activeLevel/levelOpts) -- same pending/open-TBD
+     amber used for numeric TBD fields (.inline-field's default color),
+     distinguishing "not yet decided" from a pin where blank has always
+     just meant "no suffix, don't care." */
+  .attr-field.tbd { color: var(--tbd); border-color: var(--tbd); }
   .kin-select {
     font: inherit; font-size: 12.5px; font-family: inherit; color: var(--text);
     background: #1c262c; border: 1px solid var(--border); border-radius: 3px;
@@ -701,7 +707,7 @@ function checkSchemaForKnownGaps(schema) {
   // left to warn about here.)
 }
 
-let INPUT_ROLE_TREE, SPINDLE_TYPES, DIGITAL_OUTPUT_COUNT, ANALOG_OUTPUT_COUNT;
+let INPUT_ROLE_TREE, SPINDLE_TYPES, DIGITAL_OUTPUT_COUNT, ANALOG_OUTPUT_COUNT, EITHER_ROLE_TREE;
 
 async function loadRoleData() {
   const schemaText = await fetchYamlText("schema/fluidnc-config-schema.json");
@@ -718,8 +724,57 @@ async function loadRoleData() {
   SPINDLE_TYPES = buildSpindleTypes(schema);
   DIGITAL_OUTPUT_COUNT = countSlots(schema.$defs.userOutputsSection.properties, "digital");
   ANALOG_OUTPUT_COUNT = countSlots(schema.$defs.userOutputsSection.properties, "analog");
+  // "either" generic_pins (a bare, uncommitted GPIO usable as EITHER a
+  // plain input OR a plain output -- see board.schema.json's own
+  // "direction" description) need BOTH role spaces in one picker, not just
+  // the input tree makeInputRow was previously always given regardless of
+  // direction. Reuses makeInputRow's existing generic N-level cascading
+  // renderer (and refreshRoleUniqueness()'s tree-walking uniqueness check)
+  // for the output side too, via buildOutputRoleBranches() reshaping the
+  // same category/cascade data makeOutputRow itself uses into the
+  // {label, children} tree shape makeInputRow expects -- rather than
+  // building a second, parallel UI widget and uniqueness-checking path
+  // just for these pins.
+  EITHER_ROLE_TREE = Object.assign({}, INPUT_ROLE_TREE, buildOutputRoleBranches());
 
   await loadConfigItemDocs();
+}
+
+/* Reshapes outputCategoryOptions()/cascadeOptionsFor()'s primary/secondary
+ * category data into the {label, children} tree shape makeInputRow()
+ * expects, so "either" pins (see EITHER_ROLE_TREE above) can offer the
+ * exact same output roles makeOutputRow's own 2-step picker does, through
+ * one shared tree-walking renderer. Leaf role strings this produces are
+ * identical to the ones makeOutputRow already writes to bindings[] --
+ * "spindle:<type>:<which>", "coolant:flood"/"coolant:mist",
+ * "digital_output:<n>", "analog_output:<n>", "status_output:<which>" --
+ * so generateDraft()'s role-dispatch switch needs no changes at all; both
+ * UIs are just two different pickers writing into the same string space. */
+function buildOutputRoleBranches() {
+  const spindleChildren = {};
+  Object.keys(SPINDLE_TYPES).forEach(t => {
+    const def = SPINDLE_TYPES[t];
+    spindleChildren[t] = {
+      label: def.label,
+      children: Object.fromEntries(def.pins.map(([which, label]) => [which, { label }])),
+    };
+  });
+  return {
+    spindle: { label: "Spindle", children: spindleChildren },
+    coolant: { label: "Coolant", children: { flood: { label: "Flood" }, mist: { label: "Mist" } } },
+    digital_output: {
+      label: "Digital Output",
+      children: Object.fromEntries(Array.from({ length: DIGITAL_OUTPUT_COUNT }, (_, i) => [String(i), { label: `Output ${i}` }])),
+    },
+    analog_output: {
+      label: "Analog Output",
+      children: Object.fromEntries(Array.from({ length: ANALOG_OUTPUT_COUNT }, (_, i) => [String(i), { label: `Output ${i}` }])),
+    },
+    status_output: {
+      label: "Status Output",
+      children: Object.fromEntries(STATUS_OUTPUT_PINS.map(([v, l]) => [v, { label: l }])),
+    },
+  };
 }
 
 // Config-item hover-tooltip text, sourced from FluidNC's own generated
@@ -1086,6 +1141,29 @@ let kinematicsType = "Cartesian"; // selected top-level kinematics system, defau
  * needed for this section at all. */
 let chipGpioCaps = {};     // gpio number -> chip-file gpio fact object (see loadBoard()/pinWidgetHtml())
 let genericPinProfiles = {}; // basePin string (e.g. "gpio.2") -> this board's generic_pins input_profile object, if any (see loadBoard()/pinWidgetHtml())
+
+/* A pin's own conditioning circuit fixes which electrical level it reads
+ * while current is actively conducting through it (e.g. an opto-isolator's
+ * phototransistor pulling the signal low while its LED is lit) -- a real,
+ * fixed hardware fact, independent of whether the switch wired to it is
+ * Normally-Open or Normally-Closed (that's a separate, per-installation
+ * choice the wizard can't know, per explicit user direction: NO and NC are
+ * both in common use, so no default can be assumed). The `conditioning`
+ * enum's base values (opto_isolated/rc_filtered/raw) each have a known,
+ * currently-universal active level; the `_high`/`_low` suffixed variants
+ * (schema/board.schema.json) exist for the rare board whose circuit
+ * inverts the usual case for that conditioning type. Unlisted conditioning
+ * values (level_shifted, comparator, or an unrecognized string) simply
+ * aren't in this map -- pinWidgetHtml() falls back to the plain, unannotated
+ * :low/:high labels for those, same graceful-degradation rule as every
+ * other board-derived fact in this file. */
+const CONDITIONING_ACTIVE_LEVEL = {
+  opto_isolated: "low",
+  opto_isolated_high: "high",
+  rc_filtered: "high",
+  rc_filtered_low: "low",
+  raw: "high",
+};
 let hotspotData = null;    // parsed hotspots/<id>.hotspots.yaml, or null if this board has no photo hotspots yet
 // resourceKey -> [pin, pin, ...] -- every MCU pin string (e.g. "gpio.4",
 // "i2so.2") a given resource physically occupies, regardless of which role
@@ -1520,7 +1598,30 @@ function paramWidgetHtml(slot) {
  * append the optional suffixes. */
 function pinWidgetHtml(slot) {
   const attrs = pinAttrs[slot.path] || { level: "", pull: "" };
-  const levelOpts = [["", "—"], ["low", ":low"], ["high", ":high"]];
+  const profile = genericPinProfiles[slot.basePin];
+  // Annotate the :low/:high options with which switch type each one means
+  // in practice, derived from this pin's own conducting-level fact (see
+  // CONDITIONING_ACTIVE_LEVEL's own comment) -- e.g. an opto-isolated pin
+  // (active low) reads :low for a Normally-Open switch, :high for
+  // Normally-Closed; an active-high pin is the mirror image. Falls back to
+  // plain, unannotated labels when the pin's conditioning isn't in that
+  // map (unknown fact -- don't guess).
+  const activeLevel = profile && CONDITIONING_ACTIVE_LEVEL[profile.conditioning];
+  // When this pin's active level is known, leaving the picker blank is a
+  // REAL, consequential choice (silently means active-high, FluidNC's
+  // compiled-in default) that's easy to make by simply never touching the
+  // control -- exactly the kind of silent-wrong-default this whole feature
+  // exists to prevent. So for these pins the blank option reads "TBD" and
+  // is styled like any other open TBD field (see the .attr-field.tbd CSS
+  // rule) until the user actively picks one, rather than looking identical
+  // to "I deliberately want no suffix." Pins with no known active level
+  // (unrecognized/no conditioning fact) keep the plain "—" -- there's
+  // nothing here to prompt a decision about.
+  const levelOpts = activeLevel === "low"
+    ? [["", "TBD"], ["low", ":low (NO switch)"], ["high", ":high (NC switch)"]]
+    : activeLevel === "high"
+    ? [["", "TBD"], ["low", ":low (NC switch)"], ["high", ":high (NO switch)"]]
+    : [["", "—"], ["low", ":low"], ["high", ":high"]];
   const pullOpts = [["", "—"], ["pu", ":pu"], ["pd", ":pd"]];
   // I2SO pins are outputs of an external shift register, not real GPIOs --
   // they have no pull-up/pull-down capability at all, so no chip lookup
@@ -1536,27 +1637,43 @@ function pinWidgetHtml(slot) {
     const caps = chipGpioCaps[num];
     if (caps) supportsPull = !!(caps.pullup || caps.pulldown);
   }
-  // Board-level override: a generic_pins entry's own internal_pullup_required
-  // is true only when the MCU's configurable internal pull-up must be
-  // enabled because the board's circuit provides no pull resistor of its
-  // own (the only known case: corgi's opto-isolated gpio.2). Everywhere
-  // else it's false -- either the board circuit already has its own pull
-  // resistor (most of these opto-isolated inputs), or no pull applies at
-  // all -- and the MCU's internal pull-up/pull-down would do nothing
-  // useful, so don't offer :pu/:pd at all there, regardless of what the
-  // chip itself is capable of. Only overrides when the field is present
-  // and literally false -- absent (most boards/pins) or true leaves the
-  // chip-capability answer above untouched. NOTE: despite the similar
-  // name, this is unrelated to a switch's active-high/active-low :level --
-  // that depends on the conditioning circuit's conducting-level fact and
-  // the physical switch's NO/NC wiring, neither of which this field
-  // describes.
-  const profile = genericPinProfiles[slot.basePin];
-  if (profile && profile.internal_pullup_required === false) supportsPull = false;
+  // Board-level override, by conditioning -- chip capability above is a
+  // hard floor (e.g. the ESP32's own input-only pins 34-39 physically have
+  // no pull resistors at all, raw or not, so it can only ever narrow
+  // supportsPull, never widen past what the chip allows):
+  //  - opto_isolated (or _high): the pull picker is only useful when this
+  //    exact pin's own internal_pullup_required is explicitly true (the
+  //    only known case: corgi's gpio.2, whose board circuit provides no
+  //    pull resistor of its own). Schema default is false and board files
+  //    now omit the field entirely in that common case, so "true" is the
+  //    only value that ever means anything here.
+  //  - rc_filtered (or _low): never useful -- this conditioning's own
+  //    filtering circuit always includes its own pull, so suppress
+  //    unconditionally regardless of internal_pullup_required.
+  //  - raw (or unrecognized/no profile): no override -- leave the
+  //    chip-capability answer as-is (raw pins commonly DO rely on the
+  //    MCU's internal pull, so don't suppress them the way rc_filtered's
+  //    always gets suppressed).
+  // NOTE: despite the similarly-named internal_pullup_required, none of
+  // this is related to a switch's active-high/active-low :level -- that
+  // depends on the conditioning circuit's conducting-level fact and the
+  // physical switch's NO/NC wiring (see CONDITIONING_ACTIVE_LEVEL above).
+  if (supportsPull && profile) {
+    const cond = profile.conditioning;
+    if (cond === "opto_isolated" || cond === "opto_isolated_high") {
+      supportsPull = profile.internal_pullup_required === true;
+    } else if (cond === "rc_filtered" || cond === "rc_filtered_low") {
+      supportsPull = false;
+    }
+  }
   const pinDocText = lookupItemDoc(parentPathOf(slot.path, slot.key), slot.key);
   const pinTitleAttr = pinDocText ? ` title="${escapeAttr(pinDocText)}"` : "";
   let html = `<span class="fixed-fact"${pinTitleAttr}>${escapeHtml(slot.basePin)}</span>`;
-  html += `<select class="attr-field${attrs.level ? " set" : ""}" data-path="${escapeAttr(slot.path)}" data-attr="level" title="Active level (:low / :high)">` +
+  const levelTitle = activeLevel
+    ? "Active level (:low / :high) -- this pin's conditioning circuit tells FluidNC which switch type each choice matches; pick the one matching your actual switch."
+    : "Active level (:low / :high)";
+  const levelClass = attrs.level ? " set" : (activeLevel ? " tbd" : "");
+  html += `<select class="attr-field${levelClass}" data-path="${escapeAttr(slot.path)}" data-attr="level" title="${escapeAttr(levelTitle)}">` +
     levelOpts.map(([v,l]) => `<option value="${v}"${attrs.level===v?" selected":""}>${l}</option>`).join("") + `</select>`;
   if (supportsPull) {
     html += `<select class="attr-field${attrs.pull ? " set" : ""}" data-path="${escapeAttr(slot.path)}" data-attr="pull" title="Pull resistor (:pu / :pd)">` +
@@ -2499,9 +2616,12 @@ function renderResources() {
       const key = resourceKeyPin(i);
       const sub = `${p.mcu_pin} — ${p.direction}`;
       const name = gname(p);
+      // "either" gets the combined input+output tree (see EITHER_ROLE_TREE);
+      // plain "input" (and any other non-"output" direction) keeps the
+      // input-only tree, unchanged.
       sec.appendChild(p.direction === "output"
         ? makeOutputRow(key, name, sub, p.label)
-        : makeInputRow(key, name, sub, INPUT_ROLE_TREE, p.label));
+        : makeInputRow(key, name, sub, p.direction === "either" ? EITHER_ROLE_TREE : INPUT_ROLE_TREE, p.label));
     });
     col.appendChild(sec);
   }
@@ -2518,7 +2638,7 @@ function renderResources() {
         const sub = `${p.mcu_pin} — ${p.direction}`;
         sec.appendChild(p.direction === "output"
           ? makeOutputRow(key, name, sub, vendorName)
-          : makeInputRow(key, name, sub, INPUT_ROLE_TREE, vendorName));
+          : makeInputRow(key, name, sub, p.direction === "either" ? EITHER_ROLE_TREE : INPUT_ROLE_TREE, vendorName));
       });
     });
     col.appendChild(sec);

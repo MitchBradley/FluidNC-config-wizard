@@ -475,11 +475,13 @@
           "enum": [
             "raw",
             "opto_isolated",
+            "opto_isolated_high",
             "rc_filtered",
+            "rc_filtered_low",
             "level_shifted",
             "comparator"
           ],
-          "description": "raw: bare MCU GPIO with at most internal/board pull resistors, nothing else in the signal path. opto_isolated / rc_filtered / level_shifted / comparator: real signal-conditioning circuitry between the connector and the MCU pin."
+          "description": "raw: bare MCU GPIO with at most internal/board pull resistors, nothing else in the signal path. opto_isolated / rc_filtered / level_shifted / comparator: real signal-conditioning circuitry between the connector and the MCU pin. Each of these also fixes a known active level -- which electrical level the pin reads while current is actively conducting through it, independent of whether the switch wired to it is Normally-Open or Normally-Closed -- currently: opto_isolated is active low, rc_filtered and raw are active high. The _high/_low suffixed variants (opto_isolated_high, rc_filtered_low) exist for the rare board whose circuit inverts the usual case for that conditioning type; use them ONLY when that's a verified, documented fact about the actual circuit, not a guess. level_shifted/comparator have no currently-known universal active level, so neither has a suffixed variant yet -- add one (and update the wizard's CONDITIONING_ACTIVE_LEVEL map in index.html) if and when a real board needs it."
         },
         "internal_pullup_required": {
           "type": "boolean",
