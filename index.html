@@ -440,6 +440,12 @@
       <button onclick="copyDraft()">Copy</button>
       <button onclick="downloadDraft()">Download .yaml</button>
       <button onclick="document.getElementById('configFileInput').click()">Load config.yaml…</button>
+      <!-- Companion-tool handoff (see boot()'s companion-detection block and
+           sendToCompanion()) -- hidden by default, only shown when this tab
+           was opened, via window.open(), by a known companion tool passing
+           ?companion=<key> (e.g. WebInstaller's "Configure" button). Label
+           text is set dynamically from COMPANION_TOOLS at boot. -->
+      <button id="sendToCompanionBtn" style="display:none" onclick="sendToCompanion()"></button>
       <input type="file" id="configFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
     </div>
     <pre id="draft"></pre>
@@ -4301,6 +4307,65 @@ function syncUrlToBoard(id) {
   history.replaceState(null, "", url);
 }
 
+/* ---------------------------------------------------------------------
+ * Companion-tool handoff: index.html?companion=<key>, opened via
+ * window.open() (NOT a plain link/target=_blank with rel="noopener", which
+ * would sever window.opener and silently break this) from another
+ * FluidNC web tool -- e.g. WebInstaller's own "Configure" button. Shows
+ * one extra toolbar button ("Send to <Tool>") that posts the current
+ * draft straight back to the opener tab via postMessage, so the user
+ * never has to manually download-then-reupload the file.
+ *
+ * Deliberately gated on a known ?companion= key (not just "window.opener
+ * is truthy") -- some other page could open this tab with target=_blank
+ * and happen not to strip opener, and showing a "Send to WebInstaller"
+ * button in that case would be actively misleading. Only a companion this
+ * file explicitly knows about, by name, gets the button and the postMessage
+ * targetOrigin lock (never "*" -- this carries a real machine config).
+ *
+ * This is additive, not a replacement for Copy/Download/Load -- if the key
+ * is unrecognized, opener is missing/closed, or postMessage isn't
+ * available for any reason, those three keep working exactly as before.
+ * ------------------------------------------------------------------- */
+const COMPANION_TOOLS = {
+  webinstaller: { label: "WebInstaller", origin: "https://installer.fluidnc.com" },
+};
+let activeCompanion = null; // { key, label, origin } of the tool that opened this tab, once confirmed live -- see initCompanionHandoff()/sendToCompanion()
+
+function initCompanionHandoff() {
+  const key = new URLSearchParams(window.location.search).get("companion");
+  const companion = key && COMPANION_TOOLS[key];
+  if (!companion || !window.opener || window.opener.closed) return;
+  activeCompanion = Object.assign({ key }, companion);
+  const btn = document.getElementById("sendToCompanionBtn");
+  btn.textContent = `Send to ${companion.label}`;
+  btn.style.display = "";
+}
+
+function sendToCompanion() {
+  if (!activeCompanion || !board) return; // no board picked/loaded yet -- nothing to send
+  const w = window.opener;
+  const btn = document.getElementById("sendToCompanionBtn");
+  if (!w || w.closed) {
+    // Opener tab was closed after this one loaded -- quietly retract the
+    // button rather than posting into the void or erroring on click.
+    activeCompanion = null;
+    btn.style.display = "none";
+    return;
+  }
+  w.postMessage({
+    type: "fluidnc-config",
+    version: 1,
+    filename: `${board.board.id}.config.yaml`,
+    contents: lastPlainYaml,
+  }, activeCompanion.origin);
+  try { w.focus(); } catch (e) { /* some browsers/popup-blockers restrict focus(); non-fatal either way */ }
+  const original = btn.dataset.origLabel || btn.textContent;
+  btn.dataset.origLabel = original;
+  btn.textContent = "Sent!";
+  setTimeout(() => { btn.textContent = original; }, 1500);
+}
+
 // The role-tree/vocabulary data derived from schema/fluidnc-config-schema.json
 // is global/board-independent, so it's loaded (and derived) once here before
 // the first board, rather than per-loadBoard() like boards/chips/hotspots.
@@ -4308,6 +4373,7 @@ function syncUrlToBoard(id) {
 // INPUT_ROLE_TREE/SPINDLE_TYPES/etc. being populated, so loadBoard() must not
 // run until this resolves.
 async function boot() {
+  initCompanionHandoff();
   try {
     await loadRoleData();
   } catch (e) {
