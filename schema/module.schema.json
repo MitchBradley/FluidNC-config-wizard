@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schemas/fluidnc-module.schema.json",
+  "title": "FluidNC CNC I/O Module description",
+  "description": "PROTOTYPE, first draft -- expected to grow as more real modules are added. Describes a pluggable CNC I/O Module (see http://wiki.fluidnc.com/en/hardware/cnc_io_modules) in the same terms board.schema.json uses for a board's own onboard connectors, so a module's connector-role tooling (the wizard's role pickers, active-level/NO-NC annotation, etc.) can be reused unchanged -- the only structural difference is that a module's pins are addressed by their SOCKET POSITION (module_pin: \"1\"..\"8\", the same numbering board.schema.json's expansion_socket.pins already uses) rather than a real mcu_pin, since a module's actual GPIO depends entirely on which board/socket it ends up plugged into. Resolving a module's module_pin references against a specific board's module_socket pin list (mapping module_pin -> that socket's own mcu_pin) is a wizard-runtime concern, not recorded in this file. No pin-count field on either side (see the top-level module_pins description) -- a module simply lists however many pins it actually uses, starting from \"1\" per the wiki's own pinout guidelines (\"start with I/O #1\", \"put the most desirable/complex features first\"); a board's module_socket simply lists however many pins are physically present at that socket. Deliberately minimal for now: only the connector shapes the first few prototype modules (simple_pendant, 5v_output, passthrough, rs485) actually need are included (generic_pins, expansion_uarts, rs485_channels) -- more of board.schema.json's connector $defs (motor_socket-shaped, etc.) should be added here as real modules that need them come along (e.g. the 10V Spindle / RC Servo-BESC / Dynamixel modules), reusing board.schema.json's existing shapes as the template rather than inventing new ones.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "module"
+  ],
+  "properties": {
+    "module": {
+      "$ref": "#/$defs/module_identity"
+    },
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "generic_pins": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/module_generic_pin"
+      }
+    },
+    "expansion_uarts": {
+      "type": "array",
+      "description": "Same shape/purpose as board.schema.json's expansion_uarts -- a module carrying its own UART-based sub-connector (e.g. a pendant module's RJ12 jack), except here txd_pin/rxd_pin are module_pin references, not mcu_pin. Distinct from a module that simply forwards raw pins for the BOARD's own expansion_uarts/rs485_channels to consume -- this field is for a module that has ITS OWN fixed UART protocol/baud, same as board.schema.json's own expansion_uart.",
+      "items": {
+        "$ref": "#/$defs/module_expansion_uart"
+      }
+    },
+    "rs485_channels": {
+      "type": "array",
+      "description": "Same shape/purpose as board.schema.json's rs485_channels -- a module that exposes a coupled tx_pin/rx_pin(/rts_pin) RS485 bus, most commonly bound to a Modbus VFD spindle, except here the pins are module_pin references, not mcu_pin. No pins_reusable_as_generic_io field (unlike board.schema.json's rs485_channel) -- that fact is about a board's own fixed circuit sharing a physical terminal between two onboard uses, which doesn't apply to a module's own dedicated, single-purpose connector.",
+      "items": {
+        "$ref": "#/$defs/module_rs485_channel"
+      }
+    }
+  },
+  "$defs": {
+    "module_pin_ref": {
+      "type": "string",
+      "pattern": "^([1-8]|\\*)$",
+      "description": "Which of the plugged-in socket's own numbered pins (1-4 normally, 5-8 for the shared-bus pins per the wiki's schematic) this connector uses -- resolved against the actual board's module_socket pin list at wizard runtime, never a real mcu_pin. The special value \"*\" (wildcard) is reserved for a template connector meant to be instantiated once per pin the socket actually has, in socket-pin order -- see the passthrough module's own use of this and this file's top-level description. A module file mixing \"*\" with other real-numbered pin references in the same connector list is not currently forbidden by this schema but doesn't make sense semantically; \"*\" should currently only appear alone, as a module's one and only connector."
+    },
+    "module_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$",
+          "description": "Lowercase snake_case identifier. Filename should be <id>.module.yaml, and if the module has a photo/hotspot file, those should be images/<id>_module.jpg and hotspots/<id>_module.hotspots.yaml -- the _module suffix (not present on board files' own equivalents) exists specifically so a module id and a board id can never collide in the shared hotspots/ and images/ directories."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable module name, as it's commonly known (e.g. the wiki's own product name)."
+        },
+        "manufacturer": {
+          "type": "string"
+        },
+        "form_factor": {
+          "type": "string",
+          "description": "Optional. Names the physical footprint standard this module follows (e.g. the wiki's own 12-pin/42mm CNC I/O Module spec), purely informational -- not used for any pin/socket compatibility check at this level; that's determined entirely by which module_pin numbers this file actually references vs. which pins a given board's module_socket lists."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "discontinued",
+            "unverified",
+            "community_documented"
+          ],
+          "description": "Same meaning as board.schema.json's board.status."
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Same shape/purpose as board.schema.json's meta.",
+      "properties": {
+        "wiki_url": { "type": "string", "format": "uri" },
+        "vendor_docs_url": { "type": "string", "format": "uri" },
+        "purchase_url": { "type": "string", "format": "uri" },
+        "source_files_url": { "type": "string", "format": "uri" },
+        "schematic_url": { "type": "string", "format": "uri" },
+        "notes": { "type": "string" }
+      }
+    },
+    "input_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conditioning"
+      ],
+      "properties": {
+        "conditioning": {
+          "type": "string",
+          "enum": [
+            "raw",
+            "opto_isolated",
+            "opto_isolated_high",
+            "rc_filtered",
+            "rc_filtered_low",
+            "level_shifted",
+            "comparator"
+          ],
+          "description": "Identical vocabulary/meaning to board.schema.json's input_profile.conditioning -- see that file for the full active-level derivation notes. A module's own conditioning circuitry is a fixed fact of the module (independent of whatever board/socket it's plugged into), exactly like a board's generic_pin conditioning is a fixed fact of the board."
+        },
+        "internal_pullup_required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Identical meaning to board.schema.json's input_profile.internal_pullup_required."
+        },
+        "voltage_max": {
+          "type": "number",
+          "description": "Identical meaning to board.schema.json's input_profile.voltage_max."
+        }
+      }
+    },
+    "output_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "drive_type"
+      ],
+      "properties": {
+        "drive_type": {
+          "type": "string",
+          "enum": [
+            "totem_pole",
+            "open_collector",
+            "mosfet_low_side",
+            "mosfet_high_side",
+            "relay",
+            "h_bridge"
+          ],
+          "description": "Identical vocabulary/meaning to board.schema.json's output_profile.drive_type."
+        },
+        "voltage_max": { "type": "number" },
+        "current_max_a": { "type": "number" }
+      }
+    },
+    "module_generic_pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "module_pin",
+        "direction"
+      ],
+      "description": "Same shape/purpose as board.schema.json's generic_pin, with module_pin (a socket-position reference, possibly the \"*\" wildcard -- see module_pin_ref) in place of mcu_pin.",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "The module's OWN label for this connector (silkscreen/vendor documentation term), or a generic description (e.g. \"Output\") for a module simple enough not to have its own per-pin silkscreen label."
+        },
+        "generic_name": {
+          "type": "string",
+          "description": "Same purpose as board.schema.json's generic_pin.generic_name -- optional, omit to fall back to label."
+        },
+        "module_pin": {
+          "$ref": "#/$defs/module_pin_ref"
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "input",
+            "output",
+            "bidirectional",
+            "either"
+          ],
+          "description": "Same meaning as board.schema.json's generic_pin.direction."
+        },
+        "input_profile": { "$ref": "#/$defs/input_profile" },
+        "output_profile": { "$ref": "#/$defs/output_profile" },
+        "notes": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "direction": { "const": "input" } } },
+          "then": { "required": ["input_profile"] }
+        },
+        {
+          "if": { "properties": { "direction": { "const": "output" } } },
+          "then": { "required": ["output_profile"] }
+        },
+        {
+          "if": { "properties": { "direction": { "enum": ["bidirectional", "either"] } } },
+          "then": { "required": ["input_profile", "output_profile"] }
+        }
+      ]
+    },
+    "module_expansion_uart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "txd_pin",
+        "rxd_pin"
+      ],
+      "description": "Same shape/purpose as board.schema.json's expansion_uart, with txd_pin/rxd_pin as module_pin references in place of mcu_pin.",
+      "properties": {
+        "label": { "type": "string" },
+        "generic_name": { "type": "string" },
+        "connector_type": { "type": "string" },
+        "txd_pin": { "$ref": "#/$defs/module_pin_ref" },
+        "rxd_pin": { "$ref": "#/$defs/module_pin_ref" },
+        "baud": { "type": "integer" },
+        "mode": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "module_rs485_channel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "tx_pin",
+        "rx_pin"
+      ],
+      "description": "Same shape/purpose as board.schema.json's rs485_channel, with tx_pin/rx_pin/rts_pin as module_pin references in place of mcu_pin.",
+      "properties": {
+        "label": { "type": "string" },
+        "generic_name": { "type": "string" },
+        "tx_pin": { "$ref": "#/$defs/module_pin_ref" },
+        "rx_pin": { "$ref": "#/$defs/module_pin_ref" },
+        "rts_pin": {
+          "$ref": "#/$defs/module_pin_ref",
+          "description": "Optional -- present only if this module has a dedicated direction/driver-enable pin for the RS485 transceiver. Omit rather than guessing one (see board.schema.json's rs485_channel.rts_pin -- some transceivers wire for automatic direction sensing and have no such pin at all)."
+        },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

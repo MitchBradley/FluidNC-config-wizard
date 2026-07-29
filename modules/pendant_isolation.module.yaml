@@ -1,0 +1,25 @@
+module:
+  id: pendant_isolation
+  name: "Pendant/Display Isolation Module"
+  manufacturer: "Dring Engineering Services"
+  form_factor: cnc_io_module_12pin
+  status: active
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/hardware/cnc_io_modules#pendantdisplay-isolation-module"
+  source_files_url: "https://oshwlab.com/bdring/pendant-display-isolator"
+  notes: >
+    Protects the CNC controller from voltage spikes that come from a
+    pendant or display connected by a long cord. Same fixed FluidNC
+    pendant/expander UART protocol as the Simple Pendant Module
+    (modules/simple_pendant.module.yaml), just with isolation circuitry
+    added -- txd on module pin 1, rxd on module pin 2.
+
+expansion_uarts:
+  - label: "Pendant"
+    generic_name: "Pendant"
+    txd_pin: "1"
+    rxd_pin: "2"
+    baud: 1000000
+    mode: "8N1"
+    notes: "Wired for FluidNC's fixed pendant/expander protocol (e.g. FluidDial) -- not a general-purpose UART."

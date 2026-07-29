@@ -1,0 +1,22 @@
+module:
+  id: relay
+  name: "Relay Module"
+  manufacturer: "Dring Engineering Services"
+  form_factor: cnc_io_module_12pin
+  status: active
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/hardware/cnc_io_modules#relay-module"
+  purchase_url: "https://www.tindie.com/products/21491/"
+  source_files_url: "https://oshwlab.com/bdring/6-pack-quad-mosfet-module"
+  notes: >
+    A single mechanical relay output, driven by module pin 1. Bindable as
+    a plain digital_output or as the FluidNC "Relay" (on/off) spindle
+    type, same as any other relay-driven output pin.
+
+generic_pins:
+  - label: "Relay"
+    generic_name: "Relay"
+    module_pin: "1"
+    direction: output
+    output_profile: { drive_type: relay }

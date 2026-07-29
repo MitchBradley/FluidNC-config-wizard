@@ -1,0 +1,38 @@
+module:
+  id: 5v_output
+  name: "5V Output Module"
+  manufacturer: "Dring Engineering Services"
+  form_factor: cnc_io_module_12pin
+  status: active
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/hardware/cnc_io_modules#h-5v-output"
+  purchase_url: "https://www.tindie.com/products/21163/"
+  source_files_url: "https://oshwlab.com/bdring/5v-output-module"
+  notes: >
+    Four independent 5V push-pull logic outputs -- e.g. for driving
+    indicator LEDs, an opto-isolated relay board's inputs, or any other
+    simple 5V-logic loads. Uses all 4 of the socket's unique I/O pins
+    (1-4); none of the shared bus pins (5-8).
+
+generic_pins:
+  - label: "Output 1"
+    generic_name: "5V Out1"
+    module_pin: "1"
+    direction: output
+    output_profile: { drive_type: totem_pole, voltage_max: 5.0 }
+  - label: "Output 2"
+    generic_name: "5V Out2"
+    module_pin: "2"
+    direction: output
+    output_profile: { drive_type: totem_pole, voltage_max: 5.0 }
+  - label: "Output 3"
+    generic_name: "5V Out3"
+    module_pin: "3"
+    direction: output
+    output_profile: { drive_type: totem_pole, voltage_max: 5.0 }
+  - label: "Output 4"
+    generic_name: "5V Out4"
+    module_pin: "4"
+    direction: output
+    output_profile: { drive_type: totem_pole, voltage_max: 5.0 }

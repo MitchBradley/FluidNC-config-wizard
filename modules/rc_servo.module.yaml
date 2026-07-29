@@ -1,0 +1,47 @@
+module:
+  id: rc_servo
+  name: "RC Servo Module"
+  manufacturer: "Dring Engineering Services"
+  form_factor: cnc_io_module_12pin
+  status: active
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/hardware/cnc_io_modules#rc-servo-and-besc"
+  source_files_url: "https://oshwlab.com/bdring/rc-servo-cnc-i-o-module"
+  notes: >
+    4 RC servo connectors (also usable with BESCs -- Brushless Electronic
+    Speed Controllers). A switch selects the servo power voltage from 5V
+    to a user-supplied voltage. Electrically this is really just a
+    passthrough: module pins 1-4 go directly to the 4 output connectors
+    with no intervening circuitry at all -- unlike the generic passthrough
+    module (modules/passthrough.module.yaml), which adapts to however many
+    pins a socket has via its "*" wildcard, this module always has exactly
+    4 real, concrete connectors (matching all 4 of the socket's unique I/O
+    pins; none of the shared bus pins 5-8), so it's listed explicitly here
+    rather than using the wildcard.
+
+generic_pins:
+  - label: "Servo 1"
+    generic_name: "Servo1"
+    module_pin: "1"
+    direction: either
+    input_profile: { conditioning: raw }
+    output_profile: { drive_type: totem_pole }
+  - label: "Servo 2"
+    generic_name: "Servo2"
+    module_pin: "2"
+    direction: either
+    input_profile: { conditioning: raw }
+    output_profile: { drive_type: totem_pole }
+  - label: "Servo 3"
+    generic_name: "Servo3"
+    module_pin: "3"
+    direction: either
+    input_profile: { conditioning: raw }
+    output_profile: { drive_type: totem_pole }
+  - label: "Servo 4"
+    generic_name: "Servo4"
+    module_pin: "4"
+    direction: either
+    input_profile: { conditioning: raw }
+    output_profile: { drive_type: totem_pole }

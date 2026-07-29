@@ -1,0 +1,23 @@
+module:
+  id: rs485
+  name: "RS485 Module"
+  manufacturer: "Dring Engineering Services"
+  form_factor: cnc_io_module_12pin
+  status: active
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/hardware/cnc_io_modules#rs485"
+  purchase_url: "https://www.tindie.com/products/21162/"
+  source_files_url: "https://oshwlab.com/bdring/rs485-cnc-i-o-module"
+  notes: >
+    Primarily for use with VFD spindles. Unlike the Isolated RS485 module
+    (which has no separate direction-control pin, per its own wiki
+    documentation), this module has a dedicated RTS pin for the RS485
+    transceiver's direction control.
+
+rs485_channels:
+  - label: "RS485"
+    generic_name: "RS485"
+    tx_pin: "1"
+    rts_pin: "2"
+    rx_pin: "3"

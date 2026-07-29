@@ -1,0 +1,44 @@
+module:
+  id: 10v_spindle
+  name: "10V Spindle Module"
+  manufacturer: "Dring Engineering Services"
+  form_factor: cnc_io_module_12pin
+  status: active
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/hardware/cnc_io_modules#h-10v-spindle"
+  purchase_url: "https://www.tindie.com/products/21165/"
+  source_files_url: "https://oshwlab.com/bdring/10v-spindle-cnc-i-o-module"
+  notes: >
+    Drives many VFDs and other spindle speed controllers via a 0-10V analog
+    signal (a trim potentiometer lets it be adjusted down for 0-5V
+    devices), plus two open-collector outputs commonly wired as the
+    spindle's forward/reverse direction control -- matches FluidNC's own
+    "10V" spindle type (output_pin/forward_pin/reverse_pin), same shape
+    already used for this same function wired directly onto a board (see
+    e.g. 6x.board.yaml's own "0-10V"/"Spindle Fwd"/"Spindle Rev" pins).
+    Modeled here as 3 independent output pins, not a single bundled
+    connector -- spindle role-binding in the wizard is already per-pin
+    (each pin's role picker independently offers every SPINDLE_TYPES
+    category/sub-pin combination), so a module's spindle-capable pins
+    follow that same existing convention rather than a new bundled shape.
+
+generic_pins:
+  - label: "0-10V Out"
+    generic_name: "Spindle 10V"
+    module_pin: "1"
+    direction: output
+    output_profile: { drive_type: totem_pole, voltage_max: 10.0 }
+    notes: "FluidNC 10V spindle type's output_pin."
+  - label: "OC Out 1"
+    generic_name: "Spindle OC1"
+    module_pin: "2"
+    direction: output
+    output_profile: { drive_type: open_collector }
+    notes: "Commonly wired as the FluidNC 10V spindle type's forward_pin."
+  - label: "OC Out 2"
+    generic_name: "Spindle OC2"
+    module_pin: "3"
+    direction: output
+    output_profile: { drive_type: open_collector }
+    notes: "Commonly wired as the FluidNC 10V spindle type's reverse_pin."

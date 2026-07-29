@@ -124,6 +124,14 @@
      fully hidden, not just dimmed; only ever shown on an UNASSIGNED
      resource, disappears (selector reappears) the instant the conflicting
      resource reverts to Unused. */
+  .row.module-socket-row { border-top: 1px solid var(--border, #333); margin-top: 6px; padding-top: 10px; }
+  .module-connectors {
+    grid-column: 1 / -1;
+    margin: 0 0 4px 18px;
+    padding-left: 10px;
+    border-left: 2px solid var(--border, #333);
+  }
+  .module-connectors .row { padding: 4px 0; }
   .ctrl-wrap { position: relative; }
   .output-controls, .cascade-controls { position: relative; }
   .conflict-note {
@@ -737,7 +745,159 @@ async function loadRoleData() {
   // just for these pins.
   EITHER_ROLE_TREE = Object.assign({}, INPUT_ROLE_TREE, buildOutputRoleBranches());
 
+  await loadModuleCatalog();
   await loadConfigItemDocs();
+}
+
+// id -> parsed modules/<id>.module.yaml (see schema/module.schema.json).
+// Board-independent, like INPUT_ROLE_TREE/SPINDLE_TYPES, so loaded once
+// here rather than per-board. Graceful degradation throughout, same
+// philosophy as loadConfigItemDocs()/chipGpioCaps: a missing/unparseable
+// catalog or individual module file just means module sockets have no
+// (or fewer) module choices available -- never a hard error, since this
+// entire feature is additive on top of the wizard's core function.
+let MODULE_CATALOG = {};
+
+async function loadModuleCatalog() {
+  MODULE_CATALOG = {};
+  const indexText = await fetchYamlTextOptional("modules/index.json");
+  if (!indexText) return;
+  let ids;
+  try {
+    ids = JSON.parse(indexText);
+  } catch (e) {
+    console.warn(`Couldn't parse modules/index.json (${e.message}); module sockets will have no module choices.`);
+    return;
+  }
+  for (const id of ids) {
+    const text = await fetchYamlTextOptional(`modules/${id}.module.yaml`);
+    if (!text) { console.warn(`Couldn't fetch modules/${id}.module.yaml, skipping.`); continue; }
+    try {
+      const doc = jsyaml.load(text);
+      if (doc && doc.module && doc.module.id) MODULE_CATALOG[doc.module.id] = doc;
+      else console.warn(`modules/${id}.module.yaml has no module.id, skipping.`);
+    } catch (e) {
+      console.warn(`Couldn't parse modules/${id}.module.yaml (${e.message}), skipping.`);
+    }
+  }
+}
+
+/* Does every module_pin this module's own connectors reference actually
+ * exist on the given socket? A module with a "*" wildcard connector (see
+ * modules/passthrough.module.yaml) always fits, any socket size -- it
+ * adapts to however many pins the socket has rather than requiring
+ * specific ones. Used to filter the module-choice dropdown so a socket
+ * only ever offers modules it can actually accommodate. */
+function moduleFitsSocket(mod, socket) {
+  const pinNums = new Set((socket.pins || []).map(p => p.module_pin));
+  const refs = [];
+  let hasWildcard = false;
+  (mod.generic_pins || []).forEach(gp => {
+    if (gp.module_pin === "*") hasWildcard = true;
+    else refs.push(gp.module_pin);
+  });
+  (mod.expansion_uarts || []).forEach(eu => refs.push(eu.txd_pin, eu.rxd_pin));
+  (mod.rs485_channels || []).forEach(rc => {
+    refs.push(rc.tx_pin, rc.rx_pin);
+    if (rc.rts_pin) refs.push(rc.rts_pin);
+  });
+  if (hasWildcard) return true;
+  return refs.every(r => pinNums.has(r));
+}
+
+/* Resolves a module's own module_pin-addressed connectors (generic_pins /
+ * expansion_uarts / rs485_channels -- see schema/module.schema.json)
+ * against a specific board socket's real mcu_pin list, producing a flat
+ * array of connector descriptors shaped so renderResources()/
+ * computeResourcePins()/generateDraft() can render/bind/dispatch them
+ * exactly like a board's own directly-wired generic_pins/expansion_uarts/
+ * rs485_channels entries -- the only difference from a board fact is where
+ * the mcu_pin came from. Returns null if no module (or an unrecognized
+ * module id) is assigned to this socket -- callers should treat that the
+ * same as "socket has no connectors right now", not an error.
+ *
+ * The "*" wildcard generic_pins connector (modules/passthrough.module.yaml)
+ * is a TEMPLATE, not a literal connector -- expanded here into one
+ * independent connector per pin the socket actually has, in socket-pin
+ * order, each inheriting the template's direction/profiles unchanged. */
+function resolveModuleSocketConnectors(socket, moduleId) {
+  if (!moduleId || moduleId === "unused") return null;
+  const mod = MODULE_CATALOG[moduleId];
+  if (!mod) return null;
+  const socketPins = socket.pins || [];
+  const pinByModulePin = {};
+  socketPins.forEach(p => { pinByModulePin[p.module_pin] = p; });
+  const out = [];
+
+  (mod.generic_pins || []).forEach(gp => {
+    if (gp.module_pin === "*") {
+      socketPins.forEach(sp => {
+        out.push({
+          kind: "generic_pin",
+          label: `${gp.label} ${sp.module_pin}`,
+          generic_name: `${gp.generic_name || gp.label}${sp.module_pin}`,
+          mcu_pin: sp.mcu_pin,
+          direction: gp.direction,
+        });
+      });
+      return;
+    }
+    const sp = pinByModulePin[gp.module_pin];
+    if (!sp) return; // module needs a pin this socket doesn't have -- shouldn't happen if moduleFitsSocket() gated the choice, but degrade gracefully rather than throw
+    out.push({
+      kind: "generic_pin",
+      label: gp.label,
+      generic_name: gp.generic_name || gp.label,
+      mcu_pin: sp.mcu_pin,
+      direction: gp.direction,
+    });
+  });
+
+  (mod.expansion_uarts || []).forEach(eu => {
+    const txp = pinByModulePin[eu.txd_pin], rxp = pinByModulePin[eu.rxd_pin];
+    if (!txp || !rxp) return;
+    out.push({
+      kind: "expansion_uart",
+      label: eu.label,
+      generic_name: eu.generic_name || eu.label,
+      txd_pin: txp.mcu_pin,
+      rxd_pin: rxp.mcu_pin,
+      baud: eu.baud,
+      mode: eu.mode,
+      connector_type: eu.connector_type,
+    });
+  });
+
+  (mod.rs485_channels || []).forEach(rc => {
+    const txp = pinByModulePin[rc.tx_pin], rxp = pinByModulePin[rc.rx_pin];
+    if (!txp || !rxp) return;
+    const rtsp = rc.rts_pin ? pinByModulePin[rc.rts_pin] : null;
+    out.push({
+      kind: "rs485_channel",
+      label: rc.label,
+      generic_name: rc.generic_name || rc.label,
+      tx_pin: txp.mcu_pin,
+      rx_pin: rxp.mcu_pin,
+      rts_pin: rtsp ? rtsp.mcu_pin : undefined,
+    });
+  });
+
+  return out;
+}
+
+/* Every currently-resolved module-socket connector across the whole board,
+ * flattened with the resourceKeyModConn() each is bound under -- the one
+ * place computeResourcePins()/renderResources()/generateDraft() all walk
+ * from, so the three stay in lockstep by construction rather than each
+ * re-deriving the same si/ci bookkeeping independently. */
+function allModuleSocketConnectors() {
+  const out = [];
+  (board.expansion_sockets || []).forEach((s, si) => {
+    const moduleId = bindings[resourceKeyModuleSocket(si)];
+    const connectors = resolveModuleSocketConnectors(s, moduleId);
+    (connectors || []).forEach((c, ci) => out.push({ si, ci, socket: s, key: resourceKeyModConn(si, ci), connector: c }));
+  });
+  return out;
 }
 
 /* Reshapes outputCategoryOptions()/cascadeOptionsFor()'s primary/secondary
@@ -1846,10 +2006,20 @@ function sectionWidgetHtml(key) {
 
 function resourceKeyMotor(i) { return `motor:${i}`; }
 function resourceKeyPin(i) { return `pin:${i}`; }
-function resourceKeyExp(si, pi) { return `exp:${si}:${pi}`; }
 function resourceKeyRs485(i) { return `rs485:${i}`; }
 function resourceKeyExpUart(i) { return `expuart:${i}`; }
 function resourceKeyI2c(i) { return `i2c:${i}`; }
+// Module sockets (see MODULE_CATALOG/resolveModuleSocketConnectors() below):
+// resourceKeyModuleSocket(si) is the socket's OWN "which module is plugged
+// in here" choice; resourceKeyModConn(si, ci) is the ci-th resolved
+// connector of whichever module currently occupies socket si -- si here is
+// the same board.expansion_sockets array index a now-removed per-pin key
+// function (resourceKeyExp) used to key individual raw pins under before
+// module sockets existed as their own concept (see
+// computeResourcePins()/renderResources()/generateDraft() for where that
+// old per-pin dispatch was replaced).
+function resourceKeyModuleSocket(si) { return `modsock:${si}`; }
+function resourceKeyModConn(si, ci) { return `modconn:${si}:${ci}`; }
 
 /* ---------------------------------------------------------------------
  * Rendering
@@ -1997,17 +2167,30 @@ function computeResourcePins() {
     resourcePins[resourceKeyPin(i)] = [p.mcu_pin];
     record(resourceKeyPin(i), p.label, gname(p));
   });
+  // Module sockets (see MODULE_CATALOG/resolveModuleSocketConnectors()) --
+  // the socket itself is recorded (for hotspot hover-linking against the
+  // board's own socket hotspot) but has no resourcePins of its own; a
+  // module CHOICE isn't itself a FluidNC role, only its resolved
+  // connectors (below) are. This depends on `bindings` (which module, if
+  // any, is currently assigned) unlike every other section above, so
+  // computeResourcePins() must be re-run any time a socket's module
+  // choice changes, not just once at board load -- see renderResources()'
+  // module-socket picker onchange handler.
   (board.expansion_sockets || []).forEach((s, si) => {
-    (s.pins || []).forEach((p, pi) => {
-      resourcePins[resourceKeyExp(si, pi)] = [p.mcu_pin];
-      // Matches the exact label string generateDraft()'s allPins walk
-      // builds for this same resource (`${s.label}/${p.module_pin}`) --
-      // must stay identical so a comment hint scraped from an exported
-      // file's "# <label>" line matches this map's value exactly. Generic
-      // name for a per-pin expansion-socket resource follows the same
-      // composite shape, built from the socket's own gname().
-      record(resourceKeyExp(si, pi), `${s.label}/${p.module_pin}`, `${gname(s)}/${p.module_pin}`);
-    });
+    record(resourceKeyModuleSocket(si), s.label, gname(s));
+  });
+  allModuleSocketConnectors().forEach(({ si, key, socket: s, connector: c }) => {
+    const pins = c.kind === "generic_pin" ? [c.mcu_pin]
+      : c.kind === "expansion_uart" ? [c.txd_pin, c.rxd_pin]
+      : [c.tx_pin, c.rx_pin, c.rts_pin];
+    resourcePins[key] = pins.filter(Boolean);
+    // Matches the exact label string generateDraft()'s dispatch loops
+    // build for this same resource (`${s.label}/${c.label}`) -- must stay
+    // identical so a comment hint scraped from an exported file's
+    // "# <label>" line matches this map's value exactly, same convention
+    // the old per-pin expansion_sockets resource used before module
+    // sockets existed as their own concept.
+    record(key, `${s.label}/${c.label}`, `${gname(s)}/${c.generic_name}`);
   });
   (board.rs485_channels || []).forEach((ch, i) => {
     resourcePins[resourceKeyRs485(i)] = [ch.tx_pin, ch.rx_pin, ch.rts_pin].filter(Boolean);
@@ -2626,20 +2809,69 @@ function renderResources() {
     col.appendChild(sec);
   }
 
-  // Expansion sockets
+  // Module sockets (CNC I/O Module -- see http://wiki.fluidnc.com/en/hardware/cnc_io_modules
+  // and MODULE_CATALOG/resolveModuleSocketConnectors() above): one row per
+  // socket picking WHICH module is plugged in (filtered to modules
+  // moduleFitsSocket() this socket, via moduleFitsSocket()), then -- once
+  // chosen -- one further row per that module's own resolved connector,
+  // rendered with the exact same row-builders (makeInputRow/makeOutputRow/
+  // makeRow) a board's own directly-wired equivalents use, just fed
+  // resolved mcu_pin values instead of reading board.generic_pins/etc.
+  // directly. Changing the module choice changes the whole set of rows
+  // below it, which none of the existing per-row onchange handlers are set
+  // up to do (they only ever update their OWN row) -- so this one row's
+  // onchange rebuilds the entire resource pane via renderResources()
+  // itself, then re-syncs everything renderResources() doesn't handle
+  // (module-connector resourcePins depend on the CURRENT module choice, so
+  // computeResourcePins() must be re-run too; hotspot hover-links are
+  // wired against specific DOM nodes that just got torn down and rebuilt).
   if (board.expansion_sockets) {
     const sec = document.createElement("section");
-    sec.innerHTML = `<h2>Expansion socket pins</h2>`;
+    sec.innerHTML = `<h2>Module sockets</h2>`;
     board.expansion_sockets.forEach((s, si) => {
-      (s.pins||[]).forEach((p, pi) => {
-        const key = resourceKeyExp(si, pi);
-        const name = `${gname(s)} — pin ${p.module_pin}`;
-        const vendorName = `${s.label} — pin ${p.module_pin}`;
-        const sub = `${p.mcu_pin} — ${p.direction}`;
-        sec.appendChild(p.direction === "output"
-          ? makeOutputRow(key, name, sub, vendorName)
-          : makeInputRow(key, name, sub, p.direction === "either" ? EITHER_ROLE_TREE : INPUT_ROLE_TREE, vendorName));
+      const key = resourceKeyModuleSocket(si);
+      const pinList = (s.pins || []).map(p => p.module_pin).join(",");
+      const sub = `${(s.pins || []).length} pins (${pinList})`;
+      const options = [{ value: "unused", label: "— Empty —" }];
+      Object.keys(MODULE_CATALOG).sort((a, b) => MODULE_CATALOG[a].module.name.localeCompare(MODULE_CATALOG[b].module.name)).forEach(id => {
+        if (moduleFitsSocket(MODULE_CATALOG[id], s)) options.push({ value: id, label: MODULE_CATALOG[id].module.name });
       });
+      const row = makeRow(key, gname(s), sub, options, s.label);
+      row.classList.add("module-socket-row");
+      const sel = row.querySelector("select");
+      sel.onchange = () => {
+        bindings[key] = sel.value;
+        computeResourcePins();
+        renderResources();
+        wireHotspotHoverLinks();
+        generateDraft();
+      };
+      sec.appendChild(row);
+
+      const connectors = resolveModuleSocketConnectors(s, bindings[key]);
+      if (connectors && connectors.length) {
+        const sub2 = document.createElement("div");
+        sub2.className = "module-connectors";
+        connectors.forEach((c, ci) => {
+          const ckey = resourceKeyModConn(si, ci);
+          if (c.kind === "generic_pin") {
+            const csub = `${c.mcu_pin} — ${c.direction}`;
+            sub2.appendChild(c.direction === "output"
+              ? makeOutputRow(ckey, c.generic_name, csub, c.label)
+              : makeInputRow(ckey, c.generic_name, csub, c.direction === "either" ? EITHER_ROLE_TREE : INPUT_ROLE_TREE, c.label));
+          } else if (c.kind === "expansion_uart") {
+            const pins = `txd=${c.txd_pin} rxd=${c.rxd_pin}${c.connector_type ? " (" + c.connector_type + ")" : ""}`;
+            sub2.appendChild(makeRow(ckey, c.generic_name, pins, [
+              { value: "unused", label: "— Unused —" },
+              { value: "uart_channel", label: `I/O Expansion (uart_channel, uart${defaultSecondaryUartNum(board)})` },
+            ], c.label));
+          } else if (c.kind === "rs485_channel") {
+            const pins = `tx=${c.tx_pin} rx=${c.rx_pin}` + (c.rts_pin ? ` rts=${c.rts_pin}` : "");
+            sub2.appendChild(makeRow(ckey, c.generic_name, pins, rs485RoleOptions(), c.label));
+          }
+        });
+        sec.appendChild(sub2);
+      }
     });
     col.appendChild(sec);
   }
@@ -3233,12 +3465,19 @@ function generateDraft() {
     }
   });
 
-  // Generic pins + expansion pins -> limits / control / probe / spindle / coolant / digital outs
+  // Generic pins + module-socket connectors -> limits / control / probe / spindle / coolant / digital outs
   const allPins = [];
   (board.generic_pins||[]).forEach((p, i) => allPins.push({ p, key: resourceKeyPin(i) }));
-  (board.expansion_sockets||[]).forEach((s, si) => (s.pins||[]).forEach((p, pi) =>
-    allPins.push({ p: { label: `${s.label}/${p.module_pin}`, mcu_pin: p.mcu_pin, direction: p.direction }, key: resourceKeyExp(si, pi) })
-  ));
+  // Module sockets' resolved generic_pin-kind connectors only -- their
+  // expansion_uart-kind/rs485_channel-kind connectors are dispatched
+  // separately below, alongside board.expansion_uarts/board.rs485_channels
+  // (see allExpansionUarts/allRs485Channels), since those have their own
+  // fixed uart_channel/ModbusVFD shape rather than the generic per-pin
+  // role tree this loop drives.
+  allModuleSocketConnectors().forEach(({ key, socket: s, connector: c }) => {
+    if (c.kind !== "generic_pin") return;
+    allPins.push({ p: { label: `${s.label}/${c.label}`, mcu_pin: c.mcu_pin, direction: c.direction }, key });
+  });
 
   let spindleBound = false;
   cfg.control = {};
@@ -3341,8 +3580,28 @@ function generateDraft() {
   // (6x/Corgi's own Huanyang examples use uart1; the 4x wiki's
   // commented-out RS485 example, on a TMC-UART board, uses uart2).
   const usedUartNums = new Set(); // shared across RS485/expansion-UART/I2C-as-UART below
-  (board.rs485_channels || []).forEach((ch, i) => {
-    const role = bindings[resourceKeyRs485(i)];
+  // Module-resolved rs485_channel/expansion_uart connectors are merged in
+  // alongside the board's own directly-wired entries so a module plugged
+  // into an expansion socket (e.g. the RS485 Module or Simple Pendant
+  // Module) participates in config generation exactly like a board-fixed
+  // connector of the same kind. Field names (tx_pin/rx_pin/rts_pin/label,
+  // txd_pin/rxd_pin/baud/mode) were deliberately matched between board
+  // objects and resolveModuleSocketConnectors()'s output so the loop
+  // bodies below need no branching on which kind of source they came from.
+  const allRs485Channels = [
+    ...(board.rs485_channels || []).map((ch, i) => ({ ch, key: resourceKeyRs485(i) })),
+    ...allModuleSocketConnectors()
+      .filter(x => x.connector.kind === "rs485_channel")
+      .map(x => ({ ch: x.connector, key: x.key })),
+  ];
+  const allExpansionUarts = [
+    ...(board.expansion_uarts || []).map((ex, i) => ({ ex, key: resourceKeyExpUart(i) })),
+    ...allModuleSocketConnectors()
+      .filter(x => x.connector.kind === "expansion_uart")
+      .map(x => ({ ex: x.connector, key: x.key })),
+  ];
+  allRs485Channels.forEach(({ ch, key }) => {
+    const role = bindings[key];
     if (!role || role === "unused" || !role.startsWith("vfd:")) return;
     const model = role.split(":")[1];
     const n = nextSpareUartNum(board, usedUartNums);
@@ -3379,8 +3638,8 @@ function generateDraft() {
   // UARTs free (see spareUartCandidates()), only colliding with another
   // section's uart_num in the genuine, unavoidable case where every spare
   // UART is already spoken for.
-  (board.expansion_uarts || []).forEach((ex, i) => {
-    const role = bindings[resourceKeyExpUart(i)];
+  allExpansionUarts.forEach(({ ex, key }) => {
+    const role = bindings[key];
     if (!role || role === "unused" || role !== "uart_channel") return;
     const n = nextSpareUartNum(board, usedUartNums);
     // Same sibling-of-cfg annotation placement as RS485 above.

@@ -1,0 +1,23 @@
+module:
+  id: isolated_rs485
+  name: "Isolated RS485 Module"
+  manufacturer: "Dring Engineering Services"
+  form_factor: cnc_io_module_12pin
+  status: active
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/hardware/cnc_io_modules#isolated-rs485"
+  purchase_url: "https://www.tindie.com/products/33619/"
+  source_files_url: "https://oshwlab.com/bdring/rs485-isolated-module"
+  notes: >
+    Electrically isolated RS485 module for use with VFD spindles. Per the
+    wiki's own documentation: "The first module i/o pin is the txd_pin.
+    The second module i/o pin is the rxd_pin. There is no rts_pin" --
+    unlike the plain RS485 module, this one's transceiver has no separate
+    direction-control pin at all (automatic direction sensing).
+
+rs485_channels:
+  - label: "RS485"
+    generic_name: "RS485"
+    tx_pin: "1"
+    rx_pin: "2"

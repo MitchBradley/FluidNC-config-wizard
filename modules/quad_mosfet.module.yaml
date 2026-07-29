@@ -1,0 +1,34 @@
+module:
+  id: quad_mosfet
+  name: "Quad MOSFET Module"
+  manufacturer: "Dring Engineering Services"
+  form_factor: cnc_io_module_12pin
+  status: active
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/hardware/cnc_io_modules#mosfet"
+  purchase_url: "https://www.tindie.com/products/21161/"
+  notes: >
+    4 MOSFET outputs, one per module pin (1-4), rated 60V / 5A each.
+
+generic_pins:
+  - label: "MOSFET 1"
+    generic_name: "FET1"
+    module_pin: "1"
+    direction: output
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 5.0 }
+  - label: "MOSFET 2"
+    generic_name: "FET2"
+    module_pin: "2"
+    direction: output
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 5.0 }
+  - label: "MOSFET 3"
+    generic_name: "FET3"
+    module_pin: "3"
+    direction: output
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 5.0 }
+  - label: "MOSFET 4"
+    generic_name: "FET4"
+    module_pin: "4"
+    direction: output
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 60.0, current_max_a: 5.0 }

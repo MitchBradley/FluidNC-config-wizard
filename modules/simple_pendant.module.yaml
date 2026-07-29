@@ -1,0 +1,34 @@
+module:
+  id: simple_pendant
+  name: "Simple Pendant Module"
+  manufacturer: "Dring Engineering Services"
+  form_factor: cnc_io_module_12pin
+  status: active
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/hardware/cnc_io_modules#simple-pendant-module"
+  source_files_url: "https://oshwlab.com/bdring/simple-pendant-module"
+  notes: >
+    Simplifies wiring for the FluidDial Pendant using RJ12 (6-wire) cables.
+    Adds current-limiting resistors to the UART signals and a PTC fuse
+    (limited to 30V, 200mA) to the power terminal. Usable with other
+    pendants/displays as long as they operate within that voltage/current
+    range and speak FluidNC's own fixed pendant/expander UART protocol.
+
+# Per the wiki's pinout guidelines ("start with I/O #1", put the most
+# desirable/complex feature first) and the RS485/Isolated RS485 modules'
+# own stated convention ("the first module i/o pin is the txd_pin, the
+# second is the rxd_pin") -- this module claims only the first 2 of the
+# socket's available I/O pins, none of pins 3/4/5-8. baud/mode are FluidNC's
+# own fixed pendant/expander protocol values (see board.schema.json's
+# expansion_uart.baud description for the same 1000000/8N1 fact, stated
+# there for boards with this same connector built in directly).
+expansion_uarts:
+  - label: "Pendant"
+    generic_name: "Pendant"
+    connector_type: "RJ12"
+    txd_pin: "1"
+    rxd_pin: "2"
+    baud: 1000000
+    mode: "8N1"
+    notes: "Wired for FluidNC's fixed pendant/expander protocol (e.g. FluidDial) -- not a general-purpose UART."
