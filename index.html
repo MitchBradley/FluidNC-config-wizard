@@ -3264,14 +3264,21 @@ function motorBlockFor(socket) {
     return { key: t || "onboard_fixed", body: Object.assign({}, socket.pins, { run_amps: "TBD" }) };
   }
   if (dc === "stepstick_socket") {
-    // Current and microstepping on a stepstick module are set by an onboard
-    // trimpot and physical jumpers -- not software-configurable, so unlike
-    // tmc_2209/tmc_2130 there are no tuning params to stub here at all.
+    // Current is set by the module's trimpot, and many boards select some
+    // microstep bits with physical jumpers. A board may nevertheless wire
+    // one or more MSx pins (or RESET) to controllable GPIO/I2SO outputs.
+    // Preserve every such optional board fact in the generated stepstick
+    // block; pinWidgetHtml() then lets the config author choose :high/:low.
+    // External-driver resources do not carry these pins, so their
+    // standard_stepper block remains unaffected.
     const body = {
       step_pin: socket.pins.step_pin,
       direction_pin: socket.pins.direction_pin,
       disable_pin: socket.pins.disable_pin || "NO_PIN"
     };
+    ["ms1_pin", "ms2_pin", "ms3_pin", "reset_pin"].forEach(field => {
+      if (socket.pins[field]) body[field] = socket.pins[field];
+    });
     return { key: "stepstick", body };
   }
   // external_connector
@@ -4125,13 +4132,17 @@ function importConfig(doc, rawText) {
       if (!motorDoc || typeof motorDoc !== "object") return;
       const driverKey = Object.keys(motorDoc).find(k => motorDriverKeys.has(k));
       const driverBody = driverKey ? motorDoc[driverKey] : null;
+      const motorPinFields = [
+        "step_pin", "direction_pin", "disable_pin", "cs_pin",
+        "ms1_pin", "ms2_pin", "ms3_pin", "reset_pin",
+      ];
 
       // Identify the physical motor socket via any one of its own pins
       // (step_pin preferred) -- all of a socket's pins share one
       // resourceKey (resourceKeyMotor(i)), so matching just one suffices.
       let resourceKey = null;
       if (driverBody) {
-        const pinField = ["step_pin", "direction_pin", "disable_pin", "cs_pin"].find(f => driverBody[f]);
+        const pinField = motorPinFields.find(f => driverBody[f]);
         if (pinField) {
           const r = resolvePin(driverBody[pinField], `axes.${letter}.${slot}`);
           if (r) resourceKey = r.resourceKey;
@@ -4151,7 +4162,6 @@ function importConfig(doc, rawText) {
       const socketIndex = Number(resourceKey.split(":")[1]);
       const socket = (board.motor_sockets && board.motor_sockets.sockets || [])[socketIndex];
       const expectedKey = socket ? motorBlockFor(socket).key : null;
-      const motorPinFields = ["step_pin", "direction_pin", "disable_pin", "cs_pin"];
       if (driverKey && expectedKey && driverKey !== expectedKey) {
         report.notes.push(`axes.${letter}.${slot}: loaded config uses driver type "${driverKey}", but this board's own socket data implies "${expectedKey}" -- resource bound, but this socket's tuning fields and pin attributes were NOT copied (would land on the wrong regenerated path)`);
       } else if (driverBody) {
