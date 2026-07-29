@@ -1,0 +1,249 @@
+board:
+  id: pibot_v5_88_ultra
+  name: "PiBot FluidNC Controller V5.88 Ultra"
+  manufacturer: "PiBot Electronics & Mechanics"
+  mcu_chip: esp32s3
+  family: "PiBot FluidNC CNC Controller"
+  revision: "V5.88"
+  status: active
+
+meta:
+  wiki_url: "https://wiki.pibot.com/doku.php?id=pibot_cnc_laser_series%3Av588_ultra%3Apinout_reference%3Astart"
+  vendor_docs_url: "https://wiki.pibot.com/doku.php?id=pibot_cnc_laser_series%3Av588_ultra%3Adocs%3Astart"
+  purchase_url: "https://www.pibot.com/pibot-fluidnc-grblhal-esp32-s3-6-1-axis-cnc-controller-v5-88-ultra"
+  schematic_url: "https://wiki.pibot.com/doku.php?id=pibot_cnc_laser_series%3Av588_ultra%3Adocs%3Astart"
+  notes: >
+    Six-axis ESP32-S3 controller with six Pololu/StepStick-compatible driver
+    sockets. Each motor position also exposes a dedicated external
+    EN/STEP/DIR connector wired to the same signals. Pin assignments are
+    cross-checked against PiBot's V5.88 pinout reference, annotated board
+    diagram, and the vendor V588 XYZABC DRV8825 I/O-test config. The
+    separately advertised optional seventh-axis use of EXTRA IO is outside
+    this board definition by vendor request. The secondary native-USB host
+    connector is a fixed ESP32-S3 hardware feature that the current board
+    schema cannot represent as a bindable resource.
+
+stepping:
+  engines: [i2s]
+  notes: >
+    All six motor positions use I2SO virtual pins. PiBot's tested config uses
+    I2S_STATIC; the board schema represents I2S_STATIC and I2S_STREAM
+    together as i2s.
+
+fixed_peripherals:
+  spi:
+    miso_pin: gpio.2
+    mosi_pin: gpio.1
+    sck_pin: gpio.21
+    notes: >
+      Shared SPI bus for the SD card and optional SPI-mode TMC2130/TMC5160
+      StepStick modules.
+  sdcard:
+    cs_pin: gpio.9
+    notes: "PiBot's tested config uses card_detect_pin: NO_PIN."
+  i2so:
+    bck_pin: gpio.16
+    data_pin: gpio.17
+    ws_pin: gpio.18
+    pin_count: 24
+    notes: >
+      Three cascaded 74AHCT595-class shift registers provide i2so.0 through
+      i2so.23. All 24 outputs are assigned across six EN/STEP/DIR groups and
+      six MS3/CS signals.
+
+motor_sockets:
+  notes: >
+    Six onboard StepStick-compatible sockets (Motor1-Motor6) and six
+    dedicated external-driver EN/STEP/DIR connectors (Driver1-Driver6),
+    associated with X/Y/Z/A/B/C for reference. Each MotorN/DriverN pair
+    shares the same EN/STEP/DIR signals and is therefore mutually exclusive;
+    the wizard's normal pin-conflict handling prevents assigning both members
+    of a pair. This follows the existing MKS DLC32 V2.1 board-definition
+    precedent. The onboard sockets additionally have I2SO-controlled MS3/CS
+    signals plus a shared hardware jumper bank for MS1, MS2, RESET and SLEEP.
+    First-version scope covers ordinary StepStick and external
+    standard_stepper use; selecting SPI-configured TMC2130/TMC5160 modules is
+    not yet modeled by the current wizard.
+  sockets:
+    - label: "DRV1 / X"
+      generic_name: Motor1
+      driver_class: stepstick_socket
+      pins:
+        step_pin: i2so.2
+        direction_pin: i2so.1
+        disable_pin: i2so.0
+        ms3_pin: i2so.3
+      notes: "Shares EN/STEP/DIR with Driver1. MS3 doubles as CSX for a supported SPI TMC module."
+    - label: "DRV2 / Y"
+      generic_name: Motor2
+      driver_class: stepstick_socket
+      pins:
+        step_pin: i2so.5
+        direction_pin: i2so.4
+        disable_pin: i2so.7
+        ms3_pin: i2so.6
+      notes: "Shares EN/STEP/DIR with Driver2. MS3 doubles as CSY for a supported SPI TMC module."
+    - label: "DRV3 / Z"
+      generic_name: Motor3
+      driver_class: stepstick_socket
+      pins:
+        step_pin: i2so.10
+        direction_pin: i2so.9
+        disable_pin: i2so.8
+        ms3_pin: i2so.11
+      notes: "Shares EN/STEP/DIR with Driver3. MS3 doubles as CSZ for a supported SPI TMC module."
+    - label: "DRV4 / A"
+      generic_name: Motor4
+      driver_class: stepstick_socket
+      pins:
+        step_pin: i2so.13
+        direction_pin: i2so.12
+        disable_pin: i2so.15
+        ms3_pin: i2so.14
+      notes: "Shares EN/STEP/DIR with Driver4. MS3 doubles as CSA for a supported SPI TMC module."
+    - label: "DRV5 / B"
+      generic_name: Motor5
+      driver_class: stepstick_socket
+      pins:
+        step_pin: i2so.18
+        direction_pin: i2so.17
+        disable_pin: i2so.16
+        ms3_pin: i2so.19
+      notes: "Shares EN/STEP/DIR with Driver5. MS3 doubles as CSB for a supported SPI TMC module."
+    - label: "DRV6 / C"
+      generic_name: Motor6
+      driver_class: stepstick_socket
+      pins:
+        step_pin: i2so.21
+        direction_pin: i2so.20
+        disable_pin: i2so.23
+        ms3_pin: i2so.22
+      notes: "Shares EN/STEP/DIR with Driver6. MS3 doubles as CSC for a supported SPI TMC module."
+    - label: "External Driver X - EN/STP/DIR"
+      generic_name: Driver1
+      driver_class: external_connector
+      pins:
+        step_pin: i2so.2
+        direction_pin: i2so.1
+        disable_pin: i2so.0
+      notes: "Shares EN i2so.0, STEP i2so.2 and DIR i2so.1 with onboard socket DRV1/X; that socket's MS3/CSX is i2so.3."
+    - label: "External Driver Y - EN/STP/DIR"
+      generic_name: Driver2
+      driver_class: external_connector
+      pins:
+        step_pin: i2so.5
+        direction_pin: i2so.4
+        disable_pin: i2so.7
+      notes: "Shares EN i2so.7, STEP i2so.5 and DIR i2so.4 with onboard socket DRV2/Y; that socket's MS3/CSY is i2so.6."
+    - label: "External Driver Z - EN/STP/DIR"
+      generic_name: Driver3
+      driver_class: external_connector
+      pins:
+        step_pin: i2so.10
+        direction_pin: i2so.9
+        disable_pin: i2so.8
+      notes: "Shares EN i2so.8, STEP i2so.10 and DIR i2so.9 with onboard socket DRV3/Z; that socket's MS3/CSZ is i2so.11."
+    - label: "External Driver A - EN/STP/DIR"
+      generic_name: Driver4
+      driver_class: external_connector
+      pins:
+        step_pin: i2so.13
+        direction_pin: i2so.12
+        disable_pin: i2so.15
+      notes: "Shares EN i2so.15, STEP i2so.13 and DIR i2so.12 with onboard socket DRV4/A; that socket's MS3/CSA is i2so.14."
+    - label: "External Driver B - EN/STP/DIR"
+      generic_name: Driver5
+      driver_class: external_connector
+      pins:
+        step_pin: i2so.18
+        direction_pin: i2so.17
+        disable_pin: i2so.16
+      notes: "Shares EN i2so.16, STEP i2so.18 and DIR i2so.17 with onboard socket DRV5/B; that socket's MS3/CSB is i2so.19."
+    - label: "External Driver C - EN/STP/DIR"
+      generic_name: Driver6
+      driver_class: external_connector
+      pins:
+        step_pin: i2so.21
+        direction_pin: i2so.20
+        disable_pin: i2so.23
+      notes: "Shares EN i2so.23, STEP i2so.21 and DIR i2so.20 with onboard socket DRV6/C; that socket's MS3/CSC is i2so.22."
+
+generic_pins:
+  # Ten opto-isolated input connectors. SW-VCC is jumper-selectable between
+  # regulated 5V and the 12-24V main supply.
+  - { label: "Input GPIO.42", generic_name: "In42", mcu_pin: gpio.42, direction: input, input_profile: { conditioning: opto_isolated, internal_pullup_required: false, voltage_max: 24.0 }, notes: "SW-VCC-selectable input. PiBot requires a series resistor of at least 2.2k ohms when using a 24V signal." }
+  - { label: "Input GPIO.41", generic_name: "In41", mcu_pin: gpio.41, direction: input, input_profile: { conditioning: opto_isolated, internal_pullup_required: false, voltage_max: 24.0 }, notes: "SW-VCC-selectable input. PiBot requires a series resistor of at least 2.2k ohms when using a 24V signal." }
+  - { label: "Input GPIO.40", generic_name: "In40", mcu_pin: gpio.40, direction: input, input_profile: { conditioning: opto_isolated, internal_pullup_required: false, voltage_max: 24.0 }, notes: "SW-VCC-selectable input. PiBot requires a series resistor of at least 2.2k ohms when using a 24V signal." }
+  - { label: "Input GPIO.39", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated, internal_pullup_required: false, voltage_max: 24.0 }, notes: "SW-VCC-selectable input. PiBot requires a series resistor of at least 2.2k ohms when using a 24V signal." }
+  - { label: "Input GPIO.38", generic_name: "In38", mcu_pin: gpio.38, direction: input, input_profile: { conditioning: opto_isolated, internal_pullup_required: false, voltage_max: 24.0 }, notes: "SW-VCC-selectable input. PiBot requires a series resistor of at least 2.2k ohms when using a 24V signal." }
+  - { label: "Input GPIO.37", generic_name: "In37", mcu_pin: gpio.37, direction: input, input_profile: { conditioning: opto_isolated, internal_pullup_required: false, voltage_max: 24.0 }, notes: "SW-VCC-selectable input. PiBot requires a series resistor of at least 2.2k ohms when using a 24V signal." }
+  - { label: "Input GPIO.36", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated, internal_pullup_required: false, voltage_max: 24.0 }, notes: "SW-VCC-selectable input. PiBot requires a series resistor of at least 2.2k ohms when using a 24V signal." }
+  - { label: "Input GPIO.48", generic_name: "In48", mcu_pin: gpio.48, direction: input, input_profile: { conditioning: opto_isolated, internal_pullup_required: false, voltage_max: 24.0 }, notes: "SW-VCC-selectable input. PiBot requires a series resistor of at least 2.2k ohms when using a 24V signal." }
+  - { label: "Input GPIO.47", generic_name: "In47", mcu_pin: gpio.47, direction: input, input_profile: { conditioning: opto_isolated, internal_pullup_required: false, voltage_max: 24.0 }, notes: "SW-VCC-selectable input. PiBot requires a series resistor of at least 2.2k ohms when using a 24V signal." }
+  - label: "GPIO.3 Function Selection"
+    generic_name: "In3"
+    mcu_pin: gpio.3
+    direction: input
+    input_profile:
+      conditioning: opto_isolated
+      internal_pullup_required: false
+      voltage_max: 24.0
+    notes: >
+      Opto-isolated input path selected when the GPIO3 function-selection
+      jumper is installed on the right. Verified as the tenth opto-isolated
+      input in PiBot's test config (toolsetter_pin). Shares gpio.3 with the
+      raw EXTRA IO resource IO3, which is selected by installing the jumper
+      on the left; only one path may be used. PiBot requires a series
+      resistor of at least 2.2k ohms when using a 24V signal.
+
+  # Four buffered 5V logic outputs.
+  - { label: "PWM 5V - GPIO.4", generic_name: "5V Out4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0 }, notes: "Also activates MOSFET output GPIO.4; the two physical outputs are not independent." }
+  - { label: "PWM 5V - GPIO.5", generic_name: "5V Out5", mcu_pin: gpio.5, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0 }, notes: "Also activates MOSFET output GPIO.5; the two physical outputs are not independent." }
+  - { label: "PWM 5V - GPIO.45", generic_name: "5V Out45", mcu_pin: gpio.45, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0 } }
+  - { label: "PWM 5V - GPIO.46", generic_name: "5V Out46", mcu_pin: gpio.46, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0 } }
+
+  # Two VMot-referenced low-side outputs, shared with GPIO4/GPIO5 logic outs.
+  - { label: "MOSFET IO4", generic_name: "FET4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 0.5 }, notes: "VMot-main low-side output; maximum 500mA per PiBot documentation. Shares gpio.4 with the 5V output." }
+  - { label: "MOSFET IO5", generic_name: "FET5", mcu_pin: gpio.5, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 0.5 }, notes: "VMot-main low-side output; maximum 500mA per PiBot documentation. Shares gpio.5 with the 5V output." }
+
+  # VFD/0-10V connector.
+  - { label: "0-10V - GPIO.6", generic_name: "Spindle 10V", mcu_pin: gpio.6, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 10.0 }, notes: "PWM followed by the onboard 0-10V conversion circuit; maximum voltage is adjustable with RES1." }
+  - { label: "0-10V CTRL1 - GPIO.7", generic_name: "Spindle Out7", mcu_pin: gpio.7, direction: output, output_profile: { drive_type: open_collector }, notes: "Opto-isolated spindle forward/control output in PiBot's example config." }
+  - { label: "0-10V CTRL2/Relay - GPIO.8", generic_name: "Spindle Out8", mcu_pin: gpio.8, direction: output, output_profile: { drive_type: open_collector }, notes: "Opto-isolated spindle reverse/control output in PiBot's example config." }
+
+  # Raw 3.3V EXTRA IO header pins. GPIO3 is connected here only when its
+  # function-selection jumper is installed on the left.
+  - { label: "EXTRA IO - GPIO.3 - Jumper Left", generic_name: "IO3", mcu_pin: gpio.3, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole, voltage_max: 3.3 }, notes: "Raw 3.3V GPIO selected when the GPIO3 jumper is installed on the left. Shares gpio.3 with the opto-isolated In3 resource selected by the right jumper position; do not use both." }
+  - { label: "EXTRA IO - GPIO.10", generic_name: "IO10", mcu_pin: gpio.10, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole, voltage_max: 3.3 }, notes: "General-purpose raw 3.3V input/output; used as coolant.flood_pin in PiBot's tested I/O config." }
+  - { label: "EXTRA IO - GPIO.15", generic_name: "IO15", mcu_pin: gpio.15, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole, voltage_max: 3.3 }, notes: "General-purpose raw 3.3V input/output; used as coolant.mist_pin in PiBot's tested I/O config." }
+
+rs485_channels:
+  - label: "RS485"
+    generic_name: "RS485"
+    tx_pin: gpio.12
+    rx_pin: gpio.11
+    pins_reusable_as_generic_io: false
+    notes: >
+      Isolated RS485 with automatic direction control. PiBot's tested config
+      uses uart1 TX gpio.12, RX gpio.11 and rts_pin: NO_PIN.
+
+expansion_uarts:
+  - label: "Pendant / Expander"
+    generic_name: "Expander"
+    connector_type: "RJ12"
+    txd_pin: gpio.0
+    rxd_pin: gpio.35
+    baud: 1000000
+    mode: "8N1"
+    notes: >
+      Independent RJ12 port for PiBot pendant or expansion modules. PiBot's
+      tested config uses uart2 and uart_channel2.
+
+i2c_connectors:
+  - label: "OLED"
+    generic_name: "OLED"
+    sda_pin: gpio.14
+    scl_pin: gpio.13
+    notes: >
+      Dedicated four-pin OLED/I2C header with GND, 3.3V, GPIO13 SCL and
+      GPIO14 SDA. PiBot's tested OLED example uses address 0x3C, 128x64.
