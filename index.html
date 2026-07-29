@@ -1218,19 +1218,6 @@ function boardHasUartTmc(b) {
   return !!(b.motor_sockets && b.motor_sockets.sockets &&
     b.motor_sockets.sockets.some(s => s.extra && s.extra.bus === "uart1"));
 }
-// Used only for the informational row-label hints (e.g. "I/O Expansion
-// (uart_channel, uart1)") shown BEFORE the user has picked anything --
-// generateDraft() itself uses spareUartCandidates()/nextSpareUartNum()
-// below, which actually accounts for more than one of RS485/expansion
-// UART/I2C-as-UART being bound at once. Kept as a single best-guess number
-// here purely because showing every row the same static hint text
-// regardless of what else might get bound is simpler and still broadly
-// useful as a rough expectation-setter, not because only one is ever really
-// available -- see spareUartCandidates()'s own comment for why that
-// assumption doesn't hold.
-function defaultSecondaryUartNum(b) {
-  return boardHasUartTmc(b) ? 2 : 1;
-}
 
 // ESP32 has 3 UART hardware peripherals total: uart0 is always reserved for
 // the USB/serial console (see boardHasUartTmc()'s comment for the wiki
@@ -1260,9 +1247,7 @@ function spareUartCandidates(b) {
 // spare UART is spoken for (e.g. all 3 of RS485+expansion+I2C-as-UART bound
 // at once with only 2 spares, or 2 of them bound at once on a UART-TMC
 // board with only 1 spare), which the wizard has no further UART
-// peripherals to invent -- same genuine limitation defaultSecondaryUartNum()
-// was already documented against, just no longer applied OVER-eagerly to
-// cases that aren't actually a conflict.
+// peripherals to invent
 function nextSpareUartNum(board, usedUartNums) {
   const candidates = spareUartCandidates(board);
   const free = candidates.find(n => !usedUartNums.has(n));
@@ -2863,7 +2848,7 @@ function renderResources() {
             const pins = `txd=${c.txd_pin} rxd=${c.rxd_pin}${c.connector_type ? " (" + c.connector_type + ")" : ""}`;
             sub2.appendChild(makeRow(ckey, c.generic_name, pins, [
               { value: "unused", label: "— Unused —" },
-              { value: "uart_channel", label: `I/O Expansion (uart_channel, uart${defaultSecondaryUartNum(board)})` },
+              { value: "uart_channel", label: `I/O Expansion (uart_channel, uartN)` },
             ], c.label));
           } else if (c.kind === "rs485_channel") {
             const pins = `tx=${c.tx_pin} rx=${c.rx_pin}` + (c.rts_pin ? ` rts=${c.rts_pin}` : "");
@@ -2898,7 +2883,7 @@ function renderResources() {
       const pins = `txd=${ex.txd_pin} rxd=${ex.rxd_pin}${ex.connector_type ? " (" + ex.connector_type + ")" : ""}`;
       sec.appendChild(makeRow(key, gname(ex), pins, [
         { value: "unused", label: "— Unused —" },
-        { value: "uart_channel", label: `I/O Expansion (uart_channel, uart${defaultSecondaryUartNum(board)})` },
+        { value: "uart_channel", label: `I/O Expansion (uart_channel, uartN)` },
       ], ex.label));
     });
     if (boardHasUartTmc(board) && board.rs485_channels && board.rs485_channels.length) {
@@ -2929,7 +2914,7 @@ function renderResources() {
       sec.appendChild(makeRow(key, gname(ic), pins, [
         { value: "unused", label: "— Unused —" },
         { value: "i2c_bus", label: "I2C Bus (i2c0: — e.g. OLED display)" },
-        { value: "expansion_uart", label: `Expansion UART (scl=tx, sda=rx, uart${defaultSecondaryUartNum(board)})` },
+        { value: "expansion_uart", label: `Expansion UART (scl=tx, sda=rx, uart)` },
       ], ic.label));
     });
     col.appendChild(sec);
