@@ -36,4 +36,5 @@ hotspots:
   - generic_name: "FET26"
     rect: {x: 85.00, y: 76.00, w: 15.00, h: 12.00}
   - generic_name: "Expansion Module Socket"
-    rect: {x: 42.00, y: 48.00, w: 9.00, h: 24.00}
+    rect: {x: 42.00, y: 36.00, w: 38.00, h: 37.00}
+    socket_orientation: 0

@@ -413,6 +413,13 @@
     writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg);
   }
   .hotspot-role-label:empty { display: none; }
+  /* Module image overlay inside a socket hotspot rect */
+  .hotspot-rect.has-module-overlay { background: transparent !important; }
+  .hotspot-rect.has-module-overlay > .hotspot-label { opacity: 0.35; }
+  .module-socket-overlay { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+  .module-socket-rotated img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+  .module-hotspot-chip { position: absolute; pointer-events: auto; }
+  .module-hotspot-chip .hotspot-role-label { position: absolute; }
   .row.hotspot-target {
     background: rgba(230,60,200,.16); outline: 2px solid #e63cc8; outline-offset: 2px; border-radius: 6px;
   }
@@ -757,9 +764,11 @@ async function loadRoleData() {
 // (or fewer) module choices available -- never a hard error, since this
 // entire feature is additive on top of the wizard's core function.
 let MODULE_CATALOG = {};
+let MODULE_HOTSPOT_CATALOG = {}; // moduleId -> parsed hotspots YAML, or null
 
 async function loadModuleCatalog() {
   MODULE_CATALOG = {};
+  MODULE_HOTSPOT_CATALOG = {};
   const indexText = await fetchYamlTextOptional("modules/index.json");
   if (!indexText) return;
   let ids;
@@ -779,6 +788,8 @@ async function loadModuleCatalog() {
     } catch (e) {
       console.warn(`Couldn't parse modules/${id}.module.yaml (${e.message}), skipping.`);
     }
+    const htext = await fetchYamlTextOptional(`hotspots/${id}_module.hotspots.yaml`);
+    MODULE_HOTSPOT_CATALOG[id] = htext ? jsyaml.load(htext) : null;
   }
 }
 
@@ -1357,6 +1368,30 @@ function isPinLeaf(key, value) {
   return key.endsWith("_pin") || key === "pin";
 }
 
+/* Pin config-key names that config.yaml always uses to DRIVE something
+ * (a motor driver line, a laser/spindle/coolant output, an SPI/UART/I2S
+ * output line) -- FluidNC itself never reads these as inputs, so a
+ * pull-up/pull-down resistor (:pu/:pd) is meaningless on them regardless
+ * of what the underlying pin's conditioning/chip capability would
+ * otherwise allow (see pinWidgetHtml()'s supportsPull, where this is
+ * consulted as a hard floor ahead of the conditioning/chip checks -- it
+ * can only ever narrow supportsPull to false, never widen it). The
+ * :low/:high active-level suffix is still legitimate on these (e.g. an
+ * active-low laser output_pin), so this list only suppresses the pull
+ * picker, not the whole pin-attribute widget.
+ * Bug: doberman's gpio.45 bound to laser's output_pin was offering :pu/:pd
+ * -- output_pin is always a driven line, never a pulled-up input. */
+const OUTPUT_ONLY_PIN_KEYS = new Set([
+  "step_pin", "direction_pin", "disable_pin", "enable_pin", "reset_pin",
+  "ms1_pin", "ms2_pin", "ms3_pin", "cs_pin",
+  "output_pin", "output_cw_pin", "output_ccw_pin",
+  "forward_pin", "reverse_pin",
+  "mist_pin", "flood_pin",
+  "sck_pin", "mosi_pin", "txd_pin",
+  "bck_pin", "data_pin", "ws_pin",
+  "shared_stepper_disable_pin", "shared_stepper_reset_pin",
+]);
+
 /* Pins feeding a fixed hardware protocol/bus -- spi:, sdcard:, i2so:, i2c:,
  * and any uartN: block (whether from a dedicated onboard TMC bus, an
  * RS485/VFD channel, or an expansion_uart's uart_channel) -- are not
@@ -1776,7 +1811,14 @@ function pinWidgetHtml(slot) {
   // have neither, a chip-level fact, not a board-level one (per explicit
   // user direction: this should be sourced from the chip file, not
   // restated/guessed per board).
-  let supportsPull = !slot.basePin.startsWith("i2so.");
+  // Hard floor #1 (checked before the chip/conditioning facts below, and
+  // unlike those, keyed off the CONFIG KEY name rather than the physical
+  // pin -- see OUTPUT_ONLY_PIN_KEYS's own comment): this exact config.yaml
+  // field always drives something (motor line, laser/spindle/coolant
+  // output, SPI/UART/I2S output line). FluidNC never reads it as an input,
+  // so no pull resistor is meaningful here regardless of what the pin
+  // itself is otherwise capable of.
+  let supportsPull = !OUTPUT_ONLY_PIN_KEYS.has(slot.key) && !slot.basePin.startsWith("i2so.");
   if (supportsPull && slot.basePin.startsWith("gpio.")) {
     const num = parseInt(slot.basePin.slice(5), 10);
     const caps = chipGpioCaps[num];
@@ -2489,6 +2531,44 @@ function updateHotspotLayout() {
     el.style.width = (box.w / 100 * off.width) + "px";
     el.style.height = (box.h / 100 * off.height) + "px";
   });
+  // Size and place each module-image rotated div — uniform scale so the short edge of the
+  // socket constrains the image, pin side anchored to the socket edge, far end overflows.
+  document.querySelectorAll("#hotspotOverlay .module-socket-rotated").forEach(rotDiv => {
+    const modImg = rotDiv.querySelector("img");
+    // Fall back to physical 42:32 ratio until the image is loaded.
+    const imgAR = (modImg && modImg.naturalWidth && modImg.naturalHeight)
+      ? modImg.naturalWidth / modImg.naturalHeight : 42 / 32;
+    const sockBox = JSON.parse(rotDiv.dataset.sockPct);
+    const sockW = sockBox.w / 100 * off.width;
+    const sockH = sockBox.h / 100 * off.height;
+    const orient = parseInt(rotDiv.dataset.orient);
+    let divW, divH, divLeft, divTop;
+    if (orient === 0) {
+      // Pins left, no rotation: anchor left, overflow right
+      divH = sockH; divW = sockH * imgAR;
+      divLeft = 0; divTop = 0;
+    } else if (orient === 2) {
+      // Pins right, 180°: anchor right, overflow left
+      divH = sockH; divW = sockH * imgAR;
+      divLeft = sockW - divW; divTop = 0;
+    } else if (orient === 1) {
+      // Pins top, 90° CW: anchor top edge of post-rotation image at y=0, overflow bottom
+      divH = sockW; divW = sockW * imgAR;
+      divLeft = (sockW - divW) / 2;
+      divTop  = (divW - divH) / 2;
+    } else {
+      // Pins bottom, 270° CW: anchor bottom edge at y=sockH, overflow top
+      divH = sockW; divW = sockW * imgAR;
+      divLeft = (sockW - divW) / 2;
+      divTop  = sockH - (divW + divH) / 2;
+    }
+    Object.assign(rotDiv.style, {
+      position: "absolute", transformOrigin: "50% 50%",
+      width: divW + "px", height: divH + "px",
+      left: divLeft + "px", top: divTop + "px",
+      transform: `rotate(${orient * 90}deg)`,
+    });
+  });
 }
 
 // rect and label_rect each have their own INDEPENDENT orientation: if
@@ -2564,6 +2644,51 @@ function renderHotspotPane() {
     labelText.textContent = h.generic_name;
     labelSpan.appendChild(labelText);
     el.appendChild(labelSpan);
+    // Module image + sub-hotspot chips when a module with hotspot data is assigned
+    if (h.socket_orientation != null) {
+      const si = (board.expansion_sockets || []).findIndex(s => gname(s) === h.generic_name);
+      if (si >= 0) {
+        const moduleId = bindings[resourceKeyModuleSocket(si)];
+        const modHotspot = moduleId && MODULE_HOTSPOT_CATALOG[moduleId];
+        if (modHotspot) {
+          el.classList.add("has-module-overlay");
+          const modWrap = document.createElement("div");
+          modWrap.className = "module-socket-overlay";
+          const rotDiv = document.createElement("div");
+          rotDiv.className = "module-socket-rotated";
+          rotDiv.dataset.orient = h.socket_orientation;
+          rotDiv.dataset.sockPct = el.dataset.pct; // used by updateHotspotLayout to size this div
+          const modImg = document.createElement("img");
+          modImg.src = modHotspot.image;
+          modImg.alt = "";
+          modImg.onload = updateHotspotLayout;
+          rotDiv.appendChild(modImg);
+          (modHotspot.hotspots || []).forEach(mh => {
+            const chip = document.createElement("div");
+            chip.className = "hotspot-rect module-hotspot-chip";
+            chip.dataset.genericName = `${h.generic_name}/${mh.generic_name}`;
+            chip.style.cssText = `left:${mh.rect.x}%;top:${mh.rect.y}%;width:${mh.rect.w}%;height:${mh.rect.h}%;`;
+            chip.onclick = (e) => { e.stopPropagation(); jumpToGenericName(`${h.generic_name}/${mh.generic_name}`, chip); };
+            const chipLabel = document.createElement("span");
+            chipLabel.className = "hotspot-label" + (boxOrientation(mh.rect, null) === "vertical" ? " vertical" : "");
+            const chipLabelText = document.createElement("span");
+            chipLabelText.className = "hotspot-label-text";
+            chipLabelText.textContent = mh.generic_name;
+            chipLabel.appendChild(chipLabelText);
+            chip.appendChild(chipLabel);
+            rotDiv.appendChild(chip);
+            const roleBox2 = mh.label_rect || mh.rect;
+            const roleSpan2 = document.createElement("span");
+            roleSpan2.className = "hotspot-role-label" + (boxOrientation(roleBox2, mh.label_orientation) === "vertical" ? " vertical" : "");
+            roleSpan2.dataset.genericName = `${h.generic_name}/${mh.generic_name}`;
+            roleSpan2.style.cssText = `left:${roleBox2.x}%;top:${roleBox2.y}%;width:${roleBox2.w}%;height:${roleBox2.h}%;`;
+            rotDiv.appendChild(roleSpan2);
+          });
+          modWrap.appendChild(rotDiv);
+          el.appendChild(modWrap);
+        }
+      }
+    }
     overlay.appendChild(el);
     // Separate box for the ASSIGNED ROLE (once one exists) -- when the
     // hotspot has its own editor-authored label_rect, positioned there (in
@@ -2587,7 +2712,8 @@ function renderHotspotPane() {
     roleSpan.className = "hotspot-role-label" + (boxOrientation(roleBox, h.label_orientation) === "vertical" ? " vertical" : "");
     roleSpan.dataset.genericName = h.generic_name;
     roleSpan.dataset.pct = JSON.stringify(roleBox);
-    overlay.appendChild(roleSpan);
+    // Module image fills the rect when has-module-overlay; skip the overlapping role chip.
+    if (!el.classList.contains("has-module-overlay")) overlay.appendChild(roleSpan);
   });
   updateHotspotLayout(); // no-ops until the img's `load` fires if it hasn't already (e.g. cached image)
   refreshHotspotStates();
@@ -2828,6 +2954,7 @@ function renderResources() {
         bindings[key] = sel.value;
         computeResourcePins();
         renderResources();
+        if (hotspotData) renderHotspotPane();
         wireHotspotHoverLinks();
         generateDraft();
       };

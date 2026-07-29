@@ -35,6 +35,9 @@
   }
   button:hover { border-color: var(--accent); color: var(--accent); }
   button.primary { border-color: var(--accent); color: var(--accent); }
+  .mode-radios { display: flex; gap: 14px; align-items: center; }
+  .mode-radios label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px; }
+  .mode-radios input[type=radio] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
   /* Same severity-tier vocabulary as the main wizard's index.html --
    * .note-instruct (imperative, e.g. the default drag-hint text),
    * .note-info (neutral status, e.g. "N hotspots loaded"), .note-warn
@@ -182,6 +185,7 @@
     font-size: 10px; line-height: 14px; padding: 0 4px; border-radius: 3px; cursor: pointer;
     white-space: nowrap;
   }
+  .socket-stripe { position: absolute; background: var(--accent); opacity: 0.6; pointer-events: none; }
   pre#output {
     font-size: 11px; font-family: ui-monospace, monospace; white-space: pre-wrap; word-break: break-word;
     background: #10161a; border: 1px solid var(--border); border-radius: 4px; padding: 8px; margin-top: 6px;
@@ -194,13 +198,14 @@
 
 <div class="layout">
   <div class="col">
-    <h2>Board resource list</h2>
+    <h2 id="resourceListHeading">Board resource list</h2>
+    <div class="mode-radios" style="padding:0 0 6px">
+      <label><input type="radio" name="editorMode" id="modeBoardBtn" checked> Board</label>
+      <label><input type="radio" name="editorMode" id="modeModuleBtn"> Module</label>
+    </div>
     <div class="toolbar" style="padding:0 0 6px; border:none">
-      <!-- "primary" (accent-colored) until a board file's been loaded --
-           see loadLabelsFromText(), which removes it. The button's own
-           label already says "Load board.yaml file…", so a separate
-           "load a board file" instruction div was redundant with it --
-           replaced by this styling instead of removed-but-unreplaced. -->
+      <!-- "primary" (accent-colored) until a board/module file's been loaded --
+           see loadLabelsFromText(), which removes it. -->
       <button id="loadBoardFileBtn" class="primary">Load board.yaml file…</button>
       <input type="file" id="loadBoardFileInput" accept=".yaml,.yml,.txt,text/yaml,text/plain" style="display:none">
     </div>
@@ -217,7 +222,7 @@
 
   <div class="col imgcol" style="border-right:1px solid var(--border)">
     <div class="imgcol-header">
-      <h2>Board image</h2>
+      <h2 id="imageColHeading">Board image</h2>
       <div class="toolbar" style="padding:0 0 6px; border:none">
         <!-- "primary" (accent-colored) until an image's been loaded --
              see loadImgFileInput's onchange handler, which removes it. -->
@@ -251,7 +256,7 @@
     <div class="imgcol-body">
       <div id="imgWrap">
         <div id="imgPad">
-          <img id="boardImg" src="" alt="board photo">
+          <img id="boardImg" src="" alt="board photo" data-alt-board="board photo" data-alt-module="module photo">
         </div>
         <div id="overlay"></div>
       </div>
@@ -342,8 +347,9 @@ const BOARD_YAML_SECTION_TYPES = {
   rs485_channels: "rs485_channel",
   expansion_uarts: "expansion_uart",
   i2c_connectors: "i2c_connector",
-  expansion_sockets: "expansion_sockets"
+  expansion_sockets: "module_socket"
 };
+const MODULE_ASPECT_NARROW = 32, MODULE_ASPECT_LONG = 42, MODULE_STRIPE_PCT = 6;
 
 // Prefers each entry's generic_name (see board.schema.json/gname() in the
 // wizard itself) over its vendor label -- hotspots.yaml is authored in
@@ -412,6 +418,31 @@ function extractLabelsFromBoardYaml(text) {
 // `loadLabelsFromText()`/`parseLabelLines()`, with no textarea round-trip.
 let rawBoardYamlText = "";
 
+// When true, the editor is working on a module photo/hotspot file rather than
+// a board photo. Affects id key (module_id vs board_id), image naming
+// (_module suffix), save/download paths, and auto-load folder (modules/ vs boards/).
+let moduleMode = false;
+
+function setMode(isModule) {
+  moduleMode = isModule;
+  document.getElementById("modeBoardBtn").checked = !isModule;
+  document.getElementById("modeModuleBtn").checked = isModule;
+  document.getElementById("resourceListHeading").textContent =
+    isModule ? "Module connector list" : "Board resource list";
+  document.getElementById("loadBoardFileBtn").textContent =
+    isModule ? "Load module.yaml file\u2026" : "Load board.yaml file\u2026";
+  document.getElementById("imageColHeading").textContent =
+    isModule ? "Module image" : "Board image";
+  document.getElementById("loadImgFileBtn").textContent =
+    isModule ? "Load module image\u2026" : "Load board image\u2026";
+  const img = document.getElementById("boardImg");
+  img.alt = isModule ? img.dataset.altModule : img.dataset.altBoard;
+  renderOutput();
+}
+
+document.getElementById("modeBoardBtn").onchange = () => setMode(false);
+document.getElementById("modeModuleBtn").onchange = () => setMode(true);
+
 function parseLabelLines(text) {
   return text.split("\n").map(l => l.trim()).filter(Boolean).map(line => {
     const [label, type] = line.split("|").map(s => s.trim());
@@ -421,6 +452,9 @@ function parseLabelLines(text) {
 
 function loadLabelsFromText(text, sourceName) {
   rawBoardYamlText = text;
+  // Auto-detect mode from filename (covers both direct picks and auto-loaded paths).
+  if (sourceName && /\.module\.yaml/i.test(sourceName)) setMode(true);
+  else if (sourceName && /\.board\.yaml/i.test(sourceName)) setMode(false);
   const extracted = extractLabelsFromBoardYaml(text);
   labels = extracted.length ? extracted : parseLabelLines(text); // not a resource-bearing board.yaml -- assume it's already a plain label list
   armedLabel = null;
@@ -614,19 +648,24 @@ async function maybeAutoLoadImage() {
   if (document.getElementById("boardImg").getAttribute("src")) return; // already loaded
   const id = boardIdFromText();
   if (!id) return;
-  const found = await fetchFirstOk(["jpg", "jpeg", "png", "webp", "gif"].map(ext => `images/${id}.${ext}`));
+  const imgSuffix = moduleMode ? "_module" : "";
+  const found = await fetchFirstOk(["jpg", "jpeg", "png", "webp", "gif"].map(ext => `images/${id}${imgSuffix}.${ext}`));
   if (!found) return;
   const blob = await found.response.blob();
   loadImageBlob(blob, `${found.path} (auto-loaded)`);
 }
 
-// Image loaded first -> try to auto-load its matching board.yaml, guessed
-// from the image's own filename (stripped of extension) under the same
-// <id>.<ext> naming convention images/ and boards/ both follow. Only fires
-// when no board/label list is loaded yet.
+// Image loaded first -> try to auto-load its matching board/module yaml, guessed
+// from the image's own filename (stripped of extension). Module images follow the
+// <id>_module.<ext> convention -- the _module suffix is stripped to get the
+// module id, and the file is sought in modules/ rather than boards/.
 async function maybeAutoLoadBoardFile(idGuess) {
   if (labels.length || !idGuess) return;
-  const found = await fetchFirstOk([`boards/${idGuess}.board.yaml`]);
+  const isModuleImage = /_module$/i.test(idGuess);
+  const bareId = isModuleImage ? idGuess.replace(/_module$/i, "") : idGuess;
+  const found = await fetchFirstOk(
+    isModuleImage ? [`modules/${bareId}.module.yaml`] : [`boards/${idGuess}.board.yaml`]
+  );
   if (!found) return;
   const text = await found.response.text();
   loadLabelsFromText(text, `${found.path} (auto-loaded)`);
@@ -813,7 +852,7 @@ overlay.addEventListener("mousedown", (e) => {
     return;
   }
   const r = overlayRect();
-  drawing = { startX: e.clientX - r.left, startY: e.clientY - r.top };
+  drawing = { startX: e.clientX - r.left, startY: e.clientY - r.top, isModuleSocket: getArmedType() === "module_socket" };
   const el = document.createElement("div");
   // NOT class "rect" -- renderHotspots() clears every ".rect" element and
   // rebuilds strictly from the `hotspots` array, and this temp element
@@ -847,7 +886,8 @@ document.addEventListener("mousemove", (e) => {
   if (drawing) {
     const x = e.clientX - r.left, y = e.clientY - r.top;
     const left = Math.min(drawing.startX, x), top = Math.min(drawing.startY, y);
-    const w = Math.abs(x - drawing.startX), h = Math.abs(y - drawing.startY);
+    let w = Math.abs(x - drawing.startX), h = Math.abs(y - drawing.startY);
+    if (drawing.isModuleSocket && w > 0) h = w * (MODULE_ASPECT_NARROW / MODULE_ASPECT_LONG);
     Object.assign(drawing.el.style, { left: left + "px", top: top + "px", width: w + "px", height: h + "px" });
     // Live-preview either box's orientation as it's dragged out, using the
     // same "taller than wide -> vertical" heuristic the real commit (see
@@ -877,8 +917,19 @@ document.addEventListener("mousemove", (e) => {
       box.x = snapPct(dragging.orig.x + pctDx);
       box.y = snapPct(dragging.orig.y + pctDy);
     } else {
-      box.w = Math.max(1, snapPct(dragging.orig.w + pctDx));
-      box.h = Math.max(1, snapPct(dragging.orig.h + pctDy));
+      if (hs.socketOrientation != null) {
+        // Resize holding the pin-1 corner fixed; aspect ratio locked.
+        const signX = (hs.socketOrientation === 2 || hs.socketOrientation === 3) ? -1 : 1;
+        box.w = Math.max(1, snapPct(dragging.orig.w + pctDx * signX));
+        enforceModuleAspect(hs);
+        if (hs.socketOrientation === 2 || hs.socketOrientation === 3)
+          box.x = snapPct(dragging.orig.x + dragging.orig.w - box.w);
+        if (hs.socketOrientation === 0 || hs.socketOrientation === 3)
+          box.y = snapPct(dragging.orig.y + dragging.orig.h - box.h);
+      } else {
+        box.w = Math.max(1, snapPct(dragging.orig.w + pctDx));
+        box.h = Math.max(1, snapPct(dragging.orig.h + pctDy));
+      }
     }
     renderHotspots();
   }
@@ -892,6 +943,7 @@ document.addEventListener("mouseup", (e) => {
     const w = parseFloat(rectEl.style.width), h = parseFloat(rectEl.style.height);
     overlay.removeChild(rectEl);
     const forLabelId = drawing.forLabelId;
+    const isModSock = drawing.isModuleSocket;
     drawing = null;
     if (w > 4 && h > 4) { // ignore accidental clicks/tiny drags
       // Convert from "px within the overlay" to "% of the original image",
@@ -921,14 +973,10 @@ document.addEventListener("mouseup", (e) => {
             w: snapPct(w / off.width * 100), h: snapPct(h / off.height * 100),
           },
           label: armedLabel,
-          // No explicit orientation override on either box yet --
-          // effectiveOrientation() infers each one live from its OWN
-          // current aspect ratio until/unless that box's own orient-btn
-          // sets one by hand (see effectiveOrientation()'s comment). rect
-          // and labelRect are fully independent here: drawing/resizing one
-          // never affects the other's orientation.
           labelRect: null, rectOrientation: null, labelOrientation: null,
+          socketOrientation: isModSock ? 0 : null,
         };
+        if (isModSock) enforceModuleAspect(hotspot);
         hotspots.push(hotspot);
         armedLabel = null;
         selectedId = hotspot.id;
@@ -973,6 +1021,28 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function effectiveOrientation(box, override) {
   if (override === "vertical" || override === "horizontal") return override;
   return box && box.h > box.w ? "vertical" : "horizontal";
+}
+
+// Returns the type string for the currently-armed label (e.g. "module_socket"),
+// or null when nothing is armed or the label isn't in the list.
+function getArmedType() {
+  if (!armedLabel) return null;
+  const item = labels.find(l => l.label === armedLabel);
+  return item ? item.type : null;
+}
+
+// Adjusts h.rect.h to match the locked 32:42 aspect ratio for the given
+// socket orientation (landscape for 0/2, portrait for 1/3).
+function enforceModuleAspect(h) {
+  const isLandscape = h.socketOrientation === 0 || h.socketOrientation === 2;
+  const off = imgOffset();
+  // Percentages are fractions of the image's own axes, so the physical ratio
+  // must be divided by the image's aspect ratio to get the right pixel shape.
+  const imgAR = (off.width && off.height) ? off.width / off.height : 1;
+  const ratio = isLandscape
+    ? MODULE_ASPECT_NARROW / MODULE_ASPECT_LONG
+    : MODULE_ASPECT_LONG / MODULE_ASPECT_NARROW;
+  h.rect.h = snapPct(h.rect.w * ratio * imgAR);
 }
 
 // What effectiveOrientation() would return with NO override -- i.e. the
@@ -1027,6 +1097,34 @@ function renderHotspots() {
     resPreview.appendChild(resPreviewText);
     el.appendChild(resPreview);
 
+    // Pin-edge stripe and 12-cell pin grid for module socket hotspots.
+    if (h.socketOrientation != null) {
+      const p = MODULE_STRIPE_PCT;
+      const isLandscape = h.socketOrientation === 0 || h.socketOrientation === 2;
+
+      // 12-cell grid: 11 lines perpendicular to the stripe, inside the inset.
+      const grid = document.createElement("div");
+      Object.assign(grid.style, {
+        position: "absolute", pointerEvents: "none", opacity: "0.5",
+        backgroundImage: `repeating-linear-gradient(${isLandscape ? "to bottom" : "to right"},` +
+          `transparent 0,transparent calc(100% / 12 - 1px),` +
+          `var(--accent) calc(100% / 12 - 1px),var(--accent) calc(100% / 12))`
+      });
+      if      (h.socketOrientation === 0) Object.assign(grid.style, { top: "0", bottom: "0", left:  "0", width:  `${p}%` });
+      else if (h.socketOrientation === 1) Object.assign(grid.style, { left: "0", right: "0", top:   "0", height: `${p}%` });
+      else if (h.socketOrientation === 2) Object.assign(grid.style, { top: "0", bottom: "0", right: "0", width:  `${p}%` });
+      else                                Object.assign(grid.style, { left: "0", right: "0", bottom:"0", height: `${p}%` });
+      el.appendChild(grid);
+
+      const stripe = document.createElement("div");
+      stripe.className = "socket-stripe";
+      if      (h.socketOrientation === 0) Object.assign(stripe.style, { top: "0", bottom: "0", left:   `${p}%`, width:  "2px" });
+      else if (h.socketOrientation === 1) Object.assign(stripe.style, { left: "0", right: "0", top:    `${p}%`, height: "2px" });
+      else if (h.socketOrientation === 2) Object.assign(stripe.style, { top: "0", bottom: "0", right:  `${p}%`, width:  "2px" });
+      else                                Object.assign(stripe.style, { left: "0", right: "0", bottom: `${p}%`, height: "2px" });
+      el.appendChild(stripe);
+    }
+
     el.addEventListener("mousedown", (e) => {
       e.stopPropagation();
       e.preventDefault();
@@ -1060,6 +1158,16 @@ function renderHotspots() {
 
       const handle = document.createElement("div");
       handle.className = "handle";
+      if (h.socketOrientation != null) {
+        // Per-orientation: handle opposite pin-1 corner (0→TR, 1→BR, 2→BL, 3→TL).
+        const pos = [
+          { top: "-6px", right: "-6px", bottom: "auto", left: "auto",  cursor: "nesw-resize" },
+          { top: "auto",  right: "-6px", bottom: "-6px", left: "auto",  cursor: "nwse-resize" },
+          { top: "auto",  right: "auto",  bottom: "-6px", left: "-6px", cursor: "nesw-resize" },
+          { top: "-6px", right: "auto",  bottom: "auto",  left: "-6px", cursor: "nwse-resize" },
+        ][h.socketOrientation];
+        Object.assign(handle.style, pos);
+      }
       handle.addEventListener("mousedown", (e) => {
         e.stopPropagation();
         e.preventDefault();
@@ -1068,51 +1176,61 @@ function renderHotspots() {
       });
       el.appendChild(handle);
 
-      // Orientation override toggle for THIS box (rect), independent of the
-      // role box's own toggle below -- see effectiveOrientation()'s comment.
-      const rectOrientBtn = document.createElement("div");
-      rectOrientBtn.className = "orient-btn";
-      rectOrientBtn.textContent = effectiveOrientation(h.rect, h.rectOrientation);
-      rectOrientBtn.addEventListener("mousedown", (e) => e.stopPropagation());
-      rectOrientBtn.onclick = (e) => {
-        e.stopPropagation();
-        const next = effectiveOrientation(h.rect, h.rectOrientation) === "vertical" ? "horizontal" : "vertical";
-        // Toggling back to whatever the box's own aspect ratio already
-        // implies clears the override entirely (back to "auto") rather than
-        // pinning an explicit value that's now redundant -- see
-        // aspectOrientation()'s comment.
-        h.rectOrientation = (next === aspectOrientation(h.rect)) ? null : next;
-        renderHotspots();
-        renderOutput();
-      };
-      el.appendChild(rectOrientBtn);
-
-      // "+ role box" button: arms drawingLabelForId so the NEXT drag on the
-      // overlay places this hotspot's labelRect, rather than creating a new
-      // connector hotspot. Only offered when there's no labelRect yet --
-      // once one exists, it has its own move/resize/delete handles (below)
-      // for adjusting it in place; there's no separate "redraw" affordance.
-      if (!h.labelRect) {
-        const labelBtn = document.createElement("div");
-        labelBtn.className = "label-btn";
-        labelBtn.textContent = "+ role box";
-        labelBtn.addEventListener("mousedown", (e) => e.stopPropagation());
-        labelBtn.onclick = (e) => {
+      // Orientation toggle or rotate button, depending on hotspot kind.
+      if (h.socketOrientation != null) {
+        // Module socket: cycle pin-edge orientation; no role box.
+        const SOCK_DIR = ["\u2190 pins", "\u2191 pins", "\u2192 pins", "\u2193 pins"];
+        const rotateBtn = document.createElement("div");
+        rotateBtn.className = "orient-btn";
+        rotateBtn.textContent = SOCK_DIR[h.socketOrientation];
+        rotateBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+        rotateBtn.onclick = (e) => {
           e.stopPropagation();
-          drawingLabelForId = (drawingLabelForId === h.id) ? null : h.id;
-          updateDrawHint();
+          h.socketOrientation = (h.socketOrientation + 1) % 4;
+          // Every step crosses landscape↔portrait; old h_pct is a fraction of
+          // imgH, new w_pct must be a fraction of imgW, so divide by imgAR.
+          const off = imgOffset();
+          const imgAR = (off.width && off.height) ? off.width / off.height : 1;
+          h.rect.w = snapPct(h.rect.h / imgAR);
+          enforceModuleAspect(h);
           renderHotspots();
+          renderOutput();
         };
-        el.appendChild(labelBtn);
+        el.appendChild(rotateBtn);
+      } else {
+        // Regular hotspot: orientation override toggle.
+        const rectOrientBtn = document.createElement("div");
+        rectOrientBtn.className = "orient-btn";
+        rectOrientBtn.textContent = effectiveOrientation(h.rect, h.rectOrientation);
+        rectOrientBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+        rectOrientBtn.onclick = (e) => {
+          e.stopPropagation();
+          const next = effectiveOrientation(h.rect, h.rectOrientation) === "vertical" ? "horizontal" : "vertical";
+          h.rectOrientation = (next === aspectOrientation(h.rect)) ? null : next;
+          renderHotspots();
+          renderOutput();
+        };
+        el.appendChild(rectOrientBtn);
+
+        if (!h.labelRect) {
+          const labelBtn = document.createElement("div");
+          labelBtn.className = "label-btn";
+          labelBtn.textContent = "+ role box";
+          labelBtn.addEventListener("mousedown", (e) => e.stopPropagation());
+          labelBtn.onclick = (e) => {
+            e.stopPropagation();
+            drawingLabelForId = (drawingLabelForId === h.id) ? null : h.id;
+            updateDrawHint();
+            renderHotspots();
+          };
+          el.appendChild(labelBtn);
+        }
       }
     }
     overlay.appendChild(el);
 
-    // Separate labelRect box, rendered as a sibling (its coordinates are in
-    // the SAME % space as the connector box, i.e. relative to the whole
-    // image, not nested inside the connector element) so it can sit
-    // anywhere on the photo, independent of the connector's own position.
-    if (h.labelRect) {
+    // labelRect not used for module socket hotspots.
+    if (h.labelRect && h.socketOrientation == null) {
       const lel = document.createElement("div");
       lel.className = "rect hotspot label-rect" + (h.id === selectedId ? " selected" : "");
       const lpx = pctToPx(h.labelRect);
@@ -1240,30 +1358,24 @@ function boardIdGuess() {
  * instead, for a real, resolution-independent, unmodified source photo.
  * ------------------------------------------------------------------- */
 function renderOutput() {
-  let y = `board_id: ${boardIdGuess()}\n`;
-  y += `image: images/${boardIdGuess()}.jpg\n`;
+  const id = boardIdGuess();
+  const imgSuffix = moduleMode ? "_module" : "";
+  let y = `${moduleMode ? "module_id" : "board_id"}: ${id}\n`;
+  y += `image: images/${id}${imgSuffix}.jpg\n`;
   y += `hotspots:\n`;
   if (hotspots.length === 0) y += `  []\n`;
   hotspots.forEach(h => {
     y += `  - generic_name: ${JSON.stringify(h.label)}\n`;
     // rect and label_rect share the same {x,y,w,h} object shape, deliberately.
     y += `    rect: {x: ${h.rect.x.toFixed(2)}, y: ${h.rect.y.toFixed(2)}, w: ${h.rect.w.toFixed(2)}, h: ${h.rect.h.toFixed(2)}}\n`;
-    // rect_orientation is optional: written only when the contributor
-    // explicitly overrode it via rect's own orient-btn (h.rectOrientation
-    // non-null) -- otherwise omitted entirely, and the wizard infers it live
-    // from rect's own aspect ratio instead (see effectiveOrientation() /
-    // index.html's matching logic). Independent of label_orientation below.
-    if (h.rectOrientation) y += `    rect_orientation: ${h.rectOrientation}\n`;
-    if (h.labelRect) {
-      // Optional: only present when the developer drew a separate box for
-      // the role text (see "+ role box" button) -- omitted entirely
-      // otherwise, so the wizard's fallback (label text inside the
-      // connector box itself) stays in effect for ordinary-sized connectors.
-      y += `    label_rect: {x: ${h.labelRect.x.toFixed(2)}, y: ${h.labelRect.y.toFixed(2)}, w: ${h.labelRect.w.toFixed(2)}, h: ${h.labelRect.h.toFixed(2)}}\n`;
-      // label_orientation is likewise optional now -- only written when
-      // explicitly overridden (h.labelOrientation non-null); omitted when
-      // left on auto, same reasoning as rect_orientation above.
-      if (h.labelOrientation) y += `    label_orientation: ${h.labelOrientation}\n`;
+    if (h.socketOrientation != null) {
+      y += `    socket_orientation: ${h.socketOrientation}\n`;
+    } else {
+      if (h.rectOrientation) y += `    rect_orientation: ${h.rectOrientation}\n`;
+      if (h.labelRect) {
+        y += `    label_rect: {x: ${h.labelRect.x.toFixed(2)}, y: ${h.labelRect.y.toFixed(2)}, w: ${h.labelRect.w.toFixed(2)}, h: ${h.labelRect.h.toFixed(2)}}\n`;
+        if (h.labelOrientation) y += `    label_orientation: ${h.labelOrientation}\n`;
+      }
     }
   });
   document.getElementById("output").textContent = y;
@@ -1280,7 +1392,7 @@ function renderOutput() {
  * ------------------------------------------------------------------- */
 function parseHotspotsYaml(text) {
   const lines = text.split("\n");
-  let boardId = null, image = null;
+  let boardId = null, image = null, isModule = false;
   const parsed = [];
   let current = null;
   lines.forEach(raw => {
@@ -1288,6 +1400,7 @@ function parseHotspotsYaml(text) {
     if (!line) return;
     let m;
     if ((m = line.match(/^board_id:\s*(\S+)/))) { boardId = m[1]; return; }
+    if ((m = line.match(/^module_id:\s*(\S+)/))) { boardId = m[1]; isModule = true; return; }
     if ((m = line.match(/^image:\s*(\S+)/))) { image = m[1]; return; }
     if (line === "hotspots:" || line === "[]") return;
     // "generic_name:" (singular scalar) is the current key -- one hotspot,
@@ -1297,14 +1410,14 @@ function parseHotspotsYaml(text) {
     // (every real file ever had exactly one anyway); either way the value
     // loaded here IS a generic name once re-saved.
     if ((m = line.match(/^-\s*generic_name:\s*"((?:[^"\\]|\\.)*)"/))) {
-      current = { id: nextId++, rect: { x: 0, y: 0, w: 0, h: 0 }, label: m[1].replace(/\\"/g, '"'), labelRect: null, rectOrientation: null, labelOrientation: null };
+      current = { id: nextId++, rect: { x: 0, y: 0, w: 0, h: 0 }, label: m[1].replace(/\\"/g, '"'), labelRect: null, rectOrientation: null, labelOrientation: null, socketOrientation: null };
       parsed.push(current);
       return;
     }
     if ((m = line.match(/^-\s*(?:generic_names|labels):\s*\[(.*)\]/))) {
       const re = /"((?:[^"\\]|\\.)*)"/g;
       const lm = re.exec(m[1]);
-      current = { id: nextId++, rect: { x: 0, y: 0, w: 0, h: 0 }, label: lm ? lm[1].replace(/\\"/g, '"') : "", labelRect: null, rectOrientation: null, labelOrientation: null };
+      current = { id: nextId++, rect: { x: 0, y: 0, w: 0, h: 0 }, label: lm ? lm[1].replace(/\\"/g, '"') : "", labelRect: null, rectOrientation: null, labelOrientation: null, socketOrientation: null };
       parsed.push(current);
       return;
     }
@@ -1317,6 +1430,7 @@ function parseHotspotsYaml(text) {
     // aspect ratio" (see effectiveOrientation()). Independent of
     // label_orientation below; either, both, or neither may be present.
     if ((m = line.match(/^rect_orientation:\s*(\S+)/))) { current.rectOrientation = m[1]; return; }
+    if ((m = line.match(/^socket_orientation:\s*(\d+)/))) { current.socketOrientation = parseInt(m[1]); return; }
     if ((m = line.match(/^label_rect:\s*\{x:\s*([-\d.]+),\s*y:\s*([-\d.]+),\s*w:\s*([-\d.]+),\s*h:\s*([-\d.]+)\}/))) {
       current.labelRect = { x: parseFloat(m[1]), y: parseFloat(m[2]), w: parseFloat(m[3]), h: parseFloat(m[4]) };
       return;
@@ -1334,7 +1448,7 @@ function parseHotspotsYaml(text) {
     if ((m = line.match(/^w:\s*([-\d.]+)/))) { current.rect.w = parseFloat(m[1]); return; }
     if ((m = line.match(/^h:\s*([-\d.]+)/))) { current.rect.h = parseFloat(m[1]); return; }
   });
-  return { boardId, image, hotspots: parsed };
+  return { boardId, image, isModule, hotspots: parsed };
 }
 
 function loadHotspotsFromText(text, sourceName) {
@@ -1353,6 +1467,7 @@ function loadHotspotsFromText(text, sourceName) {
     return;
   }
   hotspots = result.hotspots;
+  if (result.isModule) setMode(true);
   // Note: this doesn't touch the label textarea/board_id guess -- the
   // hotspots file only records which labels are USED, not the board's full
   // label list, so the left-pane label list stays whatever's already
@@ -1403,7 +1518,7 @@ function downloadImage() {
   canvas.toBlob((blob) => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${boardIdGuess()}.jpg`;
+    a.download = `${boardIdGuess()}${moduleMode ? "_module" : ""}.jpg`;
     a.click();
   }, "image/jpeg", 0.9);
 }
@@ -1424,7 +1539,7 @@ document.getElementById("downloadBtn").onclick = () => {
   const blob = new Blob([document.getElementById("output").textContent], { type: "text/yaml" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `${boardIdGuess()}.hotspots.yaml`;
+  a.download = `${boardIdGuess()}${moduleMode ? "_module" : ""}.hotspots.yaml`;
   a.click();
 };
 document.getElementById("clearBtn").onclick = () => {
@@ -1449,7 +1564,7 @@ document.getElementById("saveServerBtn").onclick = async () => {
     resetLater();
     return;
   }
-  const filename = `${id}.hotspots.yaml`;
+  const filename = `${id}${moduleMode ? "_module" : ""}.hotspots.yaml`;
   try {
     const resp = await fetch(`/__save_hotspots__/${encodeURIComponent(filename)}`, {
       method: "POST",

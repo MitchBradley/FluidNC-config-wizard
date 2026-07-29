@@ -5,12 +5,17 @@
   "description": "Describes where a board's connectors/pins appear on a photo of the board, for the mapping wizard's clickable board-photo pane (index.html). One hotspots.yaml per board, named <board_id>.hotspots.yaml, authored with hotspot-editor.html (not hand-written -- see HOTSPOTS_FILE_GUIDE.md). Each hotspot's generic_name must match a generic_name written in that board's own board.yaml (see board.schema.json) -- this is the join key the wizard uses to link a clicked photo region to a resource row; a hotspots.yaml is meaningless without its board.yaml. COORDINATE MODEL (important, and non-obvious from the numbers alone): rect/label_rect coordinates are percentages of the RAW, AS-SAVED photo's own width/height (0,0 = photo's top-left corner, 100,100 = photo's bottom-right corner) -- NOT percentages of some padded/normalized canvas. Values are deliberately UNBOUNDED: a label_rect (or, less commonly, a rect) may legitimately use negative x/y or extend past 100, when a connector sits at the photo's edge and its label needs to spill outside the photo itself (e.g. a label above a connector at the very top edge uses a negative y). The wizard (index.html), not this file or the image itself, is responsible for reserving visual padding around the photo at view time so every hotspot -- including off-photo label overflow -- stays visible; the hotspot editor deliberately does NOT pad or resize the saved image to accommodate this. This is a deliberate architecture choice (see PROGRESS.md 2026-07-16/17 entries) -- earlier versions of this tool baked padding into the exported image and remapped coordinates into that padded space; that approach was reverted in favor of keeping the image untouched and pushing the padding math into the wizard, since view-time and save-time scaling look visually identical but only the former keeps hotspots.yaml simple and the source image unmodified.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["board_id", "image", "hotspots"],
+  "required": ["image", "hotspots"],
   "properties": {
     "board_id": {
       "type": "string",
       "pattern": "^[a-z0-9_]+$",
       "description": "Must exactly match the board.id of the board.yaml this file describes (and thus this file's own <board_id>.hotspots.yaml filename). The wizard loads a board's hotspots.yaml by this naming convention, not by any field cross-check -- a mismatch here silently means the photo pane just won't appear."
+    },
+    "module_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "For module hotspot files: must exactly match the module.id of the module.yaml this file describes. The file is named <module_id>_module.hotspots.yaml and the image images/<module_id>_module.<ext>. Mutually exclusive with board_id."
     },
     "image": {
       "type": "string",
@@ -65,6 +70,11 @@
           "type": "string",
           "enum": ["horizontal", "vertical"],
           "description": "Optional text flow direction for the connector's own name shown inside/at rect. If absent (the common case), the wizard infers it from rect's own aspect ratio (taller than wide -> vertical) -- only present when a contributor explicitly overrode that inference by hand in the hotspot editor. Fully independent of label_orientation below: rect and label_rect are each oriented from their own shape, with no coupling between them."
+        },
+        "socket_orientation": {
+          "type": "integer",
+          "enum": [0, 1, 2, 3],
+          "description": "Present only on module-socket hotspots (expansion_sockets entries). Encodes which edge of the rect is the pin/connector side: 0=left, 1=top, 2=right, 3=bottom. The rect always has a fixed 32:42 aspect ratio (narrow:long); orientation 0 and 2 are landscape (w>h), 1 and 3 are portrait (h>w). When present, label_rect and rect_orientation are not used."
         },
         "label_rect": {
           "$ref": "#/$defs/percentBox",
