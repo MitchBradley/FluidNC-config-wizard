@@ -74,8 +74,12 @@ hotspots:
     rect: {x: 74.00, y: 3.00, w: 3.00, h: 16.00}
     label_rect: {x: 74.00, y: -20.00, w: 3.00, h: 22.00}
   - generic_name: "IO25"
-    rect: {x: 64.00, y: 70.00, w: 6.00, h: 3.00}
-    label_rect: {x: 70.00, y: 70.00, w: 20.00, h: 4.00}
+    rect: {x: 67.00, y: 70.00, w: 7.00, h: 4.00}
+    label_rect: {x: 47.00, y: 70.00, w: 20.00, h: 5.00}
   - generic_name: "IO27"
-    rect: {x: 64.00, y: 66.00, w: 6.00, h: 4.00}
-    label_rect: {x: 70.00, y: 65.00, w: 20.00, h: 5.00}
+    rect: {x: 67.00, y: 66.00, w: 7.00, h: 4.00}
+    label_rect: {x: 47.00, y: 66.00, w: 20.00, h: 5.00}
+  - generic_name: "Expander Module"
+    rect: {x: 87.00, y: 57.00, w: 12.00, h: 8.00}
+    label_rect: {x: 99.00, y: 57.00, w: 11.00, h: 8.00}
+    

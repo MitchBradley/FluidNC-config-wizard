@@ -61,3 +61,24 @@ generic_pins:
 rs485_channels:
   - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
 
+expansion_uarts:
+  - label: "Expander"
+    generic_name: "Expander Module"
+    connector_type: "RJ12 Expander"
+    txd_pin: gpio.27
+    rxd_pin: gpio.25
+    baud: 1000000
+    mode: "8N1"
+    notes: >
+      Wiki: "Built in RJ12 for pendants and expanders" (FluidDial, Airedale).
+      First board in this schema with a dedicated expansion UART connector
+      distinct from the generic bidirectional-pin expansion_sockets used by
+      6x/4x -- this connector's pins are fixed and always meant to be
+      written into config.yaml as a uartN:/uart_channelN: pair (per the
+      wiki's own example config), never consumed silently like a TMC UART
+      bus. No rts_pin/cts_pin -- confirmed via the wiki's own example, which
+      writes both as literal NO_PIN. This board has no onboard UART-
+      addressed TMC drivers, so the wizard's default uart_num for this
+      connector is 1 (see rs485_channels.notes for the resulting real,
+      accepted conflict on boards that DO have such drivers, e.g. the 4x
+      controller).
