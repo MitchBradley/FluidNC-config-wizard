@@ -32,7 +32,7 @@ generic_pins:
 
   - label: "Pin4"
     generic_name: "IO 4"
-    module_pin: "8"
+    module_pin: "4"
     direction: either
     input_profile: { conditioning: raw }
     output_profile: { drive_type: totem_pole }
