@@ -2973,6 +2973,18 @@ function renderResources() {
       row.classList.add("module-socket-row");
       const sel = row.querySelector("select");
       sel.onchange = () => {
+        const previousModuleId = bindings[key];
+        if (previousModuleId && previousModuleId !== "unused") {
+          const oldConnectors = resolveModuleSocketConnectors(s, previousModuleId) || [];
+          oldConnectors.forEach((c, ci) => {
+            const oldKey = resourceKeyModConn(si, ci);
+            delete bindings[oldKey];
+            delete pinAttrs[`${oldKey}.txd_pin`];
+            delete pinAttrs[`${oldKey}.rxd_pin`];
+            delete pinAttrs[`${oldKey}.rts_pin`];
+            delete pinAttrs[`${oldKey}.cts_pin`];
+          });
+        }
         bindings[key] = sel.value;
         computeResourcePins();
         renderResources();
@@ -3733,7 +3745,7 @@ function generateDraft() {
     ...(board.rs485_channels || []).map((ch, i) => ({ ch, key: resourceKeyRs485(i) })),
     ...allModuleSocketConnectors()
       .filter(x => x.connector.kind === "rs485_channel")
-      .map(x => ({ ch: x.connector, key: x.key })),
+      .map(x => ({ ch: { ...x.connector, commentLabel: `${x.socket.label}/${x.connector.label}` }, key: x.key })),
   ];
   const allExpansionUarts = [
     ...(board.expansion_uarts || []).map((ex, i) => ({ ex, key: resourceKeyExpUart(i) })),
@@ -3755,9 +3767,10 @@ function generateDraft() {
     // block's first field (txd_pin/model) rather than the whole section.
     const uartBlock = { txd_pin: ch.tx_pin, rxd_pin: ch.rx_pin };
     if (ch.rts_pin) uartBlock.rts_pin = ch.rts_pin;
-    annotate(cfg, `uart${n}`, ch.label);
+    const annotateLabel = ch.commentLabel || ch.label;
+    annotate(cfg, `uart${n}`, annotateLabel);
     cfg[`uart${n}`] = uartBlock;
-    annotate(cfg, "ModbusVFD", ch.label);
+    annotate(cfg, "ModbusVFD", annotateLabel);
     cfg.ModbusVFD = {
       model: model,
       uart_num: n,
@@ -4207,25 +4220,30 @@ function importConfig(doc, rawText) {
   const pinLabelHints = buildPinLabelHints(rawText);
 
   function isPendantModule(mod) {
-    if (!mod || !Array.isArray(mod.expansion_uarts)) return false;
-    return mod.expansion_uarts.some(eu => {
-      const label = String(eu.generic_name || eu.label || "").toLowerCase();
-      return label.includes("pendant");
-    });
+    if (!mod) return false;
+    const hasPendantConnector = Array.isArray(mod.expansion_uarts) || Array.isArray(mod.rs485_channels);
+    if (!hasPendantConnector) return false;
+    const candidateLabels = [];
+    (mod.expansion_uarts || []).forEach(c => candidateLabels.push(String(c.generic_name || c.label || "").toLowerCase()));
+    (mod.rs485_channels || []).forEach(c => candidateLabels.push(String(c.generic_name || c.label || "").toLowerCase()));
+    return candidateLabels.some(label => label.includes("pendant"));
   }
 
-  function inferPendantModuleSocket(txdPin, rxdPin) {
+  function inferPendantModuleSocket(txdPin, rxdPin, kind = "expansion_uart") {
     if (!board.expansion_sockets) return null;
     const candidates = [];
     Object.keys(MODULE_CATALOG).sort().forEach(moduleId => {
       const mod = MODULE_CATALOG[moduleId];
-      if (!isPendantModule(mod)) return;
+      if (kind === "expansion_uart" && !isPendantModule(mod)) return;
+      if (kind === "rs485_channel" && !Array.isArray(mod.rs485_channels)) return;
       board.expansion_sockets.forEach((socket, si) => {
         if (!moduleFitsSocket(mod, socket)) return;
         const connectors = resolveModuleSocketConnectors(socket, moduleId);
         (connectors || []).forEach((c, ci) => {
-          if (c.kind !== "expansion_uart") return;
-          if (c.txd_pin === txdPin && c.rxd_pin === rxdPin) {
+          if (c.kind !== kind) return;
+          const tx = c.kind === "rs485_channel" ? c.tx_pin : c.txd_pin;
+          const rx = c.kind === "rs485_channel" ? c.rx_pin : c.rxd_pin;
+          if (tx === txdPin && rx === rxdPin) {
             candidates.push({ si, moduleId, ci, connector: c });
           }
         });
@@ -4298,8 +4316,8 @@ function importConfig(doc, rawText) {
   // regenerated from the new bindings) -- defaults to ctxLabel, which
   // already IS that path for every call site except the motor-socket one
   // (see below), which passes its own more specific path explicitly.
-  function claimPin(pinRaw, role, ctxLabel, attrPath, allowedPrefixes) {
-    const r = resolvePin(pinRaw, ctxLabel, allowedPrefixes);
+  function claimPin(pinRaw, role, ctxLabel, attrPath, allowedPrefixes, suppressFailure) {
+    const r = resolvePin(pinRaw, ctxLabel, allowedPrefixes, suppressFailure);
     if (!r) return null;
     bind(r.resourceKey, role, ctxLabel);
     const path = attrPath !== undefined ? attrPath : ctxLabel;
@@ -4509,7 +4527,18 @@ function importConfig(doc, rawText) {
       // fixed-protocol path (see isFixedProtocolPath()) that never gets
       // PINSLOT/attr treatment, and "ModbusVFD" itself isn't a real pin
       // leaf path -- nothing to attach attrs to here either way.
-      const resourceKey = claimPin(uartBlock.txd_pin, `vfd:${model}`, "ModbusVFD", null, ["rs485"]);
+      let resourceKey = claimPin(uartBlock.txd_pin, `vfd:${model}`, "ModbusVFD", null, ["rs485"], true);
+      if (!resourceKey) {
+        const inferred = inferPendantModuleSocket(uartBlock.txd_pin, uartBlock.rxd_pin, "rs485_channel");
+        if (inferred) {
+          bindings[resourceKeyModuleSocket(inferred.si)] = inferred.moduleId;
+          computeResourcePins();
+          pinOwnerIndex = buildPinOwnerIndex();
+          resourceKey = resourceKeyModConn(inferred.si, inferred.ci);
+          report.notes.push(`ModbusVFD: inferred RS485 module "${inferred.moduleId}" via module socket ${inferred.si}`);
+          bind(resourceKey, `vfd:${model}`, "ModbusVFD");
+        }
+      }
       if (resourceKey) {
         // ModbusVFD is deliberately excluded from SPINDLE_TYPES (see the
         // comment by SPINDLE_LABELS -- it's unmodeled there since it has no
@@ -4524,7 +4553,7 @@ function importConfig(doc, rawText) {
         // skip them rather than leave dead paramValues entries.
         copyScalarParams(doc.ModbusVFD, "ModbusVFD", new Set(["model", "uart_num", "modbus_id"]));
       } else {
-        const message = `uart${n}.txd_pin did not resolve to an RS485 channel`; 
+        const message = `uart${n}.txd_pin did not resolve to an RS485 channel`;
         report.unrecognized.push(`ModbusVFD: ${message}, skipped`);
         recordFailedImport("ModbusVFD", doc.ModbusVFD, message);
       }
