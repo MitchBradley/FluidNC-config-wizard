@@ -927,7 +927,15 @@ function allModuleSocketConnectors() {
   (board.expansion_sockets || []).forEach((s, si) => {
     const moduleId = bindings[resourceKeyModuleSocket(si)];
     const connectors = resolveModuleSocketConnectors(s, moduleId);
-    (connectors || []).forEach((c, ci) => out.push({ si, ci, socket: s, key: resourceKeyModConn(si, ci), connector: c }));
+    (connectors || []).forEach((c, ci) => out.push({
+      si,
+      ci,
+      socket: s,
+      key: resourceKeyModConn(si, ci),
+      connector: c,
+      moduleId,
+      moduleName: moduleId && MODULE_CATALOG[moduleId] ? MODULE_CATALOG[moduleId].module.name : undefined,
+    }));
   });
   return out;
 }
@@ -2228,18 +2236,18 @@ function computeResourcePins() {
   (board.expansion_sockets || []).forEach((s, si) => {
     record(resourceKeyModuleSocket(si), s.label, gname(s));
   });
-  allModuleSocketConnectors().forEach(({ si, key, socket: s, connector: c }) => {
+  allModuleSocketConnectors().forEach(({ si, key, socket: s, connector: c, moduleName }) => {
     const pins = c.kind === "generic_pin" ? [c.mcu_pin]
       : c.kind === "expansion_uart" ? [c.txd_pin, c.rxd_pin]
       : [c.tx_pin, c.rx_pin, c.rts_pin];
     resourcePins[key] = pins.filter(Boolean);
     // Matches the exact label string generateDraft()'s dispatch loops
-    // build for this same resource (`${s.label}/${c.label}`) -- must stay
+    // build for this same resource (`${s.label}/${moduleName}/${c.label}`) -- must stay
     // identical so a comment hint scraped from an exported file's
     // "# <label>" line matches this map's value exactly, same convention
     // the old per-pin expansion_sockets resource used before module
     // sockets existed as their own concept.
-    record(key, `${s.label}/${c.label}`, `${gname(s)}/${c.generic_name}`);
+    record(key, `${s.label}/${moduleName}/${c.label}`, `${gname(s)}/${c.generic_name}`);
   });
   (board.rs485_channels || []).forEach((ch, i) => {
     resourcePins[resourceKeyRs485(i)] = [ch.tx_pin, ch.rx_pin, ch.rts_pin].filter(Boolean);
@@ -3627,9 +3635,9 @@ function generateDraft() {
   // (see allExpansionUarts/allRs485Channels), since those have their own
   // fixed uart_channel/ModbusVFD shape rather than the generic per-pin
   // role tree this loop drives.
-  allModuleSocketConnectors().forEach(({ key, socket: s, connector: c }) => {
+  allModuleSocketConnectors().forEach(({ key, socket: s, connector: c, moduleName }) => {
     if (c.kind !== "generic_pin") return;
-    allPins.push({ p: { label: `${s.label}/${c.label}`, mcu_pin: c.mcu_pin, direction: c.direction }, key });
+    allPins.push({ p: { label: `${s.label}/${moduleName}/${c.label}`, mcu_pin: c.mcu_pin, direction: c.direction }, key });
   });
 
   let spindleBound = false;
@@ -3745,13 +3753,13 @@ function generateDraft() {
     ...(board.rs485_channels || []).map((ch, i) => ({ ch, key: resourceKeyRs485(i) })),
     ...allModuleSocketConnectors()
       .filter(x => x.connector.kind === "rs485_channel")
-      .map(x => ({ ch: { ...x.connector, commentLabel: `${x.socket.label}/${x.connector.label}` }, key: x.key })),
+      .map(x => ({ ch: { ...x.connector, commentLabel: `${x.socket.label}/${x.moduleName}/${x.connector.label}` }, key: x.key })),
   ];
   const allExpansionUarts = [
     ...(board.expansion_uarts || []).map((ex, i) => ({ ex, key: resourceKeyExpUart(i) })),
     ...allModuleSocketConnectors()
       .filter(x => x.connector.kind === "expansion_uart")
-      .map(x => ({ ex: { ...x.connector, commentLabel: `${x.socket.label}/${x.connector.label}` }, key: x.key })),
+      .map(x => ({ ex: { ...x.connector, commentLabel: `${x.socket.label}/${x.moduleName}/${x.connector.label}` }, key: x.key })),
   ];
   allRs485Channels.forEach(({ ch, key }) => {
     const role = bindings[key];
@@ -4254,10 +4262,64 @@ function importConfig(doc, rawText) {
     return preferred || candidates[0];
   }
 
+  function normalizeHintLabel(label) {
+    return String(label || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s*\/\s*/g, "/")
+      .replace(/\s+/g, " ");
+  }
+
+  function inferModuleSocketFromHint(label, pinRaw) {
+    if (!board.expansion_sockets) return null;
+    const parsed = parsePinString(pinRaw);
+    if (!parsed) return null;
+    const normalizedHint = normalizeHintLabel(label);
+    const candidates = [];
+    Object.keys(MODULE_CATALOG).sort().forEach(moduleId => {
+      const mod = MODULE_CATALOG[moduleId];
+      if (!mod) return;
+      board.expansion_sockets.forEach((socket, si) => {
+        if (!moduleFitsSocket(mod, socket)) return;
+        const connectors = resolveModuleSocketConnectors(socket, moduleId);
+        (connectors || []).forEach((c, ci) => {
+          const moduleName = MODULE_CATALOG[moduleId].module.name;
+          const candidateLabel = `${socket.label}/${moduleName}/${c.label}`;
+          const normalizedCandidateLabel = normalizeHintLabel(candidateLabel);
+          const connectorPins = c.kind === "generic_pin"
+            ? [c.mcu_pin]
+            : c.kind === "expansion_uart"
+              ? [c.txd_pin, c.rxd_pin]
+              : [c.tx_pin, c.rx_pin, c.rts_pin].filter(Boolean);
+          const pinMatches = connectorPins.includes(parsed.basePin);
+          const labelMatches = normalizedCandidateLabel === normalizedHint || normalizedCandidateLabel.endsWith(normalizedHint) || normalizedHint.endsWith(normalizedCandidateLabel);
+          if (pinMatches && labelMatches) {
+            candidates.push({ si, moduleId, ci, connector: c });
+          }
+        });
+      });
+    });
+    if (!candidates.length) return null;
+    return candidates[0];
+  }
+
   function resolvePin(pinRaw, ctxLabel, allowedPrefixes, suppressFailure) {
     const parsed = parsePinString(pinRaw);
     if (!parsed) return null;
-    const candidates = pinOwnerIndex[parsed.basePin] || [];
+    let candidates = pinOwnerIndex[parsed.basePin] || [];
+    if (!candidates.length) {
+      const hint = pinLabelHints[parsed.basePin];
+      if (hint) {
+        const inferred = inferModuleSocketFromHint(hint, pinRaw);
+        if (inferred) {
+          bindings[resourceKeyModuleSocket(inferred.si)] = inferred.moduleId;
+          computeResourcePins();
+          pinOwnerIndex = buildPinOwnerIndex();
+          candidates = pinOwnerIndex[parsed.basePin] || [];
+          report.notes.push(`${ctxLabel}: inferred module "${inferred.moduleId}" via module socket ${inferred.si} from label "${hint}"`);
+        }
+      }
+    }
     if (!candidates.length) {
       if (!suppressFailure) {
         const message = `pin ${parsed.basePin} not found on ${board.board.id}`;
