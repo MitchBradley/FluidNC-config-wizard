@@ -50,42 +50,42 @@ motor_sockets:
     that established convention rather than implying a fixed axis binding.
   sockets:
     - label: "Motor Drivers - X"
-      generic_name: Driver1
+      generic_name: "Driver1"
       driver_class: external_connector
       pins: { step_pin: i2so.0, direction_pin: i2so.1, disable_pin: i2so.2 }
       notes: "Limit input gpio.42 corresponds to this connector in the wiki's own example config (axes.x.motor0) -- see generic_pins."
     - label: "Motor Drivers - Y"
-      generic_name: Driver2
+      generic_name: "Driver2"
       driver_class: external_connector
       pins: { step_pin: i2so.3, direction_pin: i2so.4, disable_pin: i2so.5 }
       notes: "Limit input gpio.41 corresponds to this connector in the wiki's own example config (axes.x.motor1) -- see generic_pins."
     - label: "Motor Drivers - Z"
-      generic_name: Driver3
+      generic_name: "Driver3"
       driver_class: external_connector
       pins: { step_pin: i2so.6, direction_pin: i2so.7, disable_pin: i2so.8 }
       notes: "Limit input gpio.40 corresponds to this connector in the wiki's own example config (axes.y.motor0) -- see generic_pins."
     - label: "Motor Drivers - A"
-      generic_name: Driver4
+      generic_name: "Driver4"
       driver_class: external_connector
       pins: { step_pin: i2so.9, direction_pin: i2so.10, disable_pin: i2so.11 }
       notes: "Limit input gpio.39 corresponds to this connector in the wiki's own example config (axes.y.motor1) -- see generic_pins."
     - label: "Motor Drivers - B"
-      generic_name: Driver5
+      generic_name: "Driver5"
       driver_class: external_connector
       pins: { step_pin: i2so.12, direction_pin: i2so.13, disable_pin: i2so.14 }
       notes: "Limit input gpio.38 corresponds to this connector in the wiki's own example config (axes.z.motor0, wired as limit_all_pin) -- see generic_pins."
     - label: "Motor Drivers - C"
-      generic_name: Driver6
+      generic_name: "Driver6"
       driver_class: external_connector
       pins: { step_pin: i2so.15, direction_pin: i2so.16, disable_pin: i2so.17 }
       notes: "Limit input gpio.37 corresponds to this connector in the wiki's own example config (axes.z.motor1, wired as limit_all_pin) -- see generic_pins."
     - label: "Motor Drivers - U"
-      generic_name: Driver7
+      generic_name: "Driver7"
       driver_class: external_connector
       pins: { step_pin: i2so.18, direction_pin: i2so.19, disable_pin: i2so.20 }
       notes: "Limit input gpio.36 corresponds to this connector in the wiki's own example config (axes.a.motor0) -- see generic_pins."
     - label: "Motor Drivers - V"
-      generic_name: Driver8
+      generic_name: "Driver8"
       driver_class: external_connector
       pins: { step_pin: i2so.21, direction_pin: i2so.22, disable_pin: i2so.23 }
       notes: "Limit input gpio.48 corresponds to this connector in the wiki's own example config (axes.a.motor1) -- see generic_pins."
@@ -155,7 +155,7 @@ rs485_channels:
 
 expansion_uarts:
   - label: "Expansion Port"
-    generic_name: "Expander"
+    generic_name: "Pendant"
     connector_type: "RJ12"
     txd_pin: gpio.0
     rxd_pin: gpio.35

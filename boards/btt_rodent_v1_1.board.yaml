@@ -28,25 +28,25 @@ i2c_connectors:
 motor_sockets:
   sockets:
     - label: "X"
-      generic_name: Motor1
+      generic_name: "Motor1"
       driver_class: onboard_fixed
       fixed_motor_type: tmc_5160
       pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0, cs_pin: gpio.5 }
       extra: { spi_index: 1, r_sense_ohms_hint: 0.075 }
     - label: "Y"
-      generic_name: Motor2
+      generic_name: "Motor2"
       driver_class: onboard_fixed
       fixed_motor_type: tmc_5160
       pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
       extra: { spi_index: 2, r_sense_ohms_hint: 0.075 }
     - label: "Z"
-      generic_name: Motor3
+      generic_name: "Motor3"
       driver_class: onboard_fixed
       fixed_motor_type: tmc_5160
       pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
       extra: { spi_index: 3, r_sense_ohms_hint: 0.075 }
     - label: "E"
-      generic_name: Motor4
+      generic_name: "Motor4"
       driver_class: onboard_fixed
       fixed_motor_type: tmc_5160
       pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }

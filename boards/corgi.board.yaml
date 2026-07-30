@@ -45,28 +45,28 @@ fixed_peripherals:
 motor_sockets:
   sockets:
     - label: "Motor Driver Signals - i2so.1,2,0"
-      generic_name: Driver1
+      generic_name: "Driver1"
       driver_class: external_connector
       pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
       notes: "Wiki: 'Any motor output can be used for any axis or motor number... labeled Motor1 through motor6, just for reference.' Identical I2SO wiring to the 6x controller's Motor1."
     - label: "Motor Driver Signals - i2so.4,5,7"
-      generic_name: Driver2
+      generic_name: "Driver2"
       driver_class: external_connector
       pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
     - label: "Motor Driver Signals - i2so.9,10,8"
-      generic_name: Driver3
+      generic_name: "Driver3"
       driver_class: external_connector
       pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
     - label: "Motor Driver Signals - i2so.12,13,15"
-      generic_name: Driver4
+      generic_name: "Driver4"
       driver_class: external_connector
       pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
     - label: "Motor Driver Signals - i2so.17,18,16"
-      generic_name: Driver5
+      generic_name: "Driver5"
       driver_class: external_connector
       pins: { step_pin: i2so.18, direction_pin: i2so.17, disable_pin: i2so.16 }
     - label: "Motor Driver Signals - i2so.20,21,23"
-      generic_name: Driver6
+      generic_name: "Driver6"
       driver_class: external_connector
       pins: { step_pin: i2so.21, direction_pin: i2so.20, disable_pin: i2so.23 }
 
@@ -177,8 +177,8 @@ rs485_channels:
       on this board to conflict with).
 
 expansion_uarts:
-  - label: "Expander"
-    generic_name: "Expander"
+  - label: "Pendant"
+    generic_name: "Pendant"
     connector_type: "RJ12 Expander"
     txd_pin: gpio.27
     rxd_pin: gpio.25

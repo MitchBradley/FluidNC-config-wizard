@@ -66,7 +66,7 @@ motor_sockets:
     not yet modeled by the current wizard.
   sockets:
     - label: "DRV1 / X"
-      generic_name: Motor1
+      generic_name: "Motor1"
       driver_class: stepstick_socket
       pins:
         step_pin: i2so.2
@@ -75,7 +75,7 @@ motor_sockets:
         ms3_pin: i2so.3
       notes: "Shares EN/STEP/DIR with Driver1. MS3 doubles as CSX for a supported SPI TMC module."
     - label: "DRV2 / Y"
-      generic_name: Motor2
+      generic_name: "Motor2"
       driver_class: stepstick_socket
       pins:
         step_pin: i2so.5
@@ -84,7 +84,7 @@ motor_sockets:
         ms3_pin: i2so.6
       notes: "Shares EN/STEP/DIR with Driver2. MS3 doubles as CSY for a supported SPI TMC module."
     - label: "DRV3 / Z"
-      generic_name: Motor3
+      generic_name: "Motor3"
       driver_class: stepstick_socket
       pins:
         step_pin: i2so.10
@@ -93,7 +93,7 @@ motor_sockets:
         ms3_pin: i2so.11
       notes: "Shares EN/STEP/DIR with Driver3. MS3 doubles as CSZ for a supported SPI TMC module."
     - label: "DRV4 / A"
-      generic_name: Motor4
+      generic_name: "Motor4"
       driver_class: stepstick_socket
       pins:
         step_pin: i2so.13
@@ -102,7 +102,7 @@ motor_sockets:
         ms3_pin: i2so.14
       notes: "Shares EN/STEP/DIR with Driver4. MS3 doubles as CSA for a supported SPI TMC module."
     - label: "DRV5 / B"
-      generic_name: Motor5
+      generic_name: "Motor5"
       driver_class: stepstick_socket
       pins:
         step_pin: i2so.18
@@ -111,7 +111,7 @@ motor_sockets:
         ms3_pin: i2so.19
       notes: "Shares EN/STEP/DIR with Driver5. MS3 doubles as CSB for a supported SPI TMC module."
     - label: "DRV6 / C"
-      generic_name: Motor6
+      generic_name: "Motor6"
       driver_class: stepstick_socket
       pins:
         step_pin: i2so.21
@@ -120,7 +120,7 @@ motor_sockets:
         ms3_pin: i2so.22
       notes: "Shares EN/STEP/DIR with Driver6. MS3 doubles as CSC for a supported SPI TMC module."
     - label: "External Driver X - EN/STP/DIR"
-      generic_name: Driver1
+      generic_name: "Driver1"
       driver_class: external_connector
       pins:
         step_pin: i2so.2
@@ -128,7 +128,7 @@ motor_sockets:
         disable_pin: i2so.0
       notes: "Shares EN i2so.0, STEP i2so.2 and DIR i2so.1 with onboard socket DRV1/X; that socket's MS3/CSX is i2so.3."
     - label: "External Driver Y - EN/STP/DIR"
-      generic_name: Driver2
+      generic_name: "Driver2"
       driver_class: external_connector
       pins:
         step_pin: i2so.5
@@ -136,7 +136,7 @@ motor_sockets:
         disable_pin: i2so.7
       notes: "Shares EN i2so.7, STEP i2so.5 and DIR i2so.4 with onboard socket DRV2/Y; that socket's MS3/CSY is i2so.6."
     - label: "External Driver Z - EN/STP/DIR"
-      generic_name: Driver3
+      generic_name: "Driver3"
       driver_class: external_connector
       pins:
         step_pin: i2so.10
@@ -144,7 +144,7 @@ motor_sockets:
         disable_pin: i2so.8
       notes: "Shares EN i2so.8, STEP i2so.10 and DIR i2so.9 with onboard socket DRV3/Z; that socket's MS3/CSZ is i2so.11."
     - label: "External Driver A - EN/STP/DIR"
-      generic_name: Driver4
+      generic_name: "Driver4"
       driver_class: external_connector
       pins:
         step_pin: i2so.13
@@ -152,7 +152,7 @@ motor_sockets:
         disable_pin: i2so.15
       notes: "Shares EN i2so.15, STEP i2so.13 and DIR i2so.12 with onboard socket DRV4/A; that socket's MS3/CSA is i2so.14."
     - label: "External Driver B - EN/STP/DIR"
-      generic_name: Driver5
+      generic_name: "Driver5"
       driver_class: external_connector
       pins:
         step_pin: i2so.18
@@ -160,7 +160,7 @@ motor_sockets:
         disable_pin: i2so.16
       notes: "Shares EN i2so.16, STEP i2so.18 and DIR i2so.17 with onboard socket DRV5/B; that socket's MS3/CSB is i2so.19."
     - label: "External Driver C - EN/STP/DIR"
-      generic_name: Driver6
+      generic_name: "Driver6"
       driver_class: external_connector
       pins:
         step_pin: i2so.21
@@ -229,7 +229,7 @@ rs485_channels:
 
 expansion_uarts:
   - label: "Pendant / Expander"
-    generic_name: "Expander"
+    generic_name: "Pendant"
     connector_type: "RJ12"
     txd_pin: gpio.0
     rxd_pin: gpio.35

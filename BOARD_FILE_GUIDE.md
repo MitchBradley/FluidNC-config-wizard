@@ -155,7 +155,7 @@ its own `notes:` explaining the overlap.
 
 Nearly every entry above accepts an optional `generic_name` -- a normalized,
 vendor-independent name (e.g. `Driver1`, `In2`, `5V Out4`, `FET4`,
-`Spindle Out15`, `Spindle 10V`, `RS485`, `Expander`) used by the wizard's UI
+`Spindle Out15`, `Spindle 10V`, `RS485`, `Pendant`) used by the wizard's UI
 and by hotspots.yaml files (see HOTSPOTS_FILE_GUIDE.md) instead of each
 board's own inconsistent silkscreen/vendor label. Apply this fixed scheme
 when it's unambiguous:

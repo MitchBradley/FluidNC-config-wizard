@@ -99,7 +99,7 @@ hotspots:
     rect: {x: 70.00, y: 2.00, w: 6.00, h: 5.00}
     label_rect: {x: 66.00, y: -14.00, w: 11.00, h: 16.00}
     label_orientation: horizontal
-  - generic_name: "Expander"
+  - generic_name: "Pendant"
     rect: {x: 23.00, y: 67.00, w: 3.00, h: 16.00}
     label_rect: {x: 17.00, y: 45.00, w: 9.00, h: 22.00}
   - generic_name: "IO25"

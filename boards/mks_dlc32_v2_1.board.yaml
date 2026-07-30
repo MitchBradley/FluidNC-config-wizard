@@ -16,27 +16,27 @@ motor_sockets:
   shared_disable_pin: i2so.0
   sockets:
     - label: "X"
-      generic_name: Motor1
+      generic_name: "Motor1"
       driver_class: stepstick_socket
       pins: { step_pin: i2so.1, direction_pin: i2so.2 }
     - label: "Y"
-      generic_name: Motor2
+      generic_name: "Motor2"
       driver_class: stepstick_socket
       pins: { step_pin: i2so.5, direction_pin: i2so.6 }
     - label: "Z"
-      generic_name: Motor3
+      generic_name: "Motor3"
       driver_class: stepstick_socket
       pins: { step_pin: i2so.3, direction_pin: i2so.4 }
     - label: "XEXT"
-      generic_name: Driver1
+      generic_name: "Driver1"
       driver_class: external_connector
       pins: { step_pin: i2so.1, direction_pin: i2so.2 }
     - label: "YEXT"
-      generic_name: Driver2
+      generic_name: "Driver2"
       driver_class: external_connector
       pins: { step_pin: i2so.5, direction_pin: i2so.6 }
     - label: "ZEXT"
-      generic_name: Driver3
+      generic_name: "Driver3"
       driver_class: external_connector
       pins: { step_pin: i2so.3, direction_pin: i2so.4 }
 generic_pins:

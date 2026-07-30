@@ -46,21 +46,21 @@ motor_sockets:
   shared_disable_pin: gpio.13
   sockets:
     - label: "X Motor"
-      generic_name: Motor1
+      generic_name: "Motor1"
       driver_class: onboard_fixed
       fixed_motor_type: tmc_2209
       pins: { step_pin: gpio.14, direction_pin: gpio.12 }
       extra: { bus: uart1, addr: 0 }
       notes: "Limit input gpio.36 is wired to this axis in the example config; see generic_pins."
     - label: "Y Motor"
-      generic_name: Motor2
+      generic_name: "Motor2"
       driver_class: onboard_fixed
       fixed_motor_type: tmc_2209
       pins: { step_pin: gpio.25, direction_pin: gpio.26 }
       extra: { bus: uart1, addr: 1 }
       notes: "Limit input gpio.39 is wired to this axis in the example config; see generic_pins."
     - label: "Z (pen lift)"
-      generic_name: Motor3
+      generic_name: "Motor3"
       driver_class: onboard_fixed
       fixed_motor_type: rc_servo
       pins: { output_pin: gpio.21 }
@@ -104,7 +104,7 @@ generic_pins:
 # Module pins for use with an I/O Expander module
 expansion_uarts:
   - label: "I/O Expander"
-    generic_name: "Expander"
+    generic_name: "Pendant"
     connector_type: "CNC I/O module header (2 of the usual 4 I/O pins wired)"
     txd_pin: gpio.4
     rxd_pin: gpio.15

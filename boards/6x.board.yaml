@@ -13,27 +13,27 @@ fixed_peripherals:
 motor_sockets:
   sockets:
     - label: "Motor1"
-      generic_name: Driver1
+      generic_name: "Driver1"
       driver_class: external_connector
       pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
     - label: "Motor2"
-      generic_name: Driver2
+      generic_name: "Driver2"
       driver_class: external_connector
       pins: { step_pin: i2so.5, direction_pin: i2so.4, disable_pin: i2so.7 }
     - label: "Motor3"
-      generic_name: Driver3
+      generic_name: "Driver3"
       driver_class: external_connector
       pins: { step_pin: i2so.10, direction_pin: i2so.9, disable_pin: i2so.8 }
     - label: "Motor4"
-      generic_name: Driver4
+      generic_name: "Driver4"
       driver_class: external_connector
       pins: { step_pin: i2so.13, direction_pin: i2so.12, disable_pin: i2so.15 }
     - label: "Motor5"
-      generic_name: Driver5
+      generic_name: "Driver5"
       driver_class: external_connector
       pins: { step_pin: i2so.18, direction_pin: i2so.17, disable_pin: i2so.16 }
     - label: "Motor6"
-      generic_name: Driver6
+      generic_name: "Driver6"
       driver_class: external_connector
       pins: { step_pin: i2so.21, direction_pin: i2so.20, disable_pin: i2so.23 }
 generic_pins:

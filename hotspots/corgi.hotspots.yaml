@@ -42,7 +42,7 @@ hotspots:
   - generic_name: "FET4"
     rect: {x: 90.00, y: 58.00, w: 7.00, h: 7.00}
     label_rect: {x: 97.00, y: 58.00, w: 10.00, h: 7.00}
-  - generic_name: "Expander"
+  - generic_name: "Pendant"
     rect: {x: 88.00, y: 79.00, w: 9.00, h: 12.00}
     label_rect: {x: 97.00, y: 79.00, w: 10.00, h: 11.00}
     rect_orientation: horizontal

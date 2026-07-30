@@ -40,7 +40,7 @@ hotspots:
   - generic_name: "IO15"
     rect: {x: 72.00, y: 31.00, w: 9.00, h: 6.00}
     label_rect: {x: 53.00, y: 31.00, w: 19.00, h: 6.00}
-  - generic_name: "Expander"
+  - generic_name: "Pendant"
     rect: {x: 64.00, y: 9.00, w: 17.00, h: 16.00}
     label_rect: {x: 40.00, y: 9.00, w: 23.00, h: 16.00}
   - generic_name: "In32"

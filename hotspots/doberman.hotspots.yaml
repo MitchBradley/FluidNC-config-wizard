@@ -82,7 +82,7 @@ hotspots:
   - generic_name: "Spindle Out8"
     rect: {x: 85.00, y: 22.00, w: 7.00, h: 6.00}
     label_rect: {x: 92.00, y: 22.00, w: 13.00, h: 6.00}
-  - generic_name: "Expander"
+  - generic_name: "Pendant"
     rect: {x: 85.00, y: 77.00, w: 9.00, h: 12.00}
     rect_orientation: horizontal
     label_rect: {x: 94.00, y: 77.00, w: 11.00, h: 12.00}

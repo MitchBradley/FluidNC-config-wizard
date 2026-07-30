@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <title>FluidNC Board Mapping Wizard</title>
 <script>(function(e,t){typeof exports==`object`&&typeof module<`u`?t(exports):typeof define==`function`&&define.amd?define([`exports`],t):(e=typeof globalThis<`u`?globalThis:e||self,t(e.jsyaml={}))})(this,function(e){Object.defineProperty(e,Symbol.toStringTag,{value:`Module`});var t=Symbol(`NOT_RESOLVED`),n=Symbol(`MERGE_KEY`);function r(e,t){var n,r,i,a,o,s;return{tagName:e,nodeKind:`scalar`,implicit:(n=t.implicit)==null?!1:n,matchByTagPrefix:(r=t.matchByTagPrefix)==null?!1:r,implicitFirstChars:(i=t.implicitFirstChars)==null?null:i,resolve:t.resolve,identify:(a=t.identify)==null?null:a,represent:(o=t.represent)==null?(e=>String(e)):o,representTagName:(s=t.representTagName)==null?null:s}}function i(e,t){var n,r,i,a,o;let s=t.finalize===void 0;return{tagName:e,nodeKind:`sequence`,implicit:!1,matchByTagPrefix:(n=t.matchByTagPrefix)==null?!1:n,create:t.create,addItem:t.addItem,finalize:(r=t.finalize)==null?(e=>e):r,carrierIsResult:s,identify:(i=t.identify)==null?null:i,represent:(a=t.represent)==null?(e=>e):a,representTagName:(o=t.representTagName)==null?null:o}}function a(e,t){var n,r,i,a,o;let s=t.finalize===void 0;return{tagName:e,nodeKind:`mapping`,implicit:!1,matchByTagPrefix:(n=t.matchByTagPrefix)==null?!1:n,create:t.create,addPair:t.addPair,has:t.has,keys:t.keys,get:t.get,finalize:(r=t.finalize)==null?(e=>e):r,carrierIsResult:s,identify:(i=t.identify)==null?null:i,represent:(a=t.represent)==null?(e=>e):a,representTagName:(o=t.representTagName)==null?null:o}}var o=r(`tag:yaml.org,2002:str`,{resolve:e=>e,identify:e=>typeof e==`string`}),s=[``,`~`,`null`,`Null`,`NULL`],c=r(`tag:yaml.org,2002:null`,{implicit:!0,implicitFirstChars:[``,`~`,`n`,`N`],resolve:e=>s.indexOf(e)===-1?t:null,identify:e=>e===null,represent:()=>`null`}),l=r(`tag:yaml.org,2002:null`,{implicit:!0,implicitFirstChars:[`n`],resolve:(e,n)=>e===`null`||n&&e===``?null:t,identify:e=>e===null,represent:()=>`null`}),u=[``,`~`,`null`,`Null`,`NULL`],d=r(`tag:yaml.org,2002:null`,{implicit:!0,implicitFirstChars:[``,`~`,`n`,`N`],resolve:e=>u.indexOf(e)===-1?t:null,identify:e=>e===null,represent:()=>`null`}),f=[`true`,`True`,`TRUE`],p=[`false`,`False`,`FALSE`],m=r(`tag:yaml.org,2002:bool`,{implicit:!0,implicitFirstChars:[`t`,`T`,`f`,`F`],resolve:e=>f.indexOf(e)===-1?p.indexOf(e)===-1?t:!1:!0,identify:e=>Object.prototype.toString.call(e)===`[object Boolean]`,represent:e=>e?`true`:`false`}),h=[`true`],ee=[`false`],te=r(`tag:yaml.org,2002:bool`,{implicit:!0,implicitFirstChars:[`t`,`f`],resolve:e=>h.indexOf(e)===-1?ee.indexOf(e)===-1?t:!1:!0,identify:e=>Object.prototype.toString.call(e)===`[object Boolean]`,represent:e=>e?`true`:`false`}),ne=[`true`,`True`,`TRUE`,`y`,`Y`,`yes`,`Yes`,`YES`,`on`,`On`,`ON`],re=[`false`,`False`,`FALSE`,`n`,`N`,`no`,`No`,`NO`,`off`,`Off`,`OFF`],ie=r(`tag:yaml.org,2002:bool`,{implicit:!0,implicitFirstChars:[`y`,`Y`,`n`,`N`,`t`,`T`,`f`,`F`,`o`,`O`],resolve:e=>ne.indexOf(e)===-1?re.indexOf(e)===-1?t:!1:!0,identify:e=>Object.prototype.toString.call(e)===`[object Boolean]`,represent:e=>e?`true`:`false`}),ae=RegExp(`^(?:0o[0-7]+|0x[0-9a-fA-F]+|[-+]?[0-9]+)$`),oe=RegExp(`^(?:[-+]?0b[0-1]+|[-+]?0o[0-7]+|[-+]?0x[0-9a-fA-F]+|[-+]?[0-9]+)$`);function se(e){let t=e,n=1;return(t[0]===`-`||t[0]===`+`)&&(t[0]===`-`&&(n=-1),t=t.slice(1)),t.startsWith(`0b`)?n*parseInt(t.slice(2),2):t.startsWith(`0o`)?n*parseInt(t.slice(2),8):t.startsWith(`0x`)?n*parseInt(t.slice(2),16):n*parseInt(t,10)}function ce(e,n){if(n){if(!oe.test(e))return t}else if(!ae.test(e))return t;let r=se(e);return Number.isFinite(r)?r:t}var le=r(`tag:yaml.org,2002:int`,{implicit:!0,implicitFirstChars:[`-`,`+`,...`0123456789`],resolve:ce,identify:e=>Number.isInteger(e)&&!Object.is(e,-0)&&e.toString(10).indexOf(`e`)<0,represent:e=>e.toString(10)}),ue=RegExp(`^-?(?:0|[1-9][0-9]*)$`),de=RegExp(`^(?:[-+]?0b[0-1]+|[-+]?0o[0-7]+|[-+]?0x[0-9a-fA-F]+|[-+]?[0-9]+)$`);function fe(e){let t=e,n=1;return(t[0]===`-`||t[0]===`+`)&&(t[0]===`-`&&(n=-1),t=t.slice(1)),t.startsWith(`0b`)?n*parseInt(t.slice(2),2):t.startsWith(`0o`)?n*parseInt(t.slice(2),8):t.startsWith(`0x`)?n*parseInt(t.slice(2),16):n*parseInt(t,10)}function pe(e,n){if(n){if(!de.test(e))return t}else if(!ue.test(e))return t;let r=fe(e);return Number.isFinite(r)?r:t}var me=r(`tag:yaml.org,2002:int`,{implicit:!0,implicitFirstChars:[`-`,...`0123456789`],resolve:pe,identify:e=>Number.isInteger(e)&&!Object.is(e,-0)&&e.toString(10).indexOf(`e`)<0,represent:e=>e.toString(10)}),he=RegExp(`^(?:[-+]?0b[0-1_]+|[-+]?0[0-7_]+|[-+]?0x[0-9a-fA-F_]+|[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+|[-+]?(?:0|[1-9][0-9_]*))$`);function ge(e){let t=e.replace(/_/g,``),n=1;if((t[0]===`-`||t[0]===`+`)&&(t[0]===`-`&&(n=-1),t=t.slice(1)),t.startsWith(`0b`))return n*parseInt(t.slice(2),2);if(t.startsWith(`0x`))return n*parseInt(t.slice(2),16);if(t.includes(`:`)){let e=0;for(let n of t.split(`:`))e=e*60+Number(n);return n*e}return t!==`0`&&t[0]===`0`?n*parseInt(t,8):n*parseInt(t,10)}function _e(e){if(!he.test(e))return t;let n=ge(e);return Number.isFinite(n)?n:t}var ve=r(`tag:yaml.org,2002:int`,{implicit:!0,implicitFirstChars:[`-`,`+`,...`0123456789`],resolve:_e,identify:e=>Number.isInteger(e)&&!Object.is(e,-0)&&e.toString(10).indexOf(`e`)<0,represent:e=>e.toString(10)}),ye=RegExp(`^(?:[-+]?[0-9]+(?:\\.[0-9]*)?(?:[eE][-+]?[0-9]+)?|[-+]?\\.[0-9]+(?:[eE][-+]?[0-9]+)?|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`),be=RegExp(`^(?:[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`);function xe(e){if(!ye.test(e))return t;let n=e.toLowerCase(),r=n[0]===`-`?-1:1;if(`+-`.includes(n[0])&&(n=n.slice(1)),n===`.inf`)return r===1?1/0:-1/0;if(n===`.nan`)return NaN;let i=r*parseFloat(n);return Number.isFinite(i)||be.test(e)?i:t}function Se(e){if(isNaN(e))return`.nan`;if(e===1/0)return`.inf`;if(e===-1/0)return`-.inf`;if(Object.is(e,-0))return`-0.0`;let t=e.toString(10);return/^[-+]?[0-9]+e/.test(t)?t.replace(`e`,`.e`):t}var Ce=r(`tag:yaml.org,2002:float`,{implicit:!0,implicitFirstChars:[`-`,`+`,`.`,...`0123456789`],resolve:xe,identify:e=>typeof e==`number`&&(!Number.isInteger(e)||Object.is(e,-0)||e.toString(10).indexOf(`e`)>=0),represent:Se}),we=RegExp(`^-?(?:0|[1-9][0-9]*)(?:\\.[0-9]*)?(?:[eE][-+]?[0-9]+)?$`),Te=RegExp(`^(?:[-+]?[0-9]+(?:\\.[0-9]*)?(?:[eE][-+]?[0-9]+)?|[-+]?\\.[0-9]+(?:[eE][-+]?[0-9]+)?|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`);function Ee(e,n){if(n){if(!Te.test(e))return t;let n=e.toLowerCase(),r=n[0]===`-`?-1:1;if(`+-`.includes(n[0])&&(n=n.slice(1)),n===`.inf`)return r===1?1/0:-1/0;if(n===`.nan`)return NaN;let i=r*parseFloat(n);return Number.isFinite(i)?i:t}if(!we.test(e))return t;let r=Number(e);return Number.isFinite(r)?r:t}function De(e){if(isNaN(e))return`.nan`;if(e===1/0)return`.inf`;if(e===-1/0)return`-.inf`;if(Object.is(e,-0))return`-0.0`;let t=e.toString(10);return/^[-+]?[0-9]+e/.test(t)?t.replace(`e`,`.e`):t}var Oe=r(`tag:yaml.org,2002:float`,{implicit:!0,implicitFirstChars:[`-`,...`0123456789`],resolve:Ee,identify:e=>typeof e==`number`&&(!Number.isInteger(e)||Object.is(e,-0)||e.toString(10).indexOf(`e`)>=0),represent:De}),ke=RegExp(`^(?:[-+]?(?:(?:[0-9][0-9_]*)?\\.[0-9_]*)(?:[eE][-+][0-9]+)?|[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\\.[0-9_]*|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`),Ae=RegExp(`^(?:[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$`);function je(e){if(!ke.test(e))return t;let n=e.toLowerCase().replace(/_/g,``),r=n[0]===`-`?-1:1;if(`+-`.includes(n[0])&&(n=n.slice(1)),n===`.inf`)return r===1?1/0:-1/0;if(n===`.nan`)return NaN;let i=0;if(n.includes(`:`)){for(let e of n.split(`:`))i=i*60+Number(e);i*=r}else i=r*parseFloat(n);return Number.isFinite(i)||Ae.test(e)?i:t}function Me(e){if(isNaN(e))return`.nan`;if(e===1/0)return`.inf`;if(e===-1/0)return`-.inf`;if(Object.is(e,-0))return`-0.0`;let t=e.toString(10);return/^[-+]?[0-9]+e/.test(t)?t.replace(`e`,`.e`):t}var Ne=r(`tag:yaml.org,2002:float`,{implicit:!0,implicitFirstChars:[`-`,`+`,`.`,...`0123456789`],resolve:je,identify:e=>typeof e==`number`&&(!Number.isInteger(e)||Object.is(e,-0)||e.toString(10).indexOf(`e`)>=0),represent:Me}),Pe=r(`tag:yaml.org,2002:merge`,{implicit:!0,implicitFirstChars:[`<`],resolve:(e,r)=>e===`<<`||r&&e===``?n:t}),Fe=/^[A-Za-z0-9+/]*={0,2}$/;function Ie(e){let n=e.replace(/\s/g,``);if(n.length%4!=0||!Fe.test(n))return t;let r=atob(n),i=new Uint8Array(r.length);for(let e=0;e<r.length;e++)i[e]=r.charCodeAt(e);return i}function Le(e){let t=``;for(let n=0;n<e.length;n++)t+=String.fromCharCode(e[n]);return btoa(t)}var Re=r(`tag:yaml.org,2002:binary`,{resolve:Ie,identify:e=>Object.prototype.toString.call(e)===`[object Uint8Array]`,represent:Le}),ze=RegExp(`^([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9])$`),Be=RegExp(`^([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)(?:[Tt]|[ \\t]+)([0-9][0-9]?):([0-9][0-9]):([0-9][0-9])(?:\\.([0-9]*))?(?:[ \\t]*(Z|([-+])([0-9][0-9]?)(?::([0-9][0-9]))?))?$`);function Ve(e){let n=ze.exec(e);if(n===null&&(n=Be.exec(e)),n===null)return t;let r=+n[1],i=n[2]-1,a=+n[3];if(!n[4]){let e=new Date(Date.UTC(r,i,a));return e.getUTCFullYear()!==r||e.getUTCMonth()!==i||e.getUTCDate()!==a?t:e}let o=+n[4],s=+n[5],c=+n[6],l=0;if(o>23||s>59||c>59)return t;if(n[7]){let e=n[7].slice(0,3);for(;e.length<3;)e+=`0`;l=+e}let u=new Date(Date.UTC(r,i,a,o,s,c,l));if(u.getUTCFullYear()!==r||u.getUTCMonth()!==i||u.getUTCDate()!==a)return t;if(n[9]){let e=+n[10],r=+(n[11]||0);if(e>23||r>59)return t;let i=(e*60+r)*6e4;u.setTime(u.getTime()-(n[9]===`-`?-i:i))}return u}var He=r(`tag:yaml.org,2002:timestamp`,{implicit:!0,implicitFirstChars:[...`0123456789`],resolve:Ve,identify:e=>e instanceof Date,represent:e=>e.toISOString()}),Ue=i(`tag:yaml.org,2002:seq`,{create:()=>[],addItem:(e,t)=>{e.push(t)},identify:Array.isArray});function We(e){if(typeof e!=`object`||!e||Array.isArray(e))return!1;let t=Object.getPrototypeOf(e);return t===null||t===Object.prototype}function Ge(e,t){let n={};for(let r of t)e[r]!==void 0&&(n[r]=e[r]);return n}var Ke=i(`tag:yaml.org,2002:omap`,{create:()=>({list:[],seen:new Set}),addItem:(e,t)=>{let n;if(t instanceof Map){if(t.size!==1)return`cannot resolve an ordered map item`;n=t.keys().next().value}else if(We(t)){let e=Object.keys(t);if(e.length!==1)return`cannot resolve an ordered map item`;n=e[0]}else return`cannot resolve an ordered map item`;return e.seen.has(n)?`duplicate key in ordered map`:(e.seen.add(n),e.list.push(t),``)},finalize:e=>e.list}),qe=i(`tag:yaml.org,2002:pairs`,{create:()=>[],addItem:(e,t)=>{if(t instanceof Map)return t.size===1?(e.push(t.entries().next().value),``):`cannot resolve a pairs item`;if(Object.prototype.toString.call(t)!==`[object Object]`)return`cannot resolve a pairs item`;let n=t,r=Object.keys(n);return r.length===1?(e.push([r[0],n[r[0]]]),``):`cannot resolve a pairs item`}}),Je=a(`tag:yaml.org,2002:map`,{create:()=>({}),identify:We,represent:e=>{let t=new Map;for(let n of Object.keys(e))t.set(n,e[n]);return t},addPair:(e,t,n)=>{if(typeof t==`object`&&t)return`object-based map does not support complex keys`;let r=String(t);return r===`__proto__`?Object.defineProperty(e,r,{value:n,enumerable:!0,configurable:!0,writable:!0}):e[r]=n,``},has:(e,t)=>typeof t==`object`&&t?!1:Object.prototype.hasOwnProperty.call(e,String(t)),keys:e=>Object.keys(e),get:(e,t)=>e[String(t)]}),Ye=a(`tag:yaml.org,2002:set`,{create:()=>new Set,identify:e=>e instanceof Set,represent:e=>{let t=new Map;for(let n of e)t.set(n,null);return t},addPair:(e,t,n)=>n===null?(e.add(t),``):`cannot resolve a set item`,has:(e,t)=>e.has(t),keys:e=>e.keys(),get:()=>null});function g(e){"@babel/helpers - typeof";return g=typeof Symbol==`function`&&typeof Symbol.iterator==`symbol`?function(e){return typeof e}:function(e){return e&&typeof Symbol==`function`&&e.constructor===Symbol&&e!==Symbol.prototype?`symbol`:typeof e},g(e)}function Xe(e,t){if(g(e)!=`object`||!e)return e;var n=e[Symbol.toPrimitive];if(n!==void 0){var r=n.call(e,t||`default`);if(g(r)!=`object`)return r;throw TypeError(`@@toPrimitive must return a primitive value.`)}return(t===`string`?String:Number)(e)}function Ze(e){var t=Xe(e,`string`);return g(t)==`symbol`?t:t+``}function _(e,t,n){return(t=Ze(t))in e?Object.defineProperty(e,t,{value:n,enumerable:!0,configurable:!0,writable:!0}):e[t]=n,e}function Qe(){return{scalar:{},sequence:{},mapping:{}}}function $e(){return{scalar:[],sequence:[],mapping:[]}}function et(e){let t=[];for(let n of e){let e=t.length;for(let r=0;r<t.length;r++){let i=t[r];if(i.nodeKind===n.nodeKind&&i.tagName===n.tagName&&i.matchByTagPrefix===n.matchByTagPrefix){e=r;break}}t[e]=n}return t}var v=class e{constructor(e){_(this,`tags`,void 0),_(this,`implicitScalarTags`,void 0),_(this,`implicitScalarByFirstChar`,void 0),_(this,`implicitScalarAnyFirstChar`,void 0),_(this,`defaultScalarTag`,void 0),_(this,`defaultSequenceTag`,void 0),_(this,`defaultMappingTag`,void 0),_(this,`exact`,void 0),_(this,`prefix`,void 0);let t=et(e),n=[],r=Qe(),i=$e();for(let e of t){if(e.nodeKind===`scalar`&&e.implicit){if(e.matchByTagPrefix)throw Error(`Implicit scalar tags cannot match by tag prefix`);n.push(e)}switch(e.nodeKind){case`scalar`:e.matchByTagPrefix?i.scalar.push(e):r.scalar[e.tagName]=e;break;case`sequence`:e.matchByTagPrefix?i.sequence.push(e):r.sequence[e.tagName]=e;break;case`mapping`:e.matchByTagPrefix?i.mapping.push(e):r.mapping[e.tagName]=e;break}}let a=n.filter(e=>e.implicitFirstChars===null),o=new Set;for(let e of n)if(e.implicitFirstChars!==null)for(let t of e.implicitFirstChars)o.add(t);let s=new Map;for(let e of o)s.set(e,n.filter(t=>t.implicitFirstChars===null||t.implicitFirstChars.indexOf(e)!==-1));let c=r.scalar[`tag:yaml.org,2002:str`];if(!c)throw Error(`schema does not define the default scalar tag (tag:yaml.org,2002:str)`);this.tags=t,this.implicitScalarTags=n,this.implicitScalarByFirstChar=s,this.implicitScalarAnyFirstChar=a,this.defaultScalarTag=c,this.defaultSequenceTag=r.sequence[`tag:yaml.org,2002:seq`],this.defaultMappingTag=r.mapping[`tag:yaml.org,2002:map`],this.exact=r,this.prefix=i}withTags(...t){let n=[];for(let e of t)n=n.concat(e);return new e([...this.tags,...n])}},tt=new v([o,Ue,Je]),nt=new v([...tt.tags,l,te,me,Oe]),rt=new v([...tt.tags,c,m,le,Ce]),it=new v([...tt.tags,d,ie,ve,Ne,He,Pe,Re,Ke,qe,Ye]),at=a(`tag:yaml.org,2002:map`,{create:()=>new Map,addPair:(e,t,n)=>(e.set(t,n),``),has:(e,t)=>e.has(t),keys:e=>e.keys(),get:(e,t)=>e.get(t),identify:e=>e instanceof Map||We(e),represent:e=>{if(e instanceof Map)return e;let t=new Map,n=e;for(let e of Object.keys(n))t.set(e,n[e]);return t}});function ot(e){if(Array.isArray(e)){let t=Array.prototype.slice.call(e);for(let e=0;e<t.length;e++){if(Array.isArray(t[e]))return null;typeof t[e]==`object`&&Object.prototype.toString.call(t[e])===`[object Object]`&&(t[e]=`[object Object]`)}return String(t)}return typeof e==`object`&&Object.prototype.toString.call(e)===`[object Object]`?`[object Object]`:String(e)}var st=a(`tag:yaml.org,2002:map`,{create:()=>({}),identify:We,represent:e=>{let t=new Map;for(let n of Object.keys(e))t.set(n,e[n]);return t},addPair:(e,t,n)=>{let r=ot(t);return r===null?`nested arrays are not supported inside keys`:(r===`__proto__`?Object.defineProperty(e,r,{value:n,enumerable:!0,configurable:!0,writable:!0}):e[r]=n,``)},has:(e,t)=>{let n=ot(t);return n!==null&&Object.prototype.hasOwnProperty.call(e,n)},keys:e=>Object.keys(e),get:(e,t)=>e[String(t)]});function ct(e,t){var n=Object.keys(e);if(Object.getOwnPropertySymbols){var r=Object.getOwnPropertySymbols(e);t&&(r=r.filter(function(t){return Object.getOwnPropertyDescriptor(e,t).enumerable})),n.push.apply(n,r)}return n}function y(e){for(var t=1;t<arguments.length;t++){var n=arguments[t]==null?{}:arguments[t];t%2?ct(Object(n),!0).forEach(function(t){_(e,t,n[t])}):Object.getOwnPropertyDescriptors?Object.defineProperties(e,Object.getOwnPropertyDescriptors(n)):ct(Object(n)).forEach(function(t){Object.defineProperty(e,t,Object.getOwnPropertyDescriptor(n,t))})}return e}var lt={maxLength:79,indent:1,linesBefore:3,linesAfter:2};function ut(e,t,n,r,i){let a=``,o=``,s=Math.floor(i/2)-1;return r-t>s&&(a=` ... `,t=r-s+a.length),n-r>s&&(o=` ...`,n=r+s-o.length),{str:a+e.slice(t,n).replace(/\t/g,`→`)+o,pos:r-t+a.length}}function dt(e,t){return` `.repeat(Math.max(t-e.length,0))+e}function ft(e,t){if(!e.buffer)return null;let n=y(y({},lt),t),r=/\r?\n|\r|\0/g,i=[0],a=[],o,s=-1;for(;o=r.exec(e.buffer);)a.push(o.index),i.push(o.index+o[0].length),e.position<=o.index&&s<0&&(s=i.length-2);s<0&&(s=i.length-1);let c=``,l=Math.min(e.line+n.linesAfter,a.length).toString().length,u=n.maxLength-(n.indent+l+3);for(let t=1;t<=n.linesBefore&&!(s-t<0);t++){let r=ut(e.buffer,i[s-t],a[s-t],e.position-(i[s]-i[s-t]),u);c=`${` `.repeat(n.indent)}${dt((e.line-t+1).toString(),l)} | ${r.str}\n${c}`}let d=ut(e.buffer,i[s],a[s],e.position,u);c+=`${` `.repeat(n.indent)}${dt((e.line+1).toString(),l)} | ${d.str}\n`,c+=`${`-`.repeat(n.indent+l+3+d.pos)}^\n`;for(let t=1;t<=n.linesAfter&&!(s+t>=a.length);t++){let r=ut(e.buffer,i[s+t],a[s+t],e.position-(i[s]-i[s+t]),u);c+=`${` `.repeat(n.indent)}${dt((e.line+t+1).toString(),l)} | ${r.str}\n`}return c.replace(/\n$/,``)}function pt(e,t){let n=``;return e.mark?(e.mark.name&&(n+=`in "${e.mark.name}" `),n+=`(${e.mark.line+1}:${e.mark.column+1})`,!t&&e.mark.snippet&&(n+=`\n\n${e.mark.snippet}`),`${e.reason} ${n}`):e.reason}var b=class extends Error{constructor(e,t){super(),_(this,`reason`,void 0),_(this,`mark`,void 0),this.name=`YAMLException`,this.reason=e,this.mark=t,this.message=pt(this,!1),Error.captureStackTrace&&Error.captureStackTrace(this,this.constructor)}toString(e){return`${this.name}: ${pt(this,e)}`}};function mt(e,t,n,r=``){let i=0,a=0;for(let n=0;n<t;n++){let t=e.charCodeAt(n);t===10?(i++,a=n+1):t===13&&(i++,e.charCodeAt(n+1)===10&&n++,a=n+1)}let o={name:r,buffer:e,position:t,line:i,column:t-a};throw o.snippet=ft(o),new b(n,o)}var ht=1,gt=2,_t=3,vt=4,yt=5,bt=6,xt=1,St=2,Ct=3,wt=4,Tt=5,Et=1,Dt=2,Ot=1,kt=2,At=3,jt=-1;function Mt(e){switch(e){case 48:return`\0`;case 97:return`\x07`;case 98:return`\b`;case 116:return`	`;case 9:return`	`;case 110:return`
-`;case 118:return`\v`;case 102:return`\f`;case 114:return`\r`;case 101:return`\x1B`;case 32:return` `;case 34:return`"`;case 47:return`/`;case 92:return`\\`;case 78:return``;case 95:return`\xA0`;case 76:return`\u2028`;case 80:return`\u2029`;default:return``}}var Nt=Array(256),Pt=Array(256);for(let e=0;e<256;e++)Nt[e]=+!!Mt(e),Pt[e]=Mt(e);function Ft(e){return e<=65535?String.fromCharCode(e):String.fromCharCode((e-65536>>10)+55296,(e-65536&1023)+56320)}function It(e){return e>=48&&e<=57?e-48:(e|32)-97+10}function Lt(e){return e===120?2:e===117?4:8}function Rt(e,t,n){let r=0;for(;t<n;){let n=e.charCodeAt(t);if(n===10)r++,t++;else if(n===13)r++,t++,e.charCodeAt(t)===10&&t++;else if(n===32||n===9)t++;else break}return{position:t,breaks:r}}function zt(e){return e===1?` `:`
+`;case 118:return`\v`;case 102:return`\f`;case 114:return`\r`;case 101:return`\x1B`;case 32:return` `;case 34:return`"`;case 47:return`/`;case 92:return`\\`;case 78:return`
+`;case 95:return`\xA0`;case 76:return`\u2028`;case 80:return`\u2029`;default:return``}}var Nt=Array(256),Pt=Array(256);for(let e=0;e<256;e++)Nt[e]=+!!Mt(e),Pt[e]=Mt(e);function Ft(e){return e<=65535?String.fromCharCode(e):String.fromCharCode((e-65536>>10)+55296,(e-65536&1023)+56320)}function It(e){return e>=48&&e<=57?e-48:(e|32)-97+10}function Lt(e){return e===120?2:e===117?4:8}function Rt(e,t,n){let r=0;for(;t<n;){let n=e.charCodeAt(t);if(n===10)r++,t++;else if(n===13)r++,t++,e.charCodeAt(t)===10&&t++;else if(n===32||n===9)t++;else break}return{position:t,breaks:r}}function zt(e){return e===1?` `:`
 `.repeat(e-1)}function Bt(e,t,n){let r=``,i=t,a=t,o=t;for(;i<n;){let t=e.charCodeAt(i);if(t===10||t===13){r+=e.slice(a,o);let t=Rt(e,i,n);r+=zt(t.breaks),i=a=o=t.position}else i++,t!==32&&t!==9&&(o=i)}return r+e.slice(a,o)}function Vt(e,t,n){let r=``,i=t,a=t,o=t;for(;i<n;){let t=e.charCodeAt(i);if(t===39)r+=e.slice(a,i)+`'`,i+=2,a=o=i;else if(t===10||t===13){r+=e.slice(a,o);let t=Rt(e,i,n);r+=zt(t.breaks),i=a=o=t.position}else i++,t!==32&&t!==9&&(o=i)}return r+e.slice(a,n)}function Ht(e,t,n){let r=``,i=t,a=t,o=t;for(;i<n;){let t=e.charCodeAt(i);if(t===92){r+=e.slice(a,i),i++;let t=e.charCodeAt(i);if(t===10||t===13)i=Rt(e,i,n).position;else if(t<256&&Nt[t])r+=Pt[t],i++;else{let n=Lt(t),a=0;for(;n>0;n--){i++;let t=It(e.charCodeAt(i));a=(a<<4)+t}r+=Ft(a),i++}a=o=i}else if(t===10||t===13){r+=e.slice(a,o);let t=Rt(e,i,n);r+=zt(t.breaks),i=a=o=t.position}else i++,t!==32&&t!==9&&(o=i)}return r+e.slice(a,n)}function Ut(e,t,n,r,i,a){let o=r<0?0:r,s=e.slice(t,n).replace(/\r\n?/g,`
 `),c=s===``?[]:(s.endsWith(`
 `)?s.slice(0,-1):s).split(`
@@ -92,6 +93,7 @@
      matching 3-column version renderHotspotPane() sets below when a
      hotspot photo pane is also present. */
   main { display: grid; grid-template-columns: 1fr max-content; gap: 0; height: calc(100vh - 61px); }
+  #importReport { grid-column: 1 / -1; }
   /* Widened by renderHotspotPane() (JS, inline style) to 3 columns only
      when the loaded board has a hotspots/<id>.hotspots.yaml file -- most
      boards don't yet, so this stays the default 2-column layout for those. */
@@ -179,6 +181,24 @@
   .summary { display: flex; gap: 18px; margin-bottom: 12px; font-size: 12.5px; }
   .summary .stat b { font-size: 16px; display: block; }
   .summary .stat.tbd b { color: var(--tbd); }
+  .failed-imports {
+    background: rgba(224, 96, 107, 0.12);
+    border: 1px solid #e0616b;
+    border-radius: 6px; padding: 12px; margin: 0 0 12px;
+    color: #f66;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px; line-height: 1.55;
+  }
+  .failed-import-entry + .failed-import-entry {
+    margin-top: 12px;
+  }
+  .failed-import-label {
+    font-weight: 700; margin-bottom: 6px;
+  }
+  .failed-imports pre {
+    margin: 0; padding: 8px; background: rgba(0,0,0,0.12);
+    border-radius: 4px; white-space: pre-wrap; word-break: break-word;
+  }
   .summary .stat.done b { color: #6fbf73; }
   .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
   /* .note is the base box (background/border/spacing) for every status/
@@ -438,12 +458,12 @@
 </header>
 
 <main>
+  <div class="note" id="importReport" style="display:none"></div>
   <div class="col left" id="resourceCol">
     <div class="note note-instruct" id="boardNote"></div>
     <!-- importReport's tier varies by outcome (error/info/warn) -- its
          className is set in full wherever its content is, see
          renderImportReport() and configFileInput's change handler. -->
-    <div class="note" id="importReport" style="display:none"></div>
   </div>
   <div class="col hotspot" id="hotspotCol" style="display:none">
     <!-- Populated by renderHotspotPane() only when hotspots/<id>.hotspots.yaml
@@ -469,6 +489,7 @@
       <button id="sendToCompanionBtn" style="display:none" onclick="sendToCompanion()"></button>
       <input type="file" id="configFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
     </div>
+    <div id="failedImportComments" class="failed-imports" style="display:none"></div>
     <pre id="draft"></pre>
   </div>
 </main>
@@ -1321,6 +1342,7 @@ const CONDITIONING_ACTIVE_LEVEL = {
   raw: "high",
 };
 let hotspotData = null;    // parsed hotspots/<id>.hotspots.yaml, or null if this board has no photo hotspots yet
+let importFailedItems = []; // failed import entries to preserve as commented YAML in the draft
 // resourceKey -> [pin, pin, ...] -- every MCU pin string (e.g. "gpio.4",
 // "i2so.2") a given resource physically occupies, regardless of which role
 // (if any) it's currently bound to. Static per board load (see
@@ -3717,7 +3739,7 @@ function generateDraft() {
     ...(board.expansion_uarts || []).map((ex, i) => ({ ex, key: resourceKeyExpUart(i) })),
     ...allModuleSocketConnectors()
       .filter(x => x.connector.kind === "expansion_uart")
-      .map(x => ({ ex: x.connector, key: x.key })),
+      .map(x => ({ ex: { ...x.connector, commentLabel: `${x.socket.label}/${x.connector.label}` }, key: x.key })),
   ];
   allRs485Channels.forEach(({ ch, key }) => {
     const role = bindings[key];
@@ -3770,9 +3792,10 @@ function generateDraft() {
       baud: ex.baud,
       mode: ex.mode,
     };
-    annotate(cfg, `uart${n}`, ex.label);
+    const annotateLabel = ex.commentLabel || ex.label;
+    annotate(cfg, `uart${n}`, annotateLabel);
     cfg[`uart${n}`] = uartBlock;
-    annotate(cfg, `uart_channel${n}`, ex.label);
+    annotate(cfg, `uart_channel${n}`, annotateLabel);
     cfg[`uart_channel${n}`] = { report_interval_ms: "TBD", uart_num: n };
   });
 
@@ -3890,7 +3913,8 @@ function generateDraft() {
   const keySlots = [];
   collectAndInjectSlots(liveCfg, "", paramSlots, pinSlots, paramDefaultOverrides, keySlots);
 
-  const yamlText = dequoteAxisKeys(annotateYaml(jsyaml.dump(liveCfg, { lineWidth: -1, noRefs: true })));
+  let yamlText = dequoteAxisKeys(annotateYaml(jsyaml.dump(liveCfg, { lineWidth: -1, noRefs: true })));
+  const failedImportText = importFailedItems.length ? formatFailedImports(importFailedItems) : "";
   const unresolved = paramSlots.filter(s => !Object.prototype.hasOwnProperty.call(paramValues, s.path)).length;
 
   // Tool-number uniqueness check: recomputed live every render (same
@@ -3928,10 +3952,20 @@ function generateDraft() {
   }
 
   document.getElementById("summary").innerHTML = `
-    <div class="stat done"><b>${Object.values(bindings).filter(v=>v&&v!=="unused").length}</b>resource(s) bound</div>
+    <div class="stat done"><b>${Object.values(bindings).filter(v=>v&&v!=="unused").length}</b>bound resources</div>
     <div class="stat"><b>${countResources()}</b>total resources</div>
-    <div class="stat tbd"><b>${unresolved}</b>remaining TBD (open params)</div>
+    <div class="stat tbd"><b>${unresolved}</b>TBDs</div>
+    ${importFailedItems.length ? `<div class="stat tbd"><b>${importFailedItems.length}</b> import error${importFailedItems.length === 1 ? "" : "s"}</div>` : ""}
   `;
+
+  const failedDiv = document.getElementById("failedImportComments");
+  if (failedImportText) {
+    failedDiv.style.display = "block";
+    failedDiv.innerHTML = failedImportText;
+  } else {
+    failedDiv.style.display = "none";
+    failedDiv.innerHTML = "";
+  }
 
   document.getElementById("draft").innerHTML = buildInteractiveYaml(yamlText, paramSlots, pinSlots, keySlots);
   document.querySelectorAll("#draft .inline-field").forEach(el => {
@@ -4075,11 +4109,12 @@ function parsePinString(raw) {
   const s = String(raw).trim();
   if (!s || s === "NO_PIN") return null;
   const parts = s.split(":");
-  const basePin = parts[0];
+  const basePin = parts[0].toLowerCase();
   let level = "", pull = "";
   parts.slice(1).forEach(a => {
-    if (a === "low" || a === "high") level = a;
-    else if (a === "pu" || a === "pd") pull = a;
+    const token = a.toLowerCase();
+    if (token === "low" || token === "high") level = token;
+    else if (token === "pu" || token === "pd") pull = token;
   });
   return { basePin, level, pull };
 }
@@ -4089,11 +4124,16 @@ function buildPinOwnerIndex() {
   Object.keys(resourcePins).forEach(key => {
     (resourcePins[key] || []).forEach(pin => {
       if (!pin) return;
-      idx[pin] = idx[pin] || [];
-      if (!idx[pin].includes(key)) idx[pin].push(key);
+      const normalized = String(pin).toLowerCase();
+      idx[normalized] = idx[normalized] || [];
+      if (!idx[normalized].includes(key)) idx[normalized].push(key);
     });
   });
   return idx;
+}
+
+function recordFailedImport(path, value, message) {
+  importFailedItems.push({ path, value, message });
 }
 
 /* Scrapes "# <label>" comments out of the RAW config.yaml text (jsyaml.load
@@ -4159,37 +4199,90 @@ function importConfig(doc, rawText) {
   homingEnabled = {};
   kinematicsType = "Cartesian";
   sectionEnabled = {};
+  importFailedItems = [];
 
   const report = { matched: [], ambiguous: [], unrecognized: [], notes: [] };
-  const pinOwnerIndex = buildPinOwnerIndex();
+  computeResourcePins();
+  let pinOwnerIndex = buildPinOwnerIndex();
   const pinLabelHints = buildPinLabelHints(rawText);
 
-  function resolvePin(pinRaw, ctxLabel) {
+  function isPendantModule(mod) {
+    if (!mod || !Array.isArray(mod.expansion_uarts)) return false;
+    return mod.expansion_uarts.some(eu => {
+      const label = String(eu.generic_name || eu.label || "").toLowerCase();
+      return label.includes("pendant");
+    });
+  }
+
+  function inferPendantModuleSocket(txdPin, rxdPin) {
+    if (!board.expansion_sockets) return null;
+    const candidates = [];
+    Object.keys(MODULE_CATALOG).sort().forEach(moduleId => {
+      const mod = MODULE_CATALOG[moduleId];
+      if (!isPendantModule(mod)) return;
+      board.expansion_sockets.forEach((socket, si) => {
+        if (!moduleFitsSocket(mod, socket)) return;
+        const connectors = resolveModuleSocketConnectors(socket, moduleId);
+        (connectors || []).forEach((c, ci) => {
+          if (c.kind !== "expansion_uart") return;
+          if (c.txd_pin === txdPin && c.rxd_pin === rxdPin) {
+            candidates.push({ si, moduleId, ci, connector: c });
+          }
+        });
+      });
+    });
+    if (!candidates.length) return null;
+    const preferred = candidates.find(c => c.moduleId === "pendant") || candidates.find(c => c.moduleId === "isolated_pendant");
+    return preferred || candidates[0];
+  }
+
+  function resolvePin(pinRaw, ctxLabel, allowedPrefixes, suppressFailure) {
     const parsed = parsePinString(pinRaw);
     if (!parsed) return null;
     const candidates = pinOwnerIndex[parsed.basePin] || [];
     if (!candidates.length) {
-      report.unrecognized.push(`${ctxLabel}: pin ${parsed.basePin} not found on ${board.board.id}`);
+      if (!suppressFailure) {
+        const message = `pin ${parsed.basePin} not found on ${board.board.id}`;
+        report.unrecognized.push(`${ctxLabel}: ${message}`);
+        recordFailedImport(ctxLabel, pinRaw, message);
+      }
       return null;
     }
-    if (candidates.length > 1) {
-      // Try to resolve via the "# <label>" comment (if any) the ORIGINAL
-      // file had directly above this pin/its wrapping block -- if exactly
-      // one candidate's own board label matches that hint, use it with
-      // confidence instead of falling back to "just pick the first one."
+    let effectiveCandidates = candidates;
+    if (allowedPrefixes && allowedPrefixes.length) {
+      const filtered = candidates.filter(k => allowedPrefixes.includes(resourceKeyPrefix(k)));
+      if (filtered.length === 1) {
+        const resolvedKey = filtered[0];
+        if (resourceKeyPrefix(resolvedKey) === "modconn") {
+          report.notes.push(`${ctxLabel}: pin ${parsed.basePin} was resolved to ${resolvedKey} by required resource type ${allowedPrefixes.join(" or ")}`);
+        }
+        return { resourceKey: resolvedKey, parsed };
+      }
+      if (filtered.length > 1) {
+        effectiveCandidates = filtered;
+      } else {
+        if (!suppressFailure) {
+          const message = `pin ${parsed.basePin} matches ${candidates.length} resources (${candidates.join(", ")}), but none are ${allowedPrefixes.join(" or ")}`;
+          report.ambiguous.push(`${ctxLabel}: ${message}`);
+          recordFailedImport(ctxLabel, pinRaw, message);
+        }
+        return null;
+      }
+    }
+    if (effectiveCandidates.length > 1) {
       const hint = pinLabelHints[parsed.basePin];
-      const hintMatches = hint ? candidates.filter(k => resourceLabels[k] === hint) : [];
+      const hintMatches = hint ? effectiveCandidates.filter(k => resourceLabels[k] === hint) : [];
       if (hintMatches.length === 1) {
-        report.notes.push(`${ctxLabel}: pin ${parsed.basePin} was ambiguous (${candidates.length} candidates) but resolved via the "# ${hint}" comment -> ${hintMatches[0]}`);
+        report.notes.push(`${ctxLabel}: pin ${parsed.basePin} was ambiguous (${effectiveCandidates.length} candidates) but resolved via the "# ${hint}" comment -> ${hintMatches[0]}`);
         return { resourceKey: hintMatches[0], parsed };
       }
       report.ambiguous.push(
         hint
-          ? `${ctxLabel}: pin ${parsed.basePin} matches ${candidates.length} resources (${candidates.join(", ")}); comment says "${hint}" but that doesn't uniquely match any of them -- used ${candidates[0]}, verify and re-bind manually if wrong`
-          : `${ctxLabel}: pin ${parsed.basePin} matches ${candidates.length} resources (${candidates.join(", ")}), and no disambiguating comment was found -- used ${candidates[0]}, verify and re-bind manually if wrong`
+          ? `${ctxLabel}: pin ${parsed.basePin} matches ${effectiveCandidates.length} resources (${effectiveCandidates.join(", ")}); comment says "${hint}" but that doesn't uniquely match any of them -- used ${effectiveCandidates[0]}, verify and re-bind manually if wrong`
+          : `${ctxLabel}: pin ${parsed.basePin} matches ${effectiveCandidates.length} resources (${effectiveCandidates.join(", ")}), and no disambiguating comment was found -- used ${effectiveCandidates[0]}, verify and re-bind manually if wrong`
       );
     }
-    return { resourceKey: candidates[0], parsed };
+    return { resourceKey: effectiveCandidates[0], parsed };
   }
 
   function bind(resourceKey, role, ctxLabel) {
@@ -4205,8 +4298,8 @@ function importConfig(doc, rawText) {
   // regenerated from the new bindings) -- defaults to ctxLabel, which
   // already IS that path for every call site except the motor-socket one
   // (see below), which passes its own more specific path explicitly.
-  function claimPin(pinRaw, role, ctxLabel, attrPath) {
-    const r = resolvePin(pinRaw, ctxLabel);
+  function claimPin(pinRaw, role, ctxLabel, attrPath, allowedPrefixes) {
+    const r = resolvePin(pinRaw, ctxLabel, allowedPrefixes);
     if (!r) return null;
     bind(r.resourceKey, role, ctxLabel);
     const path = attrPath !== undefined ? attrPath : ctxLabel;
@@ -4216,8 +4309,6 @@ function importConfig(doc, rawText) {
     return r.resourceKey;
   }
 
-  // Copy every non-object, non-"TBD" scalar field from `src` into
-  // paramValues, keyed by `${pathPrefix}.${field}`. Used for tuning-field
   // blocks (motor driver bodies, spindle stubs, homing, kinematics, etc.)
   // where the field NAMES are already known to line up with what
   // specForKey()/collectAndInjectSlots expect, since they're the real
@@ -4276,7 +4367,9 @@ function importConfig(doc, rawText) {
         }
       }
       if (!resourceKey) {
-        report.unrecognized.push(`axes.${letter}.${slot}: no recognizable motor pin found, skipped`);
+        const message = "no recognizable motor pin found";
+        report.unrecognized.push(`axes.${letter}.${slot}: ${message}, skipped`);
+        recordFailedImport(`axes.${letter}.${slot}`, motorDoc, message);
         return;
       }
       bind(resourceKey, `${letter}:${slot}`, `axes.${letter}.${slot}`);
@@ -4416,21 +4509,29 @@ function importConfig(doc, rawText) {
       // fixed-protocol path (see isFixedProtocolPath()) that never gets
       // PINSLOT/attr treatment, and "ModbusVFD" itself isn't a real pin
       // leaf path -- nothing to attach attrs to here either way.
-      claimPin(uartBlock.txd_pin, `vfd:${model}`, "ModbusVFD", null);
-      // ModbusVFD is deliberately excluded from SPINDLE_TYPES (see the
-      // comment by SPINDLE_LABELS -- it's unmodeled there since it has no
-      // pin-picker UI of its own), so it never goes through the generic
-      // "--- spindles ---" copyScalarParams() loop above. Its genuinely
-      // open tuning fields (spinup_ms/spindown_ms/tool_num) still need the
-      // same treatment here, or they silently reset to "TBD" on reimport
-      // even though the source file had real values. model/uart_num are
-      // re-derived above (from the RS485 role pick / claimPin), and
-      // modbus_id is emitted as a fixed, non-editable 1 by generateDraft
-      // (see its own comment) -- none of the three are real TBD slots, so
-      // skip them rather than leave dead paramValues entries.
-      copyScalarParams(doc.ModbusVFD, "ModbusVFD", new Set(["model", "uart_num", "modbus_id"]));
+      const resourceKey = claimPin(uartBlock.txd_pin, `vfd:${model}`, "ModbusVFD", null, ["rs485"]);
+      if (resourceKey) {
+        // ModbusVFD is deliberately excluded from SPINDLE_TYPES (see the
+        // comment by SPINDLE_LABELS -- it's unmodeled there since it has no
+        // pin-picker UI of its own), so it never goes through the generic
+        // "--- spindles ---" copyScalarParams() loop above. Its genuinely
+        // open tuning fields (spinup_ms/spindown_ms/tool_num) still need the
+        // same treatment here, or they silently reset to "TBD" on reimport
+        // even though the source file had real values. model/uart_num are
+        // re-derived above (from the RS485 role pick / claimPin), and
+        // modbus_id is emitted as a fixed, non-editable 1 by generateDraft
+        // (see its own comment) -- none of the three are real TBD slots, so
+        // skip them rather than leave dead paramValues entries.
+        copyScalarParams(doc.ModbusVFD, "ModbusVFD", new Set(["model", "uart_num", "modbus_id"]));
+      } else {
+        const message = `uart${n}.txd_pin did not resolve to an RS485 channel`; 
+        report.unrecognized.push(`ModbusVFD: ${message}, skipped`);
+        recordFailedImport("ModbusVFD", doc.ModbusVFD, message);
+      }
     } else {
-      report.unrecognized.push("ModbusVFD: missing model/uart_num, or its referenced uartN: block, skipped");
+      const message = "missing model/uart_num, or its referenced uartN: block";
+      report.unrecognized.push(`ModbusVFD: ${message}, skipped`);
+      recordFailedImport("ModbusVFD", doc.ModbusVFD, message);
     }
   }
 
@@ -4447,15 +4548,42 @@ function importConfig(doc, rawText) {
       report.unrecognized.push(`${key}: no matching uart${n}: block with a txd_pin, skipped`);
       return;
     }
-    const r = resolvePin(uartBlock.txd_pin, key);
+    let r = resolvePin(uartBlock.txd_pin, key, null, true);
+    if (!r) {
+      const inferred = inferPendantModuleSocket(uartBlock.txd_pin, uartBlock.rxd_pin);
+      if (inferred) {
+        bindings[resourceKeyModuleSocket(inferred.si)] = inferred.moduleId;
+        computeResourcePins();
+        pinOwnerIndex = buildPinOwnerIndex();
+        const resourceKey = resourceKeyModConn(inferred.si, inferred.ci);
+        report.notes.push(`${key}: inferred pendant module "${inferred.moduleId}" via module socket ${inferred.si}`);
+        bind(resourceKey, "uart_channel", key);
+        if (doc[key].report_interval_ms != null && doc[key].report_interval_ms !== "TBD") {
+          paramValues[`${key}.report_interval_ms`] = doc[key].report_interval_ms;
+        }
+        return;
+      }
+      r = resolvePin(uartBlock.txd_pin, key);
+    }
     if (!r) return;
     const prefix = resourceKeyPrefix(r.resourceKey);
     if (prefix === "expuart") {
       bind(r.resourceKey, "uart_channel", key);
     } else if (prefix === "i2c") {
       bind(r.resourceKey, "expansion_uart", key);
+    } else if (prefix === "modconn") {
+      const moduleConn = allModuleSocketConnectors().find(x => x.key === r.resourceKey);
+      if (moduleConn && moduleConn.connector.kind === "expansion_uart") {
+        bind(r.resourceKey, "uart_channel", key);
+      } else {
+        const message = `txd_pin resolved to ${r.resourceKey}, which is not an expansion UART connector`;
+        report.ambiguous.push(`${key}: ${message} -- skipped`);
+        recordFailedImport(key, doc[key], message);
+      }
     } else {
-      report.ambiguous.push(`${key}: txd_pin resolved to ${r.resourceKey}, which is neither an expansion UART nor I2C connector -- skipped`);
+      const message = `txd_pin resolved to ${r.resourceKey}, which is neither an expansion UART nor I2C connector`;
+      report.ambiguous.push(`${key}: ${message} -- skipped`);
+      recordFailedImport(key, doc[key], message);
     }
     if (doc[key].report_interval_ms != null && doc[key].report_interval_ms !== "TBD") {
       paramValues[`${key}.report_interval_ms`] = doc[key].report_interval_ms;
@@ -4465,7 +4593,8 @@ function importConfig(doc, rawText) {
   // --- bare I2C bus --- (attrPath explicitly null: i2c0's pins are a
   // fixed-protocol path, see isFixedProtocolPath(), never PINSLOT-eligible)
   if (doc.i2c0 && doc.i2c0.sda_pin != null) {
-    claimPin(doc.i2c0.sda_pin, "i2c_bus", "i2c0", null);
+    const result = claimPin(doc.i2c0.sda_pin, "i2c_bus", "i2c0", null);
+    if (!result) recordFailedImport("i2c0", doc.i2c0, "failed to resolve i2c0 SDA pin");
   }
 
   // --- kinematics ---
@@ -4511,7 +4640,13 @@ function importConfig(doc, rawText) {
 }
 
 function renderImportReport(report, filename, boardNote) {
-  const panel = document.getElementById("importReport");
+  let panel = document.getElementById("importReport");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "importReport";
+    panel.className = "note";
+    document.body.appendChild(panel);
+  }
   const total = report.matched.length;
   let html = "";
   if (boardNote) html += `<div>${escapeHtml(boardNote)}</div>`;
@@ -4520,11 +4655,11 @@ function renderImportReport(report, filename, boardNote) {
   if (report.unrecognized.length) html += `, ${report.unrecognized.length} unrecognized`;
   html += `. <button onclick="document.getElementById('importReport').style.display='none'">Dismiss</button>`;
   if (report.ambiguous.length || report.unrecognized.length || report.notes.length) {
-    html += `<details><summary>Details</summary><ul>`;
+    html += `<ul>`;
     report.ambiguous.forEach(m => html += `<li><b class="tag-warn">Ambiguous:</b> ${escapeHtml(m)}</li>`);
     report.unrecognized.forEach(m => html += `<li><b class="tag-warn">Unrecognized:</b> ${escapeHtml(m)}</li>`);
     report.notes.forEach(m => html += `<li><b>Note:</b> ${escapeHtml(m)}</li>`);
-    html += `</ul></details>`;
+    html += `</ul>`;
   }
   panel.innerHTML = html;
   // Nothing to flag at all -> plain info. Anything ambiguous/unrecognized,
@@ -4668,6 +4803,14 @@ function escapeHtml(s) {
   return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
+function formatFailedImports(entries) {
+  return entries.map(entry => {
+    const label = `Failed to import ${escapeHtml(entry.path)}:`;
+    const dumped = jsyaml.dump(entry.value, { lineWidth: -1, noRefs: true });
+    const escaped = escapeHtml(dumped);
+    return `<div class="failed-import-entry"><div class="failed-import-label">${label}</div><pre>${escaped}</pre></div>`;
+  }).join("");
+}
 function copyDraft() {
   const btn = event && event.target ? event.target : document.querySelector('button[onclick="copyDraft()"]');
   const flash = (ok) => {

@@ -75,7 +75,7 @@ hotspots:
     rect: {x: 71.00, y: 1.00, w: 6.00, h: 6.00}
     rect_orientation: horizontal
     label_rect: {x: 68.00, y: -15.00, w: 9.00, h: 14.00}
-  - generic_name: "Expander"
+  - generic_name: "Pendant"
     rect: {x: 90.00, y: 14.00, w: 10.00, h: 13.00}
     label_rect: {x: 100.00, y: 12.00, w: 9.00, h: 14.00}
     label_orientation: horizontal

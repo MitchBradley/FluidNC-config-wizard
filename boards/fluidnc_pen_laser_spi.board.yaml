@@ -14,19 +14,19 @@ motor_sockets:
   shared_disable_pin: gpio.13
   sockets:
     - label: "X"
-      generic_name: Motor1
+      generic_name: "Motor1"
       driver_class: onboard_fixed
       fixed_motor_type: tmc_2130
       pins: { step_pin: gpio.14, direction_pin: gpio.12, cs_pin: gpio.16 }
       extra: { bus: spi }
     - label: "Y"
-      generic_name: Motor2
+      generic_name: "Motor2"
       driver_class: onboard_fixed
       fixed_motor_type: tmc_2130
       pins: { step_pin: gpio.25, direction_pin: gpio.26, cs_pin: gpio.17 }
       extra: { bus: spi }
     - label: "Z (pen lift)"
-      generic_name: Motor3
+      generic_name: "Motor3"
       driver_class: onboard_fixed
       fixed_motor_type: rc_servo
       pins: { output_pin: gpio.22 }
