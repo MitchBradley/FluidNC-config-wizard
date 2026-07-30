@@ -1,0 +1,15 @@
+module_id: rc_servo
+image: images/rc_servo_module.jpg
+hotspots:
+  - generic_name: "Servo1"
+    rect: {x: 72.00, y: 52.00, w: 28.00, h: 11.00}
+    label_rect: {x: 36.00, y: 52.00, w: 36.00, h: 11.00}
+  - generic_name: "Servo2"
+    rect: {x: 72.00, y: 41.00, w: 28.00, h: 11.00}
+    label_rect: {x: 36.00, y: 41.00, w: 36.00, h: 11.00}
+  - generic_name: "Servo3"
+    rect: {x: 72.00, y: 30.00, w: 28.00, h: 11.00}
+    label_rect: {x: 36.00, y: 30.00, w: 36.00, h: 11.00}
+  - generic_name: "Servo4"
+    rect: {x: 72.00, y: 19.00, w: 28.00, h: 11.00}
+    label_rect: {x: 36.00, y: 19.00, w: 36.00, h: 11.00}

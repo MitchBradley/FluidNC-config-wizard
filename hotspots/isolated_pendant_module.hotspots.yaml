@@ -1,0 +1,6 @@
+module_id: isolated_pendant
+image: images/isolated_pendant_module.jpg
+hotspots:
+  - generic_name: "Pendant"
+    rect: {x: 68.00, y: 55.00, w: 32.00, h: 45.00}
+    label_rect: {x: 21.00, y: 55.00, w: 47.00, h: 45.00}
