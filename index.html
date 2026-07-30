@@ -4793,59 +4793,70 @@ async function detectBoardId(doc) {
   return nameHit ? nameHit.id : null;
 }
 
+/* Shared by both real ways a config.yaml's text can enter this tool:
+ * the "Load config.yaml..." file picker below, and a companion tool (e.g.
+ * WebInstaller's "Open in Wizard", see notifyCompanionReady()) handing
+ * over its currently-open file's contents via postMessage instead of a
+ * local file dialog. Both end up needing the exact same parse/detect-
+ * board/import/re-render sequence, just with a different source for the
+ * raw text and a different human-readable label for the report ("a
+ * filename" for the picker, "the label WebInstaller sent" for the
+ * companion path -- see isFluidNCConfigMessage's own filename field). */
+async function handleIncomingConfigText(rawText, sourceLabel) {
+  let doc;
+  try {
+    doc = jsyaml.load(rawText);
+  } catch (err) {
+    document.getElementById("importReport").className = "note note-error";
+    document.getElementById("importReport").style.display = "block";
+    document.getElementById("importReport").innerHTML =
+      `<b>Couldn't parse ${escapeHtml(sourceLabel)}:</b> ${escapeHtml(err.message)}`;
+    return;
+  }
+  if (!doc || typeof doc !== "object") {
+    document.getElementById("importReport").className = "note note-error";
+    document.getElementById("importReport").style.display = "block";
+    document.getElementById("importReport").innerHTML = `<b>${escapeHtml(sourceLabel)} doesn't look like a config.yaml (empty or not a mapping).</b>`;
+    return;
+  }
+
+  const priorBoardId = board && board.board && board.board.id;
+  const detectedId = await detectBoardId(doc);
+  let boardNote = null;
+  if (detectedId && detectedId !== priorBoardId) {
+    await loadBoard(detectedId);
+    document.getElementById("boardPicker").value = detectedId;
+    syncUrlToBoard(detectedId);
+    boardNote = `Auto-detected board from config's "board: ${doc.board}" -- switched to ${detectedId}.`;
+  } else if (detectedId) {
+    boardNote = `Config's "board: ${doc.board}" matches the currently selected board (${detectedId}).`;
+  } else if (!priorBoardId) {
+    // No board loaded yet (nothing is preselected at boot -- see boot())
+    // and the config's own "board:" field, if any, didn't match a known
+    // board either -- there's nothing to bind pins against yet.
+    document.getElementById("importReport").className = "note note-error";
+    document.getElementById("importReport").style.display = "block";
+    document.getElementById("importReport").innerHTML = doc.board
+      ? `<b>Config's "board: ${escapeHtml(doc.board)}" didn't match any known board.</b> Pick a board above first, then re-load this file.`
+      : `<b>This config.yaml has no "board:" field to auto-detect from.</b> Pick a board above first, then re-load this file.`;
+    return;
+  } else if (doc.board) {
+    boardNote = `Config's "board: ${doc.board}" didn't match any known board -- using the currently selected board (${priorBoardId}); verify pin bindings look right.`;
+  }
+
+  const report = importConfig(doc, rawText);
+  renderResources();
+  renderHotspotPane();
+  wireHotspotHoverLinks();
+  generateDraft();
+  renderImportReport(report, sourceLabel, boardNote);
+}
+
 document.getElementById("configFileInput").addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = async () => {
-    let doc;
-    try {
-      doc = jsyaml.load(reader.result);
-    } catch (err) {
-      document.getElementById("importReport").className = "note note-error";
-      document.getElementById("importReport").style.display = "block";
-      document.getElementById("importReport").innerHTML =
-        `<b>Couldn't parse ${escapeHtml(file.name)}:</b> ${escapeHtml(err.message)}`;
-      return;
-    }
-    if (!doc || typeof doc !== "object") {
-      document.getElementById("importReport").className = "note note-error";
-      document.getElementById("importReport").style.display = "block";
-      document.getElementById("importReport").innerHTML = `<b>${escapeHtml(file.name)} doesn't look like a config.yaml (empty or not a mapping).</b>`;
-      return;
-    }
-
-    const priorBoardId = board && board.board && board.board.id;
-    const detectedId = await detectBoardId(doc);
-    let boardNote = null;
-    if (detectedId && detectedId !== priorBoardId) {
-      await loadBoard(detectedId);
-      document.getElementById("boardPicker").value = detectedId;
-      syncUrlToBoard(detectedId);
-      boardNote = `Auto-detected board from config's "board: ${doc.board}" -- switched to ${detectedId}.`;
-    } else if (detectedId) {
-      boardNote = `Config's "board: ${doc.board}" matches the currently selected board (${detectedId}).`;
-    } else if (!priorBoardId) {
-      // No board loaded yet (nothing is preselected at boot -- see boot())
-      // and the config's own "board:" field, if any, didn't match a known
-      // board either -- there's nothing to bind pins against yet.
-      document.getElementById("importReport").className = "note note-error";
-      document.getElementById("importReport").style.display = "block";
-      document.getElementById("importReport").innerHTML = doc.board
-        ? `<b>Config's "board: ${escapeHtml(doc.board)}" didn't match any known board.</b> Pick a board above first, then re-load this file.`
-        : `<b>This config.yaml has no "board:" field to auto-detect from.</b> Pick a board above first, then re-load this file.`;
-      return;
-    } else if (doc.board) {
-      boardNote = `Config's "board: ${doc.board}" didn't match any known board -- using the currently selected board (${priorBoardId}); verify pin bindings look right.`;
-    }
-
-    const report = importConfig(doc, reader.result);
-    renderResources();
-    renderHotspotPane();
-    wireHotspotHoverLinks();
-    generateDraft();
-    renderImportReport(report, file.name, boardNote);
-  };
+  reader.onload = () => handleIncomingConfigText(reader.result, file.name);
   reader.onerror = () => {
     document.getElementById("importReport").className = "note note-error";
     document.getElementById("importReport").style.display = "block";
@@ -5061,33 +5072,121 @@ function syncUrlToBoard(id) {
  * This is additive, not a replacement for Copy/Download/Load -- if the key
  * is unrecognized, opener is missing/closed, or postMessage isn't
  * available for any reason, those three keep working exactly as before.
+ *
+ * The postMessage targetOrigin: COMPANION_TOOLS[key].origin below is only
+ * ever a FALLBACK default, not the value actually used whenever the opener
+ * tells us its real origin. postMessage's delivery check is exact-string
+ * -- the browser silently drops the message (no error, no exception) if
+ * targetOrigin doesn't byte-for-byte match the opener window's actual
+ * origin -- so hardcoding only the production URL here would silently
+ * break every non-production opener (a WebInstaller dev build running on
+ * localhost, a PR preview deploy, etc.), exactly the failure a user hit
+ * testing WebInstaller at localhost:1234 against this tool's real
+ * deployed URL: the button appeared to work (this tab correctly detected
+ * a live, known companion and showed "Send to WebInstaller"), the message
+ * was sent, but it was silently addressed to
+ * "https://installer.fluidnc.com" while the real opener was
+ * "http://localhost:1234", so the browser dropped it with zero
+ * indication anything had gone wrong. Fix: the opener now appends its own
+ * REAL origin as a `&origin=` param when it opens this tab (see
+ * fluid-installer-breiler's openWizard()), and initCompanionHandoff()
+ * uses that verbatim as activeCompanion.origin whenever present and
+ * well-formed, falling back to COMPANION_TOOLS[key].origin only for older
+ * links that don't pass it. This is safe to trust from the URL (not a
+ * spoofing vector) precisely because of that same exact-match delivery
+ * check: passing a WRONG origin here can only ever cause the message to
+ * be (silently) dropped, never redirected somewhere else -- window.opener
+ * is a live reference to the real opener, whatever origin string this
+ * code is told to address it as.
  * ------------------------------------------------------------------- */
 const COMPANION_TOOLS = {
   webinstaller: { label: "WebInstaller", origin: "https://installer.fluidnc.com" },
 };
 let activeCompanion = null; // { key, label, origin } of the tool that opened this tab, once confirmed live -- see initCompanionHandoff()/sendToCompanion()
 
+// Very permissive on purpose -- just enough to reject obvious garbage
+// (missing scheme, stray path/query, whitespace) before handing the value
+// to postMessage as a targetOrigin; anything that looks vaguely like
+// "scheme://host[:port]" is accepted, since localhost/127.0.0.1/private-IP
+// dev origins all need to keep working here, not just production domains.
+function isPlausibleOrigin(s) {
+  return typeof s === "string" && /^https?:\/\/[^\/\s]+$/i.test(s);
+}
+
 function initCompanionHandoff() {
-  const key = new URLSearchParams(window.location.search).get("companion");
+  const params = new URLSearchParams(window.location.search);
+  const key = params.get("companion");
   const companion = key && COMPANION_TOOLS[key];
   if (!companion || !window.opener || window.opener.closed) return;
-  activeCompanion = Object.assign({ key }, companion);
+  const declaredOrigin = params.get("origin");
+  const origin = isPlausibleOrigin(declaredOrigin) ? declaredOrigin : companion.origin;
+  activeCompanion = Object.assign({ key }, companion, { origin });
   const btn = document.getElementById("sendToCompanionBtn");
   btn.textContent = `Send to ${companion.label}`;
   btn.style.display = "";
+
+  // Receiving direction: the opener (e.g. WebInstaller's "Open in Wizard")
+  // may have its own config.yaml already open and want to hand IT to us,
+  // so the user can pick up editing it here instead of starting from a
+  // blank board pick. Reuses the exact same "fluidnc-config" message
+  // shape sendToCompanion() sends in the other direction -- it's the same
+  // payload either way, just going the opposite direction across the same
+  // opener/opened pair, so one shape covers both. Gated on
+  // activeCompanion.origin (never "*"), same reasoning as sendToCompanion:
+  // wrong-origin messages just get silently ignored here, they can't be
+  // misdirected TO the wrong place by an attacker since we're the
+  // receiver deciding what to trust, not the sender.
+  window.addEventListener("message", (event) => {
+    if (!activeCompanion || event.origin !== activeCompanion.origin) return;
+    const data = event.data;
+    if (!data || data.type !== "fluidnc-config" || data.version !== 1 || typeof data.contents !== "string") return;
+    console.log("[fluidnc-wizard] received config from opener:", data.filename);
+    // Safe to call even before loadRoleData() resolves -- see
+    // notifyCompanionReady(), which is only ever sent to the opener AFTER
+    // loadRoleData() has already succeeded, so by the time a real reply
+    // can possibly arrive back here, boot()'s own await of that same
+    // promise has already completed too.
+    handleIncomingConfigText(data.contents, data.filename || `${companion.label} config`);
+  });
+}
+
+// Tells the opener (if any) that this tab is a live, ready-to-receive
+// companion session -- see initCompanionHandoff()'s message listener
+// above. Deliberately called from boot() only AFTER loadRoleData() has
+// resolved (not from initCompanionHandoff() itself, which runs first,
+// before any of that schema-derived data exists yet) -- sending "ready"
+// any earlier would invite a race where the opener's reply arrives before
+// this tab can actually process it (loadBoard()/importConfig() both
+// depend on data loadRoleData() populates).
+function notifyCompanionReady() {
+  if (!activeCompanion || !window.opener || window.opener.closed) return;
+  try {
+    window.opener.postMessage({ type: "fluidnc-wizard-ready", version: 1 }, activeCompanion.origin);
+  } catch (e) { /* non-fatal -- opener just won't get a chance to hand us a config */ }
 }
 
 function sendToCompanion() {
-  if (!activeCompanion || !board) return; // no board picked/loaded yet -- nothing to send
+  if (!activeCompanion || !board) {
+    console.warn("[fluidnc-wizard] sendToCompanion: nothing to send", { activeCompanion, hasBoard: !!board });
+    return; // no board picked/loaded yet -- nothing to send
+  }
   const w = window.opener;
   const btn = document.getElementById("sendToCompanionBtn");
   if (!w || w.closed) {
     // Opener tab was closed after this one loaded -- quietly retract the
     // button rather than posting into the void or erroring on click.
+    console.warn("[fluidnc-wizard] sendToCompanion: opener gone, retracting button");
     activeCompanion = null;
     btn.style.display = "none";
     return;
   }
+  // Logged permanently (not stripped in production) -- this handoff has no
+  // other feedback channel if postMessage's delivery silently no-ops (e.g.
+  // a stale/mismatched targetOrigin), and "Sent!" below only ever reflects
+  // that this call was MADE, never that it was actually received -- see
+  // the opener-side console.log this pairs with in
+  // fluid-installer-breiler's ConfigurationModal.tsx.
+  console.log("[fluidnc-wizard] sendToCompanion: posting to", activeCompanion.origin, "filename:", `${board.board.id}.config.yaml`);
   w.postMessage({
     type: "fluidnc-config",
     version: 1,
@@ -5119,6 +5218,16 @@ async function boot() {
     return;
   }
   await loadBoardManifest();
+  // Only NOW -- after BOARD_IDS is actually populated -- do we invite the
+  // opener to hand us a config. Sending this any earlier (originally
+  // placed right after loadRoleData(), before this await) raced
+  // detectBoardId(): its exact-id fast path (BOARD_IDS.find(...)) and its
+  // by-name fallback both depend on BOARD_IDS being non-empty, so a
+  // config that arrived before this line completed would silently fail
+  // to auto-detect ITS OWN board -- exactly the bug reported ("board:
+  // doberman" not matching, despite "doberman" being a perfectly valid
+  // id) once WebInstaller started replying fast enough to win that race.
+  notifyCompanionReady();
   // Normally no board is preselected/auto-loaded -- the user picks one
   // explicitly via the picker (or loads an existing config.yaml, which
   // auto-detects and selects its board for them, see configFileInput's
