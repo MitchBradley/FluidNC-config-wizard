@@ -59,8 +59,8 @@ rs485_channels:
   - { label: "RS485", tx_pin: gpio.15, rx_pin: gpio.16, rts_pin: gpio.14, pins_reusable_as_generic_io: true }
 
 expansion_sockets:
-  - label: "Expansion Module Socket"
-    generic_name: "Expansion Module Socket"
+  - label: "Module Socket"
+    generic_name: "Module Socket"
     pins:
       - { module_pin: "1", mcu_pin: gpio.25, direction: either }
       - { module_pin: "2", mcu_pin: gpio.27, direction: either }

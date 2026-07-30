@@ -130,8 +130,8 @@ generic_pins:
   - { label: "0-10V - 2 gpio.8", generic_name: "Spindle Out8", mcu_pin: gpio.8, direction: output, output_profile: { drive_type: open_collector }, notes: "Opto output to a common ground supplied by the VFD (per wiki, not the controller's own ground)." }
 
 expansion_sockets:
-  - label: "Expansion Module Socket"
-    generic_name: "Expansion Module Socket"
+  - label: "Module Socket"
+    generic_name: "Module Socket"
     pins:
       - { module_pin: "1", mcu_pin: gpio.14, direction: either }
       - { module_pin: "2", mcu_pin: gpio.13, direction: either }

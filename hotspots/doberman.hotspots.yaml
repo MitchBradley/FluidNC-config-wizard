@@ -91,6 +91,6 @@ hotspots:
     rect: {x: 85.00, y: 41.00, w: 7.00, h: 10.00}
     rect_orientation: horizontal
     label_rect: {x: 92.00, y: 41.00, w: 13.00, h: 10.00}
-  - generic_name: "Expansion Module Socket"
+  - generic_name: "Module Socket"
     rect: {x: 38.00, y: 34.00, w: 21.00, h: 39.00}
     socket_orientation: 3

@@ -144,8 +144,8 @@ generic_pins:
     output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 1.0 }
 
 expansion_sockets:
-  - label: "Expansion Module Socket"
-    generic_name: "Expansion Module Socket"
+  - label: "Module Socket"
+    generic_name: "Module Socket"
     pins:
       - { module_pin: "1", mcu_pin: gpio.12, direction: either }
       - { module_pin: "2", mcu_pin: gpio.13, direction: either }

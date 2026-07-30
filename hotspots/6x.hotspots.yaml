@@ -73,6 +73,6 @@ hotspots:
   - generic_name: "Spindle 10V"
     rect: {x: 74.00, y: 3.00, w: 3.00, h: 16.00}
     label_rect: {x: 74.00, y: -20.00, w: 3.00, h: 22.00}
-  - generic_name: "Expansion Module Socket"
+  - generic_name: "Module Socket"
     rect: {x: 67.00, y: 46.00, w: 31.00, h: 36.00}
     socket_orientation: 0
