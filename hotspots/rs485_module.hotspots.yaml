@@ -1,0 +1,6 @@
+module_id: rs485
+image: images/rs485_module.jpg
+hotspots:
+  - generic_name: "RS485"
+    rect: {x: 82.00, y: 29.00, w: 18.00, h: 37.00}
+    label_rect: {x: 41.00, y: 29.00, w: 41.00, h: 37.00}
