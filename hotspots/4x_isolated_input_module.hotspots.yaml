@@ -1,0 +1,15 @@
+module_id: 4x_isolated_input
+image: images/4x_isolated_input_module.jpg
+hotspots:
+  - generic_name: "In1"
+    rect: {x: 67.00, y: 61.00, w: 13.00, h: 39.00}
+    label_rect: {x: 51.00, y: 61.00, w: 16.00, h: 39.00}
+  - generic_name: "In2"
+    rect: {x: 87.00, y: 57.00, w: 14.00, h: 37.00}
+    label_rect: {x: 101.00, y: 57.00, w: 15.00, h: 37.00}
+  - generic_name: "In3"
+    rect: {x: 67.00, y: 14.00, w: 14.00, h: 41.00}
+    label_rect: {x: 50.00, y: 14.00, w: 17.00, h: 41.00}
+  - generic_name: "In4"
+    rect: {x: 87.00, y: 13.00, w: 14.00, h: 38.00}
+    label_rect: {x: 101.00, y: 13.00, w: 15.00, h: 38.00}

@@ -1,0 +1,6 @@
+module_id: relay
+image: images/relay_module.jpg
+hotspots:
+  - generic_name: "Relay"
+    rect: {x: 82.00, y: 33.00, w: 18.00, h: 45.00}
+    label_rect: {x: 32.00, y: 34.00, w: 49.00, h: 42.00}

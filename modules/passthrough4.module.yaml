@@ -1,0 +1,38 @@
+module:
+  id: passthrough4
+  name: "Passthrough 4 pins"
+  status: active
+
+meta:
+  notes: >
+    A module that lets you use 4 raw pins from the module connector.
+    It uses the prototyping board for a hotspot-bearing image.
+
+generic_pins:
+  - label: "Pin1"
+    generic_name: "IO 1"
+    module_pin: "1"
+    direction: either
+    input_profile: { conditioning: raw }
+    output_profile: { drive_type: totem_pole }
+
+  - label: "Pin2"
+    generic_name: "IO 2"
+    module_pin: "2"
+    direction: either
+    input_profile: { conditioning: raw }
+    output_profile: { drive_type: totem_pole }
+
+  - label: "Pin3"
+    generic_name: "IO 3"
+    module_pin: "3"
+    direction: either
+    input_profile: { conditioning: raw }
+    output_profile: { drive_type: totem_pole }
+
+  - label: "Pin4"
+    generic_name: "IO 4"
+    module_pin: "8"
+    direction: either
+    input_profile: { conditioning: raw }
+    output_profile: { drive_type: totem_pole }

@@ -1,6 +1,6 @@
 module:
-  id: basic_input
-  name: "Basic Input Module"
+  id: 4x_powered_input
+  name: "4x Powered Input Module"
   manufacturer: "Dring Engineering Services"
   form_factor: cnc_io_module_12pin
   status: active
@@ -9,7 +9,7 @@ meta:
   wiki_url: "http://wiki.fluidnc.com/en/hardware/cnc_io_modules#basic-input"
   source_files_url: "https://oshwlab.com/bdring/4x-basic-input-module_copy"
   notes: >
-    4 RC-filtered digital inputs, one per module pin (1-4).
+    4 RC-filtered digital inputs, one per module pin (1-4), with 5V power
 
 generic_pins:
   - label: "Input 1"

@@ -1,0 +1,12 @@
+module_id: 10v_spindle
+image: images/10v_spindle_module.png
+hotspots:
+  - generic_name: "Spindle 10V"
+    rect: {x: 68.00, y: 64.00, w: 32.00, h: 23.00}
+    label_rect: {x: 37.00, y: 64.00, w: 31.00, h: 23.00}
+  - generic_name: "Spindle OC1"
+    rect: {x: 68.00, y: 41.00, w: 32.00, h: 23.00}
+    label_rect: {x: 37.00, y: 41.00, w: 31.00, h: 23.00}
+  - generic_name: "Spindle OC2"
+    rect: {x: 68.00, y: 16.00, w: 32.00, h: 25.00}
+    label_rect: {x: 37.00, y: 16.00, w: 31.00, h: 25.00}

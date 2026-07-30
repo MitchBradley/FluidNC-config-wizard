@@ -1,0 +1,9 @@
+module_id: passthrough2
+image: images/passthrough_module.jpg
+hotspots:
+  - generic_name: "IO 1"
+    rect: {x: 3.00, y: 67.00, w: 24.00, h: 13.00}
+    label_rect: {x: 27.00, y: 66.00, w: 49.00, h: 14.00}
+  - generic_name: "IO 2"
+    rect: {x: 3.00, y: 54.00, w: 24.00, h: 13.00}
+    label_rect: {x: 26.00, y: 53.00, w: 50.00, h: 14.00}

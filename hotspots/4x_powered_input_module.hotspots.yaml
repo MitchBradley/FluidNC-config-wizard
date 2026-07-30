@@ -1,0 +1,15 @@
+module_id: 4x_powered_input
+image: images/4x_powered_input_module.jpg
+hotspots:
+  - generic_name: "In1"
+    rect: {x: 83.00, y: 64.00, w: 12.00, h: 32.00}
+    label_rect: {x: 95.00, y: 64.00, w: 16.00, h: 32.00}
+  - generic_name: "In2"
+    rect: {x: 83.00, y: 26.00, w: 12.00, h: 29.00}
+    label_rect: {x: 95.00, y: 26.00, w: 16.00, h: 29.00}
+  - generic_name: "In3"
+    rect: {x: 61.00, y: 64.00, w: 12.00, h: 32.00}
+    label_rect: {x: 45.00, y: 64.00, w: 16.00, h: 32.00}
+  - generic_name: "In4"
+    rect: {x: 61.00, y: 26.00, w: 12.00, h: 29.00}
+    label_rect: {x: 45.00, y: 26.00, w: 16.00, h: 29.00}

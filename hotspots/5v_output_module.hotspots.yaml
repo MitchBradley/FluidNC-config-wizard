@@ -1,0 +1,15 @@
+module_id: 5v_output
+image: images/5v_output_module.jpg
+hotspots:
+  - generic_name: "5V Out1"
+    rect: {x: 76.00, y: 77.00, w: 24.00, h: 22.00}
+    label_rect: {x: 45.00, y: 77.00, w: 31.00, h: 22.00}
+  - generic_name: "5V Out2"
+    rect: {x: 76.00, y: 56.00, w: 24.00, h: 20.00}
+    label_rect: {x: 45.00, y: 56.00, w: 31.00, h: 21.00}
+  - generic_name: "5V Out3"
+    rect: {x: 76.00, y: 35.00, w: 24.00, h: 21.00}
+    label_rect: {x: 45.00, y: 34.00, w: 31.00, h: 22.00}
+  - generic_name: "5V Out4"
+    rect: {x: 76.00, y: 13.00, w: 24.00, h: 22.00}
+    label_rect: {x: 45.00, y: 13.00, w: 31.00, h: 21.00}

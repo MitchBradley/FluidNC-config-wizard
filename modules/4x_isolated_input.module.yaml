@@ -1,0 +1,34 @@
+module:
+  id: 4x_isolated_input
+  name: "4x Isolated Input Module"
+  manufacturer: "Dring Engineering Services"
+  form_factor: cnc_io_module_12pin
+  status: active
+
+meta:
+  source_files_url: "https://github.com/bdring/6-Pack_CNC_Controller/wiki/4x-Switch-Input-module"
+  notes: >
+    Buy: https://www.tindie.com/products/33366583/4x-input-cnc-io-module
+    4 opto-isolated inputs, with isolated power
+
+generic_pins:
+  - label: "Input 1"
+    generic_name: "In1"
+    module_pin: "1"
+    direction: input
+    input_profile: { conditioning: opto_isolated }
+  - label: "Input 2"
+    generic_name: "In2"
+    module_pin: "2"
+    direction: input
+    input_profile: { conditioning: opto_isolated }
+  - label: "Input 3"
+    generic_name: "In3"
+    module_pin: "3"
+    direction: input
+    input_profile: { conditioning: opto_isolated }
+  - label: "Input 4"
+    generic_name: "In4"
+    module_pin: "4"
+    direction: input
+    input_profile: { conditioning: opto_isolated }

@@ -1,13 +1,16 @@
 [
   "10v_spindle",
   "5v_output",
-  "basic_input",
+  "4x_powered_input",
+  "4x_isolated_input",
   "isolated_rs485",
-  "passthrough",
   "pendant_isolation",
   "quad_mosfet",
   "rc_servo",
   "relay",
   "rs485",
-  "simple_pendant"
+  "simple_pendant",
+  "passthrough2",
+  "passthrough4",
+  "passthrough8"
 ]
