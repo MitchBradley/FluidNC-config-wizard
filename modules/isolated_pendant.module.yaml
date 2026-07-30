@@ -1,6 +1,6 @@
 module:
-  id: pendant_isolation
-  name: "Pendant/Display Isolation Module"
+  id: isolated_pendant
+  name: "Isolated Pendant Module"
   manufacturer: "Dring Engineering Services"
   form_factor: cnc_io_module_12pin
   status: active
@@ -16,7 +16,7 @@ meta:
     added -- txd on module pin 1, rxd on module pin 2.
 
 expansion_uarts:
-  - label: "Pendant"
+  - label: "Isolated Pendant"
     generic_name: "Pendant"
     txd_pin: "1"
     rxd_pin: "2"

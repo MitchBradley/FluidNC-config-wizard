@@ -1,0 +1,6 @@
+module_id: pendant
+image: images/pendant_module.jpg
+hotspots:
+  - generic_name: "Pendant"
+    rect: {x: 66.00, y: 25.00, w: 34.00, h: 43.00}
+    label_rect: {x: 20.00, y: 25.00, w: 46.00, h: 43.00}
