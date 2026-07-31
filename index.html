@@ -5103,6 +5103,12 @@ const COMPANION_TOOLS = {
   webinstaller: { label: "WebInstaller", origin: "https://installer.fluidnc.com" },
 };
 let activeCompanion = null; // { key, label, origin } of the tool that opened this tab, once confirmed live -- see initCompanionHandoff()/sendToCompanion()
+// Our own private handle on the opener, captured once in
+// initCompanionHandoff() -- see its own comment for why this exists
+// instead of just reading window.opener wherever it's needed (notably
+// sendToCompanion(), which needs it at an arbitrary later time, whenever
+// the user finishes a draft and clicks "Send to <tool>").
+let openerWindow = null;
 
 // Very permissive on purpose -- just enough to reject obvious garbage
 // (missing scheme, stray path/query, whitespace) before handing the value
@@ -5118,6 +5124,27 @@ function initCompanionHandoff() {
   const key = params.get("companion");
   const companion = key && COMPANION_TOOLS[key];
   if (!companion || !window.opener || window.opener.closed) return;
+  // Keep our OWN private reference for later (notifyCompanionReady()/
+  // sendToCompanion() both need it, possibly much after this function
+  // returns -- sendToCompanion() in particular fires whenever the user
+  // eventually clicks "Send to <tool>", which could be minutes into a
+  // design session), then immediately null out the GLOBAL window.opener
+  // property. Partial defense-in-depth against reverse tabnabbing (a
+  // compromised popup can use window.opener.location to silently redirect
+  // the tab that opened it): this does NOT protect against a compromise
+  // of THIS file's own first-party code (an attacker controlling
+  // index.html itself would simply omit this line, or navigate before it
+  // runs) -- only against some OTHER, later-injected script on this same
+  // page reaching the opener through the global property. The full fix
+  // (a noopener popup + MessageChannel, or an iframe-sandboxed embed
+  // instead of a popup) isn't a drop-in replacement here: MessageChannel
+  // still needs an initial live window reference to transfer a port
+  // through, which is exactly what noopener prevents from ever existing,
+  // so it can't bootstrap a channel with a tab it was never given a
+  // handle to. See PROGRESS.md for the fuller writeup (from a GitHub
+  // Copilot PR review comment on the WebInstaller side of this feature).
+  openerWindow = window.opener;
+  try { window.opener = null; } catch (e) { /* some older browsers make window.opener read-only; best-effort, non-fatal */ }
   const declaredOrigin = params.get("origin");
   const origin = isPlausibleOrigin(declaredOrigin) ? declaredOrigin : companion.origin;
   activeCompanion = Object.assign({ key }, companion, { origin });
@@ -5159,9 +5186,9 @@ function initCompanionHandoff() {
 // this tab can actually process it (loadBoard()/importConfig() both
 // depend on data loadRoleData() populates).
 function notifyCompanionReady() {
-  if (!activeCompanion || !window.opener || window.opener.closed) return;
+  if (!activeCompanion || !openerWindow || openerWindow.closed) return;
   try {
-    window.opener.postMessage({ type: "fluidnc-wizard-ready", version: 1 }, activeCompanion.origin);
+    openerWindow.postMessage({ type: "fluidnc-wizard-ready", version: 1 }, activeCompanion.origin);
   } catch (e) { /* non-fatal -- opener just won't get a chance to hand us a config */ }
 }
 
@@ -5170,7 +5197,7 @@ function sendToCompanion() {
     console.warn("[fluidnc-wizard] sendToCompanion: nothing to send", { activeCompanion, hasBoard: !!board });
     return; // no board picked/loaded yet -- nothing to send
   }
-  const w = window.opener;
+  const w = openerWindow;
   const btn = document.getElementById("sendToCompanionBtn");
   if (!w || w.closed) {
     // Opener tab was closed after this one loaded -- quietly retract the
