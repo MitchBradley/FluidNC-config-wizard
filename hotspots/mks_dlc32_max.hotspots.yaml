@@ -1,0 +1,51 @@
+board_id: mks_dlc32_max
+image: images/mks_dlc32_max.jpg
+hotspots:
+  - generic_name: "Motor1"
+    rect: {x: 8.00, y: 1.00, w: 13.00, h: 9.00}
+    label_rect: {x: 8.00, y: -11.00, w: 13.00, h: 12.00}
+  - generic_name: "Motor2"
+    rect: {x: 21.00, y: 1.00, w: 25.00, h: 9.00}
+    label_rect: {x: 26.00, y: -11.00, w: 14.00, h: 12.00}
+  - generic_name: "Motor3"
+    rect: {x: 46.00, y: 1.00, w: 13.00, h: 9.00}
+    label_rect: {x: 46.00, y: -11.00, w: 13.00, h: 12.00}
+  - generic_name: "Motor4"
+    rect: {x: 60.00, y: 1.00, w: 12.00, h: 9.00}
+    label_rect: {x: 60.00, y: -11.00, w: 12.00, h: 12.00}
+  - generic_name: "5V Out1"
+    rect: {x: 73.00, y: 1.00, w: 8.00, h: 9.00}
+    label_rect: {x: 73.00, y: -17.00, w: 8.00, h: 18.00}
+  - generic_name: "5V Out42"
+    rect: {x: 84.00, y: 1.00, w: 8.00, h: 9.00}
+    label_rect: {x: 84.00, y: -17.00, w: 8.00, h: 18.00}
+  - generic_name: "In39"
+    rect: {x: 94.00, y: 13.00, w: 6.00, h: 14.00}
+    label_rect: {x: 100.00, y: 13.00, w: 9.00, h: 14.00}
+  - generic_name: "In40"
+    rect: {x: 88.00, y: 13.00, w: 6.00, h: 14.00}
+    label_rect: {x: 92.00, y: -1.00, w: 7.00, h: 14.00}
+  - generic_name: "In41"
+    rect: {x: 81.00, y: 13.00, w: 6.00, h: 14.00}
+    label_rect: {x: 73.00, y: 13.00, w: 8.00, h: 14.00}
+  - generic_name: "In48"
+    rect: {x: 94.00, y: 30.00, w: 6.00, h: 15.00}
+    label_rect: {x: 100.00, y: 30.00, w: 9.00, h: 15.00}
+  - generic_name: "In38"
+    rect: {x: 75.00, y: 31.00, w: 6.00, h: 14.00}
+    label_rect: {x: 75.00, y: 45.00, w: 6.00, h: 16.00}
+  - generic_name: "In36"
+    rect: {x: 81.00, y: 31.00, w: 7.00, h: 14.00}
+    label_rect: {x: 81.00, y: 45.00, w: 7.00, h: 16.00}
+  - generic_name: "In37"
+    rect: {x: 88.00, y: 31.00, w: 6.00, h: 14.00}
+    label_rect: {x: 88.00, y: 45.00, w: 6.00, h: 16.00}
+  - generic_name: "Pendant"
+    rect: {x: 81.00, y: 81.00, w: 10.00, h: 19.00}
+    label_rect: {x: 81.00, y: 100.00, w: 10.00, h: 15.00}
+  - generic_name: "5V Out2"
+    rect: {x: 2.00, y: 26.00, w: 7.00, h: 31.00}
+    label_rect: {x: -5.00, y: 33.00, w: 7.00, h: 18.00}
+  - generic_name: "5V Out35"
+    rect: {x: 2.00, y: 58.00, w: 7.00, h: 15.00}
+    label_rect: {x: -5.00, y: 58.00, w: 7.00, h: 15.00}
