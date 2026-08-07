@@ -4663,11 +4663,23 @@ function importConfig(doc, rawText) {
       const motorPinFields = [
         "step_pin", "direction_pin", "disable_pin", "cs_pin",
         "ms1_pin", "ms2_pin", "ms3_pin", "reset_pin",
+        // rc_servo/solenoid's only pin -- unlike the others above, this one
+        // can resolve to EITHER a dedicated Motor socket (a board's own
+        // onboard_fixed rc_servo/solenoid connector) OR an ordinary
+        // output-capable Generic pin/module connector (see below).
+        "output_pin",
       ];
 
-      // Identify the physical motor socket via any one of its own pins
-      // (step_pin preferred) -- all of a socket's pins share one
-      // resourceKey (resourceKeyMotor(i)), so matching just one suffices.
+      // Identify the physical resource via any one of its own pins
+      // (step_pin preferred for driver-socket types) -- all of a socket's
+      // pins share one resourceKey, so matching just one suffices. For
+      // rc_servo/solenoid specifically, the resolved resourceKey can be
+      // either a Motor socket (resourceKeyMotor) or a plain output pin/
+      // module connector (resourceKeyPin/resourceKeyModConn) wearing the
+      // "Axis -- RC Servo/Solenoid" role added for that case -- same real
+      // config.yaml shape, different resource kind, so which ROLE string
+      // to bind (and whether a board-derived "expected driver type" check
+      // even applies) depends on which kind resolvePin() actually found.
       let resourceKey = null;
       if (driverBody) {
         const pinField = motorPinFields.find(f => driverBody[f]);
@@ -4682,19 +4694,41 @@ function importConfig(doc, rawText) {
         recordFailedImport(`axes.${letter}.${slot}`, motorDoc, message);
         return;
       }
-      bind(resourceKey, `${letter}:${slot}`, `axes.${letter}.${slot}`);
+
+      const isMotorSocket = resourceKeyPrefix(resourceKey) === "motor";
+      if (!isMotorSocket && driverKey !== "rc_servo" && driverKey !== "solenoid") {
+        // Every OTHER driver type needs a dedicated motor socket's own
+        // STEP/DIR/UART/SPI pins, which only a "motor" resourceKey can
+        // provide -- resolving to anything else here means this pin
+        // doesn't actually belong to a motor socket on this board at all.
+        const message = `driver type "${driverKey}" needs a dedicated motor socket, but its pin resolved to ${resourceKey} (not one)`;
+        report.unrecognized.push(`axes.${letter}.${slot}: ${message}, skipped`);
+        recordFailedImport(`axes.${letter}.${slot}`, motorDoc, message);
+        return;
+      }
+      const role = isMotorSocket ? `${letter}:${slot}` : `axis:${driverKey}:${letter}:${slot}`;
+      bind(resourceKey, role, `axes.${letter}.${slot}`);
 
       // Tuning params only copied if the loaded config's own driver type
       // matches what this board's own socket data says it should be
       // (motorBlockFor() is board-derived, not a user choice) -- otherwise
       // the field names wouldn't line up with the path the regenerated
       // draft will actually use, so the values would silently go nowhere.
-      const socketIndex = Number(resourceKey.split(":")[1]);
-      const socket = (board.motor_sockets && board.motor_sockets.sockets || [])[socketIndex];
-      const expectedKey = socket ? motorBlockFor(socket).key : null;
-      if (driverKey && expectedKey && driverKey !== expectedKey) {
-        report.notes.push(`axes.${letter}.${slot}: loaded config uses driver type "${driverKey}", but this board's own socket data implies "${expectedKey}" -- resource bound, but this socket's tuning fields and pin attributes were NOT copied (would land on the wrong regenerated path)`);
-      } else if (driverBody) {
+      // This check only makes sense for a real Motor socket -- a Generic
+      // pin/module connector has no board-derived "expected" driver type at
+      // all, since driverKey there IS the user's own choice, already
+      // encoded directly in the "axis:<driverKey>:..." role bound above.
+      let skipCopy = false;
+      if (isMotorSocket) {
+        const socketIndex = Number(resourceKey.split(":")[1]);
+        const socket = (board.motor_sockets && board.motor_sockets.sockets || [])[socketIndex];
+        const expectedKey = socket ? motorBlockFor(socket).key : null;
+        if (driverKey && expectedKey && driverKey !== expectedKey) {
+          report.notes.push(`axes.${letter}.${slot}: loaded config uses driver type "${driverKey}", but this board's own socket data implies "${expectedKey}" -- resource bound, but this socket's tuning fields and pin attributes were NOT copied (would land on the wrong regenerated path)`);
+          skipCopy = true;
+        }
+      }
+      if (!skipCopy && driverBody) {
         copyScalarParams(driverBody, `axes.${letter}.${slot}.${driverKey}`, new Set(motorPinFields));
         // Per-pin :low/:high/:pu/:pd attributes -- only meaningful once the
         // driver-type match above confirms this exact path
