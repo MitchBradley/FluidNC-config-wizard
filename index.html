@@ -592,16 +592,23 @@ const LIMIT_DIRECTIONS = { neg: "Negative", pos: "Positive", all: "(shared/all)"
 const SPINDLE_LABELS = {
   pwm: "PWM", laser: "Laser", "10v": "0-10V", relay: "Relay (on/off)",
   dac: "DAC", besc: "BESC (RC ESC)", hbridge: "H-Bridge",
+  plasmaspindle: "Plasma",
 };
+// NOTE: "OnOff" (spindle_OnOff) is deliberately NOT in this map -- per
+// explicit direction, it's a base class FluidNC itself never instantiates
+// directly (Relay is the real, selectable on/off spindle type end users
+// configure); NoSpindle/ModbusVFD remain excluded too, for their own
+// existing reasons (see buildSpindleTypes()' comment).
 const CONTROL_LABEL_OVERRIDES = {
   estop: "E-Stop", macro0: "Macro Button 0", macro1: "Macro Button 1",
   macro2: "Macro Button 2", macro3: "Macro Button 3",
 };
 const PROBE_LABEL_OVERRIDES = { pin: "Probe", toolsetter_pin: "Toolsetter" };
-const SPINDLE_PIN_LABEL_OVERRIDES = { output_cw: "Output CW", output_ccw: "Output CCW" };
+const SPINDLE_PIN_LABEL_OVERRIDES = { output_cw: "Output CW", output_ccw: "Output CCW", arc_ok: "Arc OK" };
 const COMMON_TUNING_FIELDS = new Set([
   "tool_num", "speed_map", "off_on_alarm", "atc", "m6_macro", "s0_with_disable",
   "disable_with_s0", "spinup_ms", "spindown_ms", "pwm_hz", "min_pulse_us", "max_pulse_us",
+  "arc_wait_ms", // spindle_PlasmaSpindle only
 ]);
 // Every spindle's tuning stub field opens as "TBD", same as every other
 // role's tuning fields (see COMMON_TUNING_FIELDS below and buildSpindleTypes())
@@ -632,6 +639,20 @@ const MOTOR_ROLE_TREE = Object.fromEntries(AXES.map(ax => [ax, {
   label: `${ax.toUpperCase()} axis`,
   children: Object.fromEntries(Object.keys(MOTOR_LABELS).map(m => [m, { label: MOTOR_LABELS[m] }])),
 }]));
+
+// Flat [value,label] form of the same axis/motor-slot vocabulary
+// MOTOR_ROLE_TREE encodes as a tree -- used by cascadeOptionsFor()'s
+// "axis:rc_servo"/"axis:solenoid" categories (makeOutputRow's fixed 2-step
+// picker needs a flat secondary-select list, not a tree; see
+// buildOutputRoleBranches() for the tree-shaped equivalent EITHER_ROLE_TREE
+// uses instead, which reuses MOTOR_ROLE_TREE directly).
+function axisMotorSlotOptions() {
+  const opts = [];
+  AXES.forEach(ax => {
+    Object.keys(MOTOR_LABELS).forEach(m => opts.push([`${ax}:${m}`, `${ax.toUpperCase()} axis — ${MOTOR_LABELS[m]}`]));
+  });
+  return opts;
+}
 
 function buildLimitBranch() {
   return {
@@ -722,7 +743,7 @@ function buildSpindleTypes(schema) {
     };
   });
   // Stable, deliberate dropdown order (schema $defs order isn't what we want in the UI).
-  const order = ["pwm", "laser", "10v", "relay", "dac", "besc", "hbridge"];
+  const order = ["pwm", "laser", "10v", "relay", "dac", "besc", "hbridge", "plasmaspindle"];
   const ordered = {};
   order.forEach(t => { if (result[t]) ordered[t] = result[t]; });
   return ordered;
@@ -974,6 +995,18 @@ function buildOutputRoleBranches() {
       label: "Status Output",
       children: Object.fromEntries(STATUS_OUTPUT_PINS.map(([v, l]) => [v, { label: l }])),
     },
+    // Reuses MOTOR_ROLE_TREE by reference for both branches (it's read-only
+    // here, never mutated by the tree walker) -- keeps this in lockstep with
+    // Motor sockets' own axis/motor-slot vocabulary automatically, same
+    // leaf-path shape ("axis:rc_servo:x:motor0") the flat makeOutputRow
+    // picker produces via outputCategoryOptions()/axisMotorSlotOptions().
+    axis: {
+      label: "Axis",
+      children: {
+        rc_servo: { label: "RC Servo", children: MOTOR_ROLE_TREE },
+        solenoid: { label: "Solenoid", children: MOTOR_ROLE_TREE },
+      },
+    },
   };
 }
 
@@ -1070,6 +1103,9 @@ function cascadeOptionsFor(category) {
     const type = category.split(":")[1];
     return SPINDLE_TYPES[type] ? SPINDLE_TYPES[type].pins : null;
   }
+  if (category.startsWith("axis:")) {
+    return axisMotorSlotOptions();
+  }
   if (category === "digital_output") {
     return Array.from({ length: DIGITAL_OUTPUT_COUNT }, (_, i) => [String(i), `Output ${i}`]);
   }
@@ -1094,6 +1130,13 @@ function outputCategoryOptions() {
   opts.push({ value: "digital_output", label: "Digital Output" });
   opts.push({ value: "analog_output", label: "Analog Output" });
   opts.push({ value: "status_output", label: "Status Output" });
+  // RC Servo/Solenoid are single-PWM-pin "motors" (see Motors/RcServo.h,
+  // Motors/Solenoid.h) -- unlike every other axis driver, they need no
+  // dedicated motor socket (STEP/DIR/UART/SPI), so any output-capable pin
+  // can serve as one. Step 2 (cascadeOptionsFor) picks which axis/motor
+  // slot this pin drives, same vocabulary Motor sockets use.
+  opts.push({ value: "axis:rc_servo", label: "Axis — RC Servo" });
+  opts.push({ value: "axis:solenoid", label: "Axis — Solenoid" });
   return opts;
 }
 
@@ -1106,6 +1149,7 @@ function roleCategory(full) {
   if (parts[0] === "digital_output") return "digital_output";
   if (parts[0] === "analog_output") return "analog_output";
   if (parts[0] === "status_output") return "status_output";
+  if (parts[0] === "axis") return `axis:${parts[1]}`;
   return full;
 }
 function roleSubValue(full) {
@@ -1114,6 +1158,7 @@ function roleSubValue(full) {
   if (parts[0] === "digital_output") return parts[1];
   if (parts[0] === "analog_output") return parts[1];
   if (parts[0] === "status_output") return parts[1];
+  if (parts[0] === "axis") return `${parts[2]}:${parts[3]}`;
   return undefined;
 }
 
@@ -1541,6 +1586,25 @@ function specForKey(key) {
     // point; marked "suggested" rather than "firmware" to be honest that
     // this isn't a documented default the way the booleans are.
     case "atc": return { type: "text", placeholder: "", default: "", defaultKind: "suggested" };
+    // arc_wait_ms (spindle_PlasmaSpindle only, via COMMON_TUNING_FIELDS) --
+    // how long to wait for the torch's arc-ok signal before giving up.
+    case "arc_wait_ms": return numeric(3000, "firmware");
+    // Probe::group() boolean settings (probeSection $def) -- real
+    // compiled-in defaults confirmed against fluidnc-config-schema.json's
+    // own "default" keys (check_mode_start true, the other two false).
+    case "check_mode_start":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "true", defaultKind: "firmware" };
+    case "hard_stop": case "probe_hard_limit":
+      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
+    // coolant: delay_ms (coolantSection $def) -- only delays turn-ON, never
+    // M9/off, per the schema's own field description.
+    case "delay_ms": return numeric(0, "firmware");
+    // sdcard: frequency_hz -- SPI clock speed override, schema default 8MHz.
+    case "frequency_hz": return numeric(8000000, "firmware");
+    // axes: homing_runs -- number of homing passes, schema default 2
+    // (range 1-5, not separately enforced here -- same as every other
+    // numeric field's lack of client-side min/max validation).
+    case "homing_runs": return numeric(2, "firmware");
     // m6_macro: macroLine's own schema description says explicitly that
     // an empty string (or an absent key) both mean "do nothing" -- a real,
     // spec-documented default, not just a placeholder guess.
@@ -2370,20 +2434,49 @@ function enumerateLeafPaths(node, segs) {
   return out;
 }
 
-function refreshRoleUniqueness() {
-  const claimed = {}; // full role value string -> { key, label }
-  Object.keys(resourcePins).forEach(key => {
-    const val = bindings[key];
-    if (!val || val === "unused") return;
-    const row = document.querySelector(`#resourceCol .row[data-resource-key="${key}"]`);
-    const label = row && row.querySelector(".name") ? row.querySelector(".name").textContent : key;
-    claimed[val] = { key, label };
-  });
+/* If `fullValue` names a virtual-axis-motor slot, returns its canonical
+ * "x:motor0"-shaped identity; otherwise null. Two DIFFERENT full-role
+ * strings can name the same slot: a Motor socket's own bare form (e.g.
+ * "x:motor0", written directly by makeInputRow against MOTOR_ROLE_TREE) and
+ * an output-capable pin's "Axis -- RC Servo"/"Axis -- Solenoid" form (e.g.
+ * "axis:rc_servo:x:motor0", written by makeOutputRow/makeInputRow against
+ * the axis:/axis.rc_servo|solenoid branches -- see outputCategoryOptions()/
+ * buildOutputRoleBranches()). Both ultimately write the same real
+ * axes.<letter>.motorN: block in generateDraft(), so isRoleClaimedByOther()
+ * below treats them as one claim regardless of which resource type holds
+ * it. */
+function axisSlotKeyOf(fullValue) {
+  if (!fullValue) return null;
+  const parts = fullValue.split(":");
+  if (parts.length === 2 && AXES.includes(parts[0]) && MOTOR_LABELS[parts[1]]) {
+    return fullValue;
+  }
+  if (parts[0] === "axis" && parts.length === 4 && AXES.includes(parts[2]) && MOTOR_LABELS[parts[3]]) {
+    return `${parts[2]}:${parts[3]}`;
+  }
+  return null;
+}
 
+/* True if `fullValue` is currently bound to some resource other than
+ * `ownKey` -- either literally, or (for axis-motor roles) via the shared
+ * axis+motor-slot identity axisSlotKeyOf() extracts. Single source of truth
+ * for "is this role already taken", used both here and by makeInputRow's
+ * firstLeafPathFrom()/makeOutputRow's unclaimed-preference and duplicate
+ * guard, so all three can never disagree about what counts as claimed. */
+function isRoleClaimedByOther(fullValue, ownKey) {
+  const slot = axisSlotKeyOf(fullValue);
+  return Object.keys(resourcePins).some(k => {
+    if (k === ownKey) return false;
+    const val = bindings[k];
+    if (!val || val === "unused") return false;
+    return val === fullValue || (slot !== null && axisSlotKeyOf(val) === slot);
+  });
+}
+
+function refreshRoleUniqueness() {
   function applyDisable(opt, fullValue, ownKey) {
     if (opt.value === "unused") { opt.disabled = false; return; }
-    const owner = claimed[fullValue];
-    opt.disabled = !!owner && owner.key !== ownKey;
+    opt.disabled = isRoleClaimedByOther(fullValue, ownKey);
   }
 
   Object.keys(resourcePins).forEach(key => {
@@ -2409,10 +2502,7 @@ function refreshRoleUniqueness() {
             // EVERY one of its secondary options is already claimed by a
             // DIFFERENT resource (nothing left to pick under it), same
             // "gray the whole exhausted branch" idea as cascade rows below.
-            const exhausted = copts.every(([v]) => {
-              const owner = claimed[`${opt.value}:${v}`];
-              return owner && owner.key !== key;
-            });
+            const exhausted = copts.every(([v]) => isRoleClaimedByOther(`${opt.value}:${v}`, key));
             opt.disabled = exhausted;
             return;
           }
@@ -2452,10 +2542,7 @@ function refreshRoleUniqueness() {
             applyDisable(opt, full, key);
           } else {
             const leaves = enumerateLeafPaths(childNode, pathSoFar.concat([opt.value]));
-            const exhausted = leaves.length > 0 && leaves.every(path => {
-              const owner = claimed[path.join(":")];
-              return owner && owner.key !== key;
-            });
+            const exhausted = leaves.length > 0 && leaves.every(path => isRoleClaimedByOther(path.join(":"), key));
             opt.disabled = exhausted;
           }
         });
@@ -3180,10 +3267,7 @@ function makeOutputRow(key, name, sub, vendorLabel) {
       // to the same cascading category (e.g. both to "Digital Output")
       // would silently default BOTH to "Output 0" before the graying logic
       // ever ran. Falls back to the first option if every one is claimed.
-      const unclaimedVal = opts.find(([v]) => {
-        const full = `${cat}:${v}`;
-        return !Object.keys(resourcePins).some(k => k !== key && bindings[k] === full);
-      });
+      const unclaimedVal = opts.find(([v]) => !isRoleClaimedByOther(`${cat}:${v}`, key));
       secondary.value = opts.some(p => p[0] === curSub) ? curSub : (unclaimedVal ? unclaimedVal[0] : opts[0][0]);
       secondary.style.display = "";
     } else {
@@ -3206,7 +3290,7 @@ function makeOutputRow(key, name, sub, vendorLabel) {
       // gets into that state some other way (refreshSecondary() already
       // prefers an unclaimed option, so this only fires if literally none
       // exist).
-      const stillDuplicate = Object.keys(resourcePins).some(k => k !== key && bindings[k] === full);
+      const stillDuplicate = isRoleClaimedByOther(full, key);
       if (stillDuplicate) {
         bindings[key] = "unused";
         primary.value = "unused";
@@ -3280,10 +3364,7 @@ function makeInputRow(key, name, sub, tree, vendorLabel) {
   // actually possible").
   function firstLeafPathFrom(node, segs) {
     const candidates = enumerateLeafPaths(node, segs);
-    return candidates.find(path => {
-      const val = path.join(":");
-      return !Object.keys(resourcePins).some(k => k !== key && bindings[k] === val);
-    }) || null;
+    return candidates.find(path => !isRoleClaimedByOther(path.join(":"), key)) || null;
   }
 
   function render() {
@@ -3379,6 +3460,73 @@ function countResources() {
   return n;
 }
 
+/* Shared body-builder for the two virtual-axis motor types that are just a
+ * single PWM-capable pin -- no STEP/DIR/UART/SPI at all (see Motors/
+ * RcServo.h, Motors/Solenoid.h). Used both when a board's own onboard_fixed
+ * motor socket is hardwired for one of these (motorBlockFor() below) and
+ * when an ordinary output-capable Generic pin gets assigned an "Axis --
+ * RC Servo"/"Axis -- Solenoid" role (see generateDraft()'s allPins loop) --
+ * same real config.yaml block either way, just a different source for
+ * output_pin, so both paths go through this one function rather than
+ * risking the two bodies drifting apart.
+ *
+ * Field lists/defaults confirmed directly against RcServo.h/Solenoid.h
+ * (schema/config_items.yaml's axes.<letter>.motorN.rc_servo:/.solenoid:
+ * sections mirror this exactly) -- this replaces an earlier version of the
+ * rc_servo case here that stubbed nonexistent cal_min_mm/cal_max_mm fields
+ * (no such fields exist anywhere in RcServo's real group(); likely stale
+ * from an earlier FluidNC version) instead of the driver's actual pwm_hz/
+ * min_pulse_us/max_pulse_us/timer_ms.
+ *
+ * `overrides` are firmware-default hints (see paramDefaultOverrides). Most
+ * are genuinely typical/safe-as-is fields; rc_servo's min_pulse_us/
+ * max_pulse_us are the one exception worth calling out -- they're real
+ * per-servo travel-range facts, not "safe for most machines" in the usual
+ * sense, but they still need an EXPLICIT override here: specForKey(key)
+ * (index.html's global per-field-NAME default table, shared by every
+ * config item with that name) already has a "min_pulse_us"/"max_pulse_us"
+ * case, but it's tuned for BESC (900/2200), the OTHER motor/spindle type
+ * with these field names -- without an rc_servo-specific override here, the
+ * "def" button on an RC Servo's min/max_pulse_us would silently offer
+ * BESC's numbers instead of RcServo's own real compiled defaults
+ * (RcServoSettings.h: SERVO_PULSE_US_MIN/MAX_DEFAULT = 1000/2000). This is
+ * the same bare-name-collision hazard noted elsewhere for
+ * report_interval_ms -- specForKey has no way to know which config item
+ * it's really answering for. */
+function axisMotorBlockFor(type, outputPin) {
+  if (type === "solenoid") {
+    return {
+      key: "solenoid",
+      body: {
+        output_pin: outputPin,
+        pwm_hz: "TBD", off_percent: "TBD", pull_percent: "TBD",
+        hold_percent: "TBD", pull_ms: "TBD", direction_invert: "TBD", timer_ms: "TBD",
+      },
+      overrides: {
+        pwm_hz: { default: 1000, defaultKind: "firmware" },
+        off_percent: { default: 0.0, defaultKind: "firmware" },
+        pull_percent: { default: 100.0, defaultKind: "firmware" },
+        hold_percent: { default: 75.0, defaultKind: "firmware" },
+        pull_ms: { default: 500, defaultKind: "firmware" },
+        direction_invert: { default: false, defaultKind: "firmware" },
+        timer_ms: { default: 50, defaultKind: "firmware" },
+      },
+    };
+  }
+  return {
+    key: "rc_servo",
+    body: { output_pin: outputPin, pwm_hz: "TBD", min_pulse_us: "TBD", max_pulse_us: "TBD", timer_ms: "TBD" },
+    overrides: {
+      pwm_hz: { default: 50, defaultKind: "firmware" },
+      // Correcting specForKey("min_pulse_us"/"max_pulse_us")'s BESC-tuned
+      // 900/2200 fallback -- see this function's own header comment above.
+      min_pulse_us: { default: 1000, defaultKind: "firmware" },
+      max_pulse_us: { default: 2000, defaultKind: "firmware" },
+      timer_ms: { default: 20, defaultKind: "firmware" },
+    },
+  };
+}
+
 /* ---------------------------------------------------------------------
  * Phase B: build the draft config.yaml from current bindings.
  * TBD stubs are inserted only for parameters of roles that got bound —
@@ -3389,10 +3537,10 @@ function motorBlockFor(socket) {
   if (dc === "onboard_fixed") {
     const t = socket.fixed_motor_type;
     if (t === "rc_servo") {
-      return { key: "rc_servo", body: {
-        output_pin: socket.pins.output_pin,
-        cal_min_mm: "TBD", cal_max_mm: "TBD"
-      }};
+      return axisMotorBlockFor("rc_servo", socket.pins.output_pin);
+    }
+    if (t === "solenoid") {
+      return axisMotorBlockFor("solenoid", socket.pins.output_pin);
     }
     if (t === "tmc_2209") {
       return { key: "tmc_2209", body: {
@@ -3569,6 +3717,12 @@ function generateDraft() {
   if (fp.sdcard) {
     cfg.sdcard = { cs_pin: fp.sdcard.cs_pin };
     if (fp.sdcard.card_detect_pin) cfg.sdcard.card_detect_pin = fp.sdcard.card_detect_pin;
+    // frequency_hz -- SPI clock speed override, the one genuinely
+    // user-adjustable sdcard: field (cs_pin/card_detect_pin are fixed
+    // board facts, not user choices) -- pre-filled with the real firmware
+    // default, same treatment as probe/coolant's fields above.
+    cfg.sdcard.frequency_hz = "TBD";
+    paramDefaultOverrides["sdcard.frequency_hz"] = { default: 8000000, defaultKind: "firmware" };
   }
   if (fp.i2so) cfg.i2so = { bck_pin: fp.i2so.bck_pin, data_pin: fp.i2so.data_pin, ws_pin: fp.i2so.ws_pin };
   // NOTE: I2C is intentionally NOT handled here as a fixed peripheral --
@@ -3588,6 +3742,16 @@ function generateDraft() {
   if (board.motor_sockets && board.motor_sockets.shared_disable_pin) {
     cfg.axes.shared_stepper_disable_pin = board.motor_sockets.shared_disable_pin;
   }
+  // homing_runs -- number of homing passes, a top-level axes: scalar
+  // (sibling of shared_stepper_disable_pin/reset_pin and the per-axis x/y/
+  // z/... blocks, NOT inside any one axis' own homing: sub-block).
+  // Unconditional like MachineConfig's own uncategorized scalars
+  // (arc_tolerance_mm etc.) rather than gated on any axis having homing
+  // enabled -- harmless/ignorable if no axis homes, and axes: itself is
+  // always present regardless. Pre-filled with the real firmware default,
+  // same treatment as probe/coolant/sdcard's fields above.
+  cfg.axes.homing_runs = "TBD";
+  paramDefaultOverrides["axes.homing_runs"] = { default: 2, defaultKind: "firmware" };
 
   // (paramDefaultOverrides declared up front, near cfg.name/-cfg.board above --
   // populated below when a motor socket's own extra facts document a
@@ -3618,6 +3782,12 @@ function generateDraft() {
     // so it's stubbed here alongside the driver body, once per bound motor
     // socket, regardless of whether a limit pin ends up bound to it.
     axis[slot].hard_limits = "TBD";
+    // Firmware-default hints for genuinely typical fields (e.g. rc_servo's
+    // pwm_hz/timer_ms -- see axisMotorBlockFor()) -- other driver types'
+    // blocks simply don't set `.overrides`, so this is a no-op for them.
+    Object.keys(block.overrides || {}).forEach(k => {
+      paramDefaultOverrides[`axes.${letter}.${slot}.${block.key}.${k}`] = block.overrides[k];
+    });
     if (socket.extra && socket.extra.r_sense_ohms_hint != null) {
       paramDefaultOverrides[`axes.${letter}.${slot}.${block.key}.r_sense_ohms`] = {
         default: socket.extra.r_sense_ohms_hint,
@@ -3666,6 +3836,25 @@ function generateDraft() {
       cfg.probe = cfg.probe || {};
       annotate(cfg.probe, field, p.label);
       cfg.probe[field] = pin;
+      // check_mode_start/hard_stop/probe_hard_limit -- Probe::group()'s
+      // three boolean settings, real config fields with no pin/resource of
+      // their own to bind (same "stub the moment the section becomes
+      // relevant" pattern as analogN_hz below). Only stubbed once probe:
+      // actually exists (i.e. once pin or toolsetter_pin is bound) --
+      // matches the schema's own description: "an all-default block is
+      // equivalent to omitting the section" -- and only if not already
+      // set, so binding BOTH pin and toolsetter_pin doesn't reset a value
+      // the user already typed in. Pre-filled with FluidNC's real
+      // compiled-in default via paramDefaultOverrides (per explicit user
+      // direction), same treatment as arc_tolerance_mm/verbose_errors --
+      // still an ordinary editable field, just answered from the start
+      // rather than sitting open/amber.
+      if (cfg.probe.check_mode_start === undefined) cfg.probe.check_mode_start = "TBD";
+      if (cfg.probe.hard_stop === undefined) cfg.probe.hard_stop = "TBD";
+      if (cfg.probe.probe_hard_limit === undefined) cfg.probe.probe_hard_limit = "TBD";
+      paramDefaultOverrides["probe.check_mode_start"] = { default: true, defaultKind: "firmware" };
+      paramDefaultOverrides["probe.hard_stop"] = { default: false, defaultKind: "firmware" };
+      paramDefaultOverrides["probe.probe_hard_limit"] = { default: false, defaultKind: "firmware" };
     } else if (role.startsWith("control:")) {
       // Covers all real Control:: pins, including the 4 macro buttons
       // and fault/estop/homing_button, which are siblings of feed_hold
@@ -3694,11 +3883,24 @@ function generateDraft() {
       annotate(cfg[cfgKey], `${which}_pin`, p.label);
       cfg[cfgKey][`${which}_pin`] = pin;
       spindleBound = true;
+      // arc_wait_ms (PlasmaSpindle only, via COMMON_TUNING_FIELDS -- every
+      // other type's tuning fields, e.g. tool_num/off_on_alarm, stay plain
+      // open TBD, unchanged/pre-existing behavior) -- pre-filled with the
+      // real firmware default, per explicit user direction for the fields
+      // added in this same pass.
+      if (type === "plasmaspindle" && cfg[cfgKey].arc_wait_ms !== undefined) {
+        paramDefaultOverrides[`${cfgKey}.arc_wait_ms`] = { default: 3000, defaultKind: "firmware" };
+      }
     } else if (role.startsWith("coolant:")) {
       cfg.coolant = cfg.coolant || {};
       const which = role.split(":")[1];
       annotate(cfg.coolant, `${which}_pin`, p.label);
       cfg.coolant[`${which}_pin`] = pin;
+      // delay_ms -- coolant-on delay (never delays M9/off, per the
+      // schema's own field description); pre-filled with the real
+      // firmware default, same treatment as probe's booleans above.
+      if (cfg.coolant.delay_ms === undefined) cfg.coolant.delay_ms = "TBD";
+      paramDefaultOverrides["coolant.delay_ms"] = { default: 0, defaultKind: "firmware" };
     } else if (role.startsWith("digital_output:")) {
       cfg.user_outputs = cfg.user_outputs || {};
       const n = role.split(":")[1];
@@ -3724,6 +3926,25 @@ function generateDraft() {
       cfg.status_outputs = cfg.status_outputs || { report_interval_ms: "TBD" };
       annotate(cfg.status_outputs, `${which}_pin`, p.label);
       cfg.status_outputs[`${which}_pin`] = pin;
+    } else if (role.startsWith("axis:")) {
+      // "axis:<rc_servo|solenoid>:<letter>:<motor0|motor1>" -- an ordinary
+      // output-capable pin standing in for a dedicated motor socket. Same
+      // real config.yaml shape a Motor socket's own onboard_fixed rc_servo/
+      // solenoid case produces (see axisMotorBlockFor()), just sourced from
+      // this pin instead of a board-fixed connector; isRoleClaimedByOther()
+      // already keeps this from colliding with a real Motor socket claiming
+      // the same axis+slot.
+      const [, type, letter, slot] = role.split(":");
+      if (!AXES.includes(letter)) return;
+      const axis = ensureAxis(cfg, letter);
+      const block = axisMotorBlockFor(type, pin);
+      annotate(axis, slot, p.label);
+      axis[slot] = axis[slot] || {};
+      axis[slot][block.key] = block.body;
+      axis[slot].hard_limits = "TBD";
+      Object.keys(block.overrides || {}).forEach(k => {
+        paramDefaultOverrides[`axes.${letter}.${slot}.${block.key}.${k}`] = block.overrides[k];
+      });
     }
   });
   if (Object.keys(cfg.control).length === 0) delete cfg.control;
@@ -4416,8 +4637,17 @@ function importConfig(doc, rawText) {
     "solenoid", "dynamixel2", "null_motor",
   ]);
   const axisNonMotorKeys = new Set(["motor0", "motor1", "homing", "shared_stepper_disable_pin"]);
+  // homing_runs -- a top-level axes: scalar (see generateDraft()'s own
+  // comment), sibling to shared_stepper_disable_pin/reset_pin, NOT an
+  // axis letter -- captured here, before the per-axis forEach below (which
+  // would otherwise misidentify it as an unrecognized "axis letter" and
+  // report a spurious warning, the same reason shared_stepper_disable_pin
+  // is skipped just below).
+  if (doc.axes && doc.axes.homing_runs != null && doc.axes.homing_runs !== "TBD") {
+    paramValues["axes.homing_runs"] = doc.axes.homing_runs;
+  }
   Object.keys(doc.axes || {}).forEach(letter => {
-    if (letter === "shared_stepper_disable_pin") return;
+    if (letter === "shared_stepper_disable_pin" || letter === "shared_stepper_reset_pin" || letter === "homing_runs") return;
     const axisDoc = doc.axes[letter];
     if (!axisDoc || typeof axisDoc !== "object") return;
     if (!AXES.includes(letter)) {
@@ -4514,6 +4744,15 @@ function importConfig(doc, rawText) {
   ["pin", "toolsetter_pin"].forEach(field => {
     if (probeDoc[field] != null) claimPin(probeDoc[field], `probe:${field}`, `probe.${field}`);
   });
+  // check_mode_start/hard_stop/probe_hard_limit -- generic sweep (not
+  // named individually) so any future probeSection scalar is picked up
+  // the same way automatically. Only meaningful once at least one probe
+  // pin claim above actually created the bound resource that makes
+  // generateDraft() stub these paths in the first place (see its own
+  // comment) -- if neither pin claim succeeded, these values are simply
+  // never re-surfaced, same as re-loading any config for a board it
+  // doesn't match.
+  copyScalarParams(probeDoc, "probe", new Set(["pin", "toolsetter_pin"]));
 
   const controlDoc = doc.control || {};
   Object.keys(controlDoc).forEach(field => {
@@ -4536,6 +4775,17 @@ function importConfig(doc, rawText) {
     const which = field.slice(0, -4);
     claimPin(coolantDoc[field], `coolant:${which}`, `coolant.${field}`);
   });
+  // delay_ms -- same generic-sweep reasoning as probe's booleans above.
+  copyScalarParams(coolantDoc, "coolant", new Set(["flood_pin", "mist_pin"]));
+
+  // --- sdcard: frequency_hz is the one genuinely user-adjustable field
+  // (cs_pin/card_detect_pin are fixed board facts, always regenerated from
+  // board.fixed_peripherals regardless of what's in the loaded file, so
+  // there's no pin to "claim" here the way probe/coolant/control's pins
+  // are -- see isFixedProtocolPath()). ---
+  if (doc.sdcard && typeof doc.sdcard === "object") {
+    copyScalarParams(doc.sdcard, "sdcard", new Set(["cs_pin", "card_detect_pin"]));
+  }
 
   // --- user_outputs (digital/analog outputs + status_outputs) ---
   const userOutputsDoc = doc.user_outputs || {};
