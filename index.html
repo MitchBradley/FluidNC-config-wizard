@@ -1017,21 +1017,109 @@ function buildOutputRoleBranches() {
 // Purely a presentation enhancement: every lookup below degrades to "no
 // tooltip" (never an error) if this fetch fails or a given key isn't found,
 // so the wizard's core function never depends on it.
-//
-// TODO once a FluidNC release actually ships this file (per user direction,
-// not yet true as of this writing): fetch it from that release's own
-// docs/config_items.yaml instead of this repo-local copy, the same way
-// board.schema.json/fluidnc-config-schema.json are copied in from upstream
-// today -- for now this is a manually-synced copy (schema/config_items.yaml),
-// no fetch URL to point at yet since it doesn't exist in any real release.
-let CONFIG_ITEM_DOCS = {}; // sectionName -> { itemKey -> {description, default, type} }
+let CONFIG_ITEM_DOCS = {}; // sectionName -> { itemKey -> {description, default, type, tuning?, default_note?} }
 
+// True once CONFIG_ITEM_DOCS has been loaded from a source that actually
+// carries @tuning data (see FluidNC/src/Configuration/ItemDocs.md) --
+// i.e. NOT a pre-migration release's config_items.yaml. configDocSpecFor()
+// itself degrades silently regardless (a missing `tuning` on one item just
+// means that one item falls back to specForKey()'s own guess, same as
+// always); this flag exists so loadConfigItemDocs() below can log what it
+// actually decided.
+let configDocsHaveTuningData = false;
+
+// Pure predicate, no side effects -- true iff ANY item anywhere in a parsed
+// config_items.yaml carries a `tuning` field. Used to test both the fetched
+// latest-release copy and the local fallback copy with the same logic.
+function configDocsHaveTuning(parsed) {
+  return Object.values(parsed).some(
+    section => section && typeof section === "object" &&
+      Object.values(section).some(item => item && typeof item === "object" && item.tuning !== undefined)
+  );
+}
+
+// bdring/fluidnc-releases mirrors each GitHub release's files as plain
+// raw-served content specifically so browser JS can fetch them cross-origin
+// -- a real GitHub Release asset/tag download does NOT send CORS headers,
+// but raw.githubusercontent.com does. Same two-step pattern (ask the GitHub
+// API which tag is latest, then fetch that tag's mirrored file) used by
+// fluid-installer-breiler's GithubService.getReleaseManifest() against the
+// same mirror repo -- confirmed against that project's actual source rather
+// than guessed. releases/latest (not the full releases list) is enough here
+// since the wizard only ever wants the single newest published release, not
+// a version picker.
+const FLUIDNC_LATEST_RELEASE_API = "https://api.github.com/repos/bdring/FluidNC/releases/latest";
+const FLUIDNC_RELEASES_RAW_BASE = "https://raw.githubusercontent.com/bdring/fluidnc-releases/main/releases";
+
+// Fetches the latest published FluidNC release's own docs/config_items.yaml
+// text, or null on ANY failure (offline, rate-limited, release predates
+// build-release.py generating this file, CORS hiccup, ...) -- always a soft
+// miss, same "never blocks the wizard's core function" policy as every
+// other optional fetch here. Never throws.
+async function fetchLatestReleaseConfigItemDocsText() {
+  try {
+    const relResp = await fetch(FLUIDNC_LATEST_RELEASE_API, { headers: { Accept: "application/json" } });
+    if (!relResp.ok) return null;
+    const release = await relResp.json();
+    const tag = release && release.tag_name;
+    if (!tag) return null;
+    const fileResp = await fetch(`${FLUIDNC_RELEASES_RAW_BASE}/${tag}/docs/config_items.yaml`);
+    if (!fileResp.ok) return null;
+    return await fileResp.text();
+  } catch (e) {
+    return null;
+  }
+}
+
+// Tries the latest real FluidNC release's own config_items.yaml first (the
+// eventual, authoritative source -- see fetchLatestReleaseConfigItemDocsText()
+// above); falls back to this repo's local schema/config_items.yaml copy
+// whenever the release copy is unreachable, unparseable, OR simply
+// pre-dates the @tuning/@default_note migration (checked via
+// configDocsHaveTuning() -- as of this writing the latest published
+// release's copy predates it, so this fallback is the live, expected path
+// today, not a rare edge case). The local copy is presumed kept current by
+// whoever maintains this repo; per explicit direction, an equally-stale
+// local copy still gets used (nothing else to fall back to) but is flagged
+// loudly rather than silently trusted.
 async function loadConfigItemDocs() {
+  const releaseText = await fetchLatestReleaseConfigItemDocsText();
+  if (releaseText) {
+    try {
+      const parsed = jsyaml.load(releaseText);
+      if (parsed && typeof parsed === "object" && configDocsHaveTuning(parsed)) {
+        CONFIG_ITEM_DOCS = parsed;
+        configDocsHaveTuningData = true;
+        return;
+      }
+      console.warn(
+        "The latest published FluidNC release's config_items.yaml predates the @tuning/" +
+        "@default_note migration (see FluidNC/src/Configuration/ItemDocs.md) -- falling back to " +
+        "this repo's local schema/config_items.yaml copy until a new release ships the annotated " +
+        "file."
+      );
+    } catch (e) {
+      console.warn("Couldn't parse the latest release's config_items.yaml -- falling back to the local copy.", e);
+    }
+  }
+
   const text = await fetchYamlTextOptional("schema/config_items.yaml");
   if (!text) return;
   try {
     const parsed = jsyaml.load(text);
-    if (parsed && typeof parsed === "object") CONFIG_ITEM_DOCS = parsed;
+    if (parsed && typeof parsed === "object") {
+      CONFIG_ITEM_DOCS = parsed;
+      configDocsHaveTuningData = configDocsHaveTuning(parsed);
+      if (!configDocsHaveTuningData) {
+        console.warn(
+          "schema/config_items.yaml (local fallback) ALSO has no @tuning data on any item -- every " +
+          "field silently falls back to specForKey()'s own hardcoded guess: no field auto-fills " +
+          "anymore, and known-fixed bare-name collisions (e.g. RC Servo's min_pulse_us/max_pulse_us " +
+          "borrowing BESC's 900/2200, PlasmaSpindle's arc_wait_ms showing 3000 instead of 1000) are " +
+          "back. Re-sync this file from a FluidNC release/build that includes the migration."
+        );
+      }
+    }
   } catch (e) {
     console.warn("Couldn't parse schema/config_items.yaml -- config-item tooltips will be unavailable.", e);
   }
@@ -1090,6 +1178,55 @@ function lookupItemDoc(parentPath, key) {
   if (!item || !item.description) return null;
   const desc = item.description.trim();
   return item.default !== undefined ? `${desc}\n\nDefault: ${item.default}` : desc;
+}
+
+// config_items.yaml's own reserved @default sentinel (see ItemDocs.md) for
+// "no fixed literal exists" (board-dependent, code-substituted, ...) --
+// never a value worth pre-filling or offering as a "def" button target.
+const NO_LITERAL_DEFAULT = "(none)";
+
+// @default's raw text is always either a bare literal (255, true, NO_PIN,
+// z, 8N1, ...) or, for a string/macro-typed field, that same literal
+// wrapped in its own literal quote characters (e.g. '""', '"None"') --
+// see ItemDocs.md's @default convention, which requires @default to look
+// exactly like the real config.yaml value would. This strips exactly that
+// one layer of quoting when present; every other type's default is already
+// bare and passes through unchanged. Deliberately keyed off the STRING'S
+// OWN shape rather than an enumerated list of "which config_items.yaml
+// type: values are quoted" -- a few C++ types whose value is nonetheless
+// expressed as quoted-string syntax (e.g. speed_map's std::vector, still
+// written as "") would otherwise need special-casing here too.
+function coerceConfigDocDefault(rawDefault, docType) {
+  if (rawDefault === undefined || rawDefault === NO_LITERAL_DEFAULT) return undefined;
+  if (docType === "boolean") return rawDefault === "true";
+  if (docType === "integer" || docType === "float") {
+    const n = Number(rawDefault);
+    return Number.isNaN(n) ? undefined : n;
+  }
+  const m = /^"(.*)"$/.exec(rawDefault);
+  return m ? m[1] : rawDefault;
+}
+
+/* Section-scoped @tuning/@default lookup -- the source-of-truth counterpart
+ * to specForKey()'s hand-maintained per-field-NAME guess. Resolved by PATH
+ * (via docSectionForPath(), same section-resolution lookupItemDoc() already
+ * uses for tooltips), which is what lets this correctly distinguish e.g.
+ * BESC's min_pulse_us from RcServo's, or status_outputs' report_interval_ms
+ * from uart_channel's -- the exact bare-name collisions specForKey() alone
+ * could never resolve (see TUNING_CLASSIFICATION_REVIEW.md). Returns null
+ * when config_items.yaml has nothing for this exact item (not yet
+ * annotated with @tuning, this section not covered, or the docs fetch
+ * failed) -- callers fall back entirely to specForKey()'s own guess in that
+ * case, so an unannotated field behaves exactly as it did before this
+ * lookup existed. */
+function configDocSpecFor(parentPath, key) {
+  const section = CONFIG_ITEM_DOCS[docSectionForPath(parentPath)];
+  const item = section && section[key];
+  if (!item) return null;
+  return {
+    tuning: item.tuning || null,
+    default: coerceConfigDocDefault(item.default, item.type),
+  };
 }
 
 /* Generic two-step cascade lookup: given a step-1 category value, returns
@@ -1365,10 +1502,10 @@ let kinematicsType = "Cartesian"; // selected top-level kinematics system, defau
  * (MachineConfig.h's own member initializers). The section itself is
  * optional in config.yaml (MachineConfig::afterParse() auto-instantiates a
  * default Start() if absent), but the wizard always emits it directly into
- * the draft (see generateDraft()'s Start block) with must_home left open
- * TBD (a real decision) and the other two pre-populated with these same
- * compiled-in defaults, editable inline -- no separate left-pane UI state
- * needed for this section at all. */
+ * the draft (see generateDraft()'s Start block) with all 3 fields
+ * pre-populated from their compiled-in defaults (see @tuning typical on
+ * each in MachineConfig.h), editable inline -- no separate left-pane UI
+ * state needed for this section at all. */
 let chipGpioCaps = {};     // gpio number -> chip-file gpio fact object (see loadBoard()/pinWidgetHtml())
 let genericPinProfiles = {}; // basePin string (e.g. "gpio.2") -> this board's generic_pins input_profile object, if any (see loadBoard()/pinWidgetHtml())
 
@@ -1516,9 +1653,9 @@ function specForKey(key) {
     // pattern as soft_limits.
     case "hard_limits":
       return { type: "enum", options: [["true","true — Yes"], ["false","false — No"]], default: "false", defaultKind: "firmware" };
-    // Machine::Start's 3 fields (src/Machine/MachineConfig.h) -- must_home
-    // is left with no override (an open decision), deactivate_parking/
-    // check_limits get one in generateDraft() (pre-populated, editable).
+    // Machine::Start's 3 fields (src/Machine/MachineConfig.h) -- all 3 are
+    // @tuning typical in source and pre-populated via config_items.yaml
+    // (see configDocSpecFor()), editable inline like any other typical field.
     case "must_home":
       return { type: "enum", options: [["true","true"], ["false","false"]], default: "true", defaultKind: "firmware" };
     case "deactivate_parking":
@@ -1724,30 +1861,57 @@ function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverride
     if (keySlots) keySlots.push({ path: p, key: k });
     if (v === "TBD") {
       const override = defaultOverrides && defaultOverrides[p];
+      // Three layers, most specific wins. specForKey(k)'s hand-maintained
+      // per-NAME guess is the foundation -- it's still the only source for
+      // widget SHAPE (type/enum options), which config_items.yaml doesn't
+      // encode. configDocSpecFor() then overrides just default/defaultKind
+      // with the section-scoped (PATH-resolved) source-of-truth from
+      // config_items.yaml's @tuning/@default annotations, when this exact
+      // item has one -- this is what lets e.g. BESC's min_pulse_us and
+      // RcServo's min_pulse_us end up with their own correct, different
+      // values despite sharing a bare field name (see
+      // TUNING_CLASSIFICATION_REVIEW.md). An explicit board-specific
+      // `override` -- a documented, verified fact about THIS board's own
+      // hardware (e.g. the BTT Rodent's real 0.075 ohm sense resistor),
+      // not just a generic classification -- wins over even that.
+      const docSpec = configDocSpecFor(path, k);
+      let base = specForKey(k);
+      if (docSpec && docSpec.tuning) {
+        base = Object.assign({}, base, {
+          defaultKind: docSpec.tuning === "typical" ? "firmware" : "suggested",
+        });
+        if (docSpec.default !== undefined) {
+          base = Object.assign({}, base, { default: docSpec.default, placeholder: String(docSpec.default) });
+        }
+      }
       // NOTE: also re-derive placeholder from the override's own default --
       // otherwise the merge below only changes spec.default/defaultKind
       // (used by the "def" button), while the input's visible placeholder
       // text -- what the user actually sees without clicking anything --
-      // would keep showing specForKey(k)'s generic value (e.g. 0.11 for any
+      // would keep showing the generic value (e.g. 0.11 for any
       // r_sense_ohms field) instead of the board's real, overriding one
       // (e.g. BTT Rodent's documented 0.075), silently defeating the whole
       // point of a board-specific override.
       const spec = override
-        ? Object.assign({}, specForKey(k), override, { placeholder: String(override.default) })
-        : specForKey(k);
-      // A board-specific override isn't a mere suggestion the way
-      // specForKey's generic per-field guesses are -- it's a documented,
-      // verified-correct fact about THIS board's own hardware (e.g. the
-      // Rodent's real 0.075 ohm sense resistor). So unlike an ordinary
-      // TBD field (which stays open until the user clicks "def" or types a
-      // value), an overridden field is pre-filled as the actual current
-      // value immediately -- no click required -- rather than left as a
-      // placeholder the user must notice and act on. Only pre-fills if the
-      // user hasn't already set (or explicitly cleared) this exact path,
-      // so a real edit is never silently clobbered.
-      if (override && override.default !== undefined &&
-          !Object.prototype.hasOwnProperty.call(paramValues, p)) {
-        paramValues[p] = override.default;
+        ? Object.assign({}, base, override, { placeholder: String(override.default) })
+        : base;
+      // A board-specific override isn't a mere suggestion the way a generic
+      // per-field guess is -- it's a documented, verified-correct fact
+      // about THIS board's own hardware. A `typical`-tuned field (no
+      // override) is a step down from that but still safe to answer
+      // without making the user click first -- both get silently pre-filled
+      // immediately, rather than left as a placeholder the user must notice
+      // and act on. A `per-machine`-tuned field (or one with no @tuning
+      // annotation at all) stays open, same as always. Only pre-fills if
+      // the user hasn't already set (or explicitly cleared) this exact
+      // path, so a real edit is never silently clobbered.
+      const autofillValue = override && override.default !== undefined
+        ? override.default
+        : (!override && docSpec && docSpec.tuning === "typical" && docSpec.default !== undefined
+          ? docSpec.default
+          : undefined);
+      if (autofillValue !== undefined && !Object.prototype.hasOwnProperty.call(paramValues, p)) {
+        paramValues[p] = autofillValue;
       }
       paramSlots.push({ path: p, key: k, spec });
     } else if (isPinLeaf(k, v) && !isFixedProtocolPath(p)) {
@@ -2997,12 +3161,11 @@ function renderResources() {
 
   // Start: has NO left-pane row either -- same reasoning as Kinematics.
   // It's always emitted directly into the draft below with its fields
-  // already inline-editable there (see generateDraft()'s Start block):
-  // must_home is left genuinely TBD (whether homing should be required is a
-  // real decision), while deactivate_parking/check_limits are pre-populated
-  // with FluidNC's own compiled-in defaults via the same defaultOverrides
-  // mechanism used for board-specific hints -- rarely-changed settings the
-  // user need not think about, but can still edit inline if they want to.
+  // already inline-editable there (see generateDraft()'s Start block): all
+  // 3 fields are pre-populated with FluidNC's own compiled-in defaults
+  // (config_items.yaml @tuning typical, see configDocSpecFor()) --
+  // rarely-changed settings the user need not think about, but can still
+  // edit inline if they want to.
 
   // Motor sockets
   if (board.motor_sockets && board.motor_sockets.sockets) {
@@ -3478,21 +3641,16 @@ function countResources() {
  * from an earlier FluidNC version) instead of the driver's actual pwm_hz/
  * min_pulse_us/max_pulse_us/timer_ms.
  *
- * `overrides` are firmware-default hints (see paramDefaultOverrides). Most
- * are genuinely typical/safe-as-is fields; rc_servo's min_pulse_us/
- * max_pulse_us are the one exception worth calling out -- they're real
- * per-servo travel-range facts, not "safe for most machines" in the usual
- * sense, but they still need an EXPLICIT override here: specForKey(key)
- * (index.html's global per-field-NAME default table, shared by every
- * config item with that name) already has a "min_pulse_us"/"max_pulse_us"
- * case, but it's tuned for BESC (900/2200), the OTHER motor/spindle type
- * with these field names -- without an rc_servo-specific override here, the
- * "def" button on an RC Servo's min/max_pulse_us would silently offer
- * BESC's numbers instead of RcServo's own real compiled defaults
- * (RcServoSettings.h: SERVO_PULSE_US_MIN/MAX_DEFAULT = 1000/2000). This is
- * the same bare-name-collision hazard noted elsewhere for
- * report_interval_ms -- specForKey has no way to know which config item
- * it's really answering for. */
+ * No explicit `overrides` here (unlike an earlier version of this
+ * function) -- every field below is @tuning-tagged in source now, so
+ * configDocSpecFor()'s section-scoped config_items.yaml lookup (see
+ * collectAndInjectSlots()) already resolves each one correctly on its own,
+ * including telling RcServo's min_pulse_us/max_pulse_us (real per-servo
+ * travel-range facts, left open) apart from BESC's identically-named fields
+ * (a bare-name collision specForKey()'s old hand-written table could never
+ * distinguish -- see TUNING_CLASSIFICATION_REVIEW.md). A hand-written
+ * override here would now just be a second, driftable copy of what source
+ * already says. */
 function axisMotorBlockFor(type, outputPin) {
   if (type === "solenoid") {
     return {
@@ -3502,28 +3660,11 @@ function axisMotorBlockFor(type, outputPin) {
         pwm_hz: "TBD", off_percent: "TBD", pull_percent: "TBD",
         hold_percent: "TBD", pull_ms: "TBD", direction_invert: "TBD", timer_ms: "TBD",
       },
-      overrides: {
-        pwm_hz: { default: 1000, defaultKind: "firmware" },
-        off_percent: { default: 0.0, defaultKind: "firmware" },
-        pull_percent: { default: 100.0, defaultKind: "firmware" },
-        hold_percent: { default: 75.0, defaultKind: "firmware" },
-        pull_ms: { default: 500, defaultKind: "firmware" },
-        direction_invert: { default: false, defaultKind: "firmware" },
-        timer_ms: { default: 50, defaultKind: "firmware" },
-      },
     };
   }
   return {
     key: "rc_servo",
     body: { output_pin: outputPin, pwm_hz: "TBD", min_pulse_us: "TBD", max_pulse_us: "TBD", timer_ms: "TBD" },
-    overrides: {
-      pwm_hz: { default: 50, defaultKind: "firmware" },
-      // Correcting specForKey("min_pulse_us"/"max_pulse_us")'s BESC-tuned
-      // 900/2200 fallback -- see this function's own header comment above.
-      min_pulse_us: { default: 1000, defaultKind: "firmware" },
-      max_pulse_us: { default: 2000, defaultKind: "firmware" },
-      timer_ms: { default: 20, defaultKind: "firmware" },
-    },
   };
 }
 
@@ -3686,18 +3827,15 @@ function generateDraft() {
   cfg.kinematics = { KINSELECT: kt.stub() };
 
   // Start -- always present, no left-pane row (see comment on the section's
-  // declaration above). must_home is left genuinely open (whether homing
-  // should be required before running a program is a real per-machine
-  // decision), but deactivate_parking/check_limits are pre-populated with
-  // FluidNC's own compiled-in defaults via defaultOverrides -- settings the
-  // user need not think about (rarely changed) but can still edit inline,
-  // same mechanism as a board-specific hint like r_sense_ohms. No "# <label>"
-  // annotate() comment here -- unlike every other annotated section/pin,
-  // Start isn't associated with any particular board resource, so there's
-  // no "which board fact triggered this" fact worth captioning.
+  // declaration above). All 3 fields are @tuning typical in source, so
+  // configDocSpecFor() (see collectAndInjectSlots()) pre-populates them from
+  // config_items.yaml automatically -- no explicit defaultOverrides entry
+  // needed here anymore, unlike a board-specific hint such as r_sense_ohms
+  // (a real per-instance fact config_items.yaml has no way to know). No
+  // "# <label>" annotate() comment here -- unlike every other annotated
+  // section/pin, Start isn't associated with any particular board resource,
+  // so there's no "which board fact triggered this" fact worth captioning.
   cfg.start = { must_home: "TBD", deactivate_parking: "TBD", check_limits: "TBD" };
-  paramDefaultOverrides["start.deactivate_parking"] = { default: false, defaultKind: "firmware" };
-  paramDefaultOverrides["start.check_limits"] = { default: true, defaultKind: "firmware" };
 
   const engineMap = { i2s: "I2S_STREAM", rmt: "RMT", timed: "Timed", pio: "PIO" };
   cfg.stepping = {
@@ -3717,12 +3855,11 @@ function generateDraft() {
   if (fp.sdcard) {
     cfg.sdcard = { cs_pin: fp.sdcard.cs_pin };
     if (fp.sdcard.card_detect_pin) cfg.sdcard.card_detect_pin = fp.sdcard.card_detect_pin;
-    // frequency_hz -- SPI clock speed override, the one genuinely
-    // user-adjustable sdcard: field (cs_pin/card_detect_pin are fixed
-    // board facts, not user choices) -- pre-filled with the real firmware
-    // default, same treatment as probe/coolant's fields above.
+    // frequency_hz -- SPI clock speed, the one genuinely user-adjustable
+    // sdcard: field (cs_pin/card_detect_pin are fixed board facts, not user
+    // choices) -- @tuning typical in source, pre-filled from
+    // config_items.yaml via configDocSpecFor().
     cfg.sdcard.frequency_hz = "TBD";
-    paramDefaultOverrides["sdcard.frequency_hz"] = { default: 8000000, defaultKind: "firmware" };
   }
   if (fp.i2so) cfg.i2so = { bck_pin: fp.i2so.bck_pin, data_pin: fp.i2so.data_pin, ws_pin: fp.i2so.ws_pin };
   // NOTE: I2C is intentionally NOT handled here as a fixed peripheral --
@@ -3748,10 +3885,9 @@ function generateDraft() {
   // Unconditional like MachineConfig's own uncategorized scalars
   // (arc_tolerance_mm etc.) rather than gated on any axis having homing
   // enabled -- harmless/ignorable if no axis homes, and axes: itself is
-  // always present regardless. Pre-filled with the real firmware default,
-  // same treatment as probe/coolant/sdcard's fields above.
+  // always present regardless. @tuning typical in source, pre-filled from
+  // config_items.yaml via configDocSpecFor().
   cfg.axes.homing_runs = "TBD";
-  paramDefaultOverrides["axes.homing_runs"] = { default: 2, defaultKind: "firmware" };
 
   // (paramDefaultOverrides declared up front, near cfg.name/-cfg.board above --
   // populated below when a motor socket's own extra facts document a
@@ -3782,12 +3918,6 @@ function generateDraft() {
     // so it's stubbed here alongside the driver body, once per bound motor
     // socket, regardless of whether a limit pin ends up bound to it.
     axis[slot].hard_limits = "TBD";
-    // Firmware-default hints for genuinely typical fields (e.g. rc_servo's
-    // pwm_hz/timer_ms -- see axisMotorBlockFor()) -- other driver types'
-    // blocks simply don't set `.overrides`, so this is a no-op for them.
-    Object.keys(block.overrides || {}).forEach(k => {
-      paramDefaultOverrides[`axes.${letter}.${slot}.${block.key}.${k}`] = block.overrides[k];
-    });
     if (socket.extra && socket.extra.r_sense_ohms_hint != null) {
       paramDefaultOverrides[`axes.${letter}.${slot}.${block.key}.r_sense_ohms`] = {
         default: socket.extra.r_sense_ohms_hint,
@@ -3844,17 +3974,13 @@ function generateDraft() {
       // matches the schema's own description: "an all-default block is
       // equivalent to omitting the section" -- and only if not already
       // set, so binding BOTH pin and toolsetter_pin doesn't reset a value
-      // the user already typed in. Pre-filled with FluidNC's real
-      // compiled-in default via paramDefaultOverrides (per explicit user
-      // direction), same treatment as arc_tolerance_mm/verbose_errors --
-      // still an ordinary editable field, just answered from the start
-      // rather than sitting open/amber.
+      // the user already typed in. All 3 are @tuning typical in source, so
+      // configDocSpecFor() pre-fills them from config_items.yaml once
+      // stubbed here -- still an ordinary editable field, just answered
+      // from the start rather than sitting open/amber.
       if (cfg.probe.check_mode_start === undefined) cfg.probe.check_mode_start = "TBD";
       if (cfg.probe.hard_stop === undefined) cfg.probe.hard_stop = "TBD";
       if (cfg.probe.probe_hard_limit === undefined) cfg.probe.probe_hard_limit = "TBD";
-      paramDefaultOverrides["probe.check_mode_start"] = { default: true, defaultKind: "firmware" };
-      paramDefaultOverrides["probe.hard_stop"] = { default: false, defaultKind: "firmware" };
-      paramDefaultOverrides["probe.probe_hard_limit"] = { default: false, defaultKind: "firmware" };
     } else if (role.startsWith("control:")) {
       // Covers all real Control:: pins, including the 4 macro buttons
       // and fault/estop/homing_button, which are siblings of feed_hold
@@ -3883,24 +4009,15 @@ function generateDraft() {
       annotate(cfg[cfgKey], `${which}_pin`, p.label);
       cfg[cfgKey][`${which}_pin`] = pin;
       spindleBound = true;
-      // arc_wait_ms (PlasmaSpindle only, via COMMON_TUNING_FIELDS -- every
-      // other type's tuning fields, e.g. tool_num/off_on_alarm, stay plain
-      // open TBD, unchanged/pre-existing behavior) -- pre-filled with the
-      // real firmware default, per explicit user direction for the fields
-      // added in this same pass.
-      if (type === "plasmaspindle" && cfg[cfgKey].arc_wait_ms !== undefined) {
-        paramDefaultOverrides[`${cfgKey}.arc_wait_ms`] = { default: 3000, defaultKind: "firmware" };
-      }
     } else if (role.startsWith("coolant:")) {
       cfg.coolant = cfg.coolant || {};
       const which = role.split(":")[1];
       annotate(cfg.coolant, `${which}_pin`, p.label);
       cfg.coolant[`${which}_pin`] = pin;
       // delay_ms -- coolant-on delay (never delays M9/off, per the
-      // schema's own field description); pre-filled with the real
-      // firmware default, same treatment as probe's booleans above.
+      // schema's own field description); @tuning typical in source, so
+      // configDocSpecFor() pre-fills it once stubbed here.
       if (cfg.coolant.delay_ms === undefined) cfg.coolant.delay_ms = "TBD";
-      paramDefaultOverrides["coolant.delay_ms"] = { default: 0, defaultKind: "firmware" };
     } else if (role.startsWith("digital_output:")) {
       cfg.user_outputs = cfg.user_outputs || {};
       const n = role.split(":")[1];
@@ -3942,9 +4059,6 @@ function generateDraft() {
       axis[slot] = axis[slot] || {};
       axis[slot][block.key] = block.body;
       axis[slot].hard_limits = "TBD";
-      Object.keys(block.overrides || {}).forEach(k => {
-        paramDefaultOverrides[`axes.${letter}.${slot}.${block.key}.${k}`] = block.overrides[k];
-      });
     }
   });
   if (Object.keys(cfg.control).length === 0) delete cfg.control;
@@ -4080,9 +4194,9 @@ function generateDraft() {
   // (Start/Kinematics/etc.), and not tied to any board resource -- so, like
   // Start/Kinematics, no annotate() comment either. Placed last in the
   // generated file since they're genuinely uncategorized. All 7 are
-  // pre-populated with FluidNC's own compiled-in defaults (rarely changed),
-  // editable inline -- same defaultOverrides mechanism as Start's
-  // deactivate_parking/check_limits, not left as open TBDs.
+  // @tuning typical in source, so configDocSpecFor() pre-populates them
+  // from config_items.yaml automatically -- editable inline, not left as
+  // open TBDs.
   cfg.arc_tolerance_mm = "TBD";
   cfg.junction_deviation_mm = "TBD";
   cfg.verbose_errors = "TBD";
@@ -4090,13 +4204,6 @@ function generateDraft() {
   cfg.enable_parking_override_control = "TBD";
   cfg.use_line_numbers = "TBD";
   cfg.planner_blocks = "TBD";
-  paramDefaultOverrides["arc_tolerance_mm"] = { default: 0.002, defaultKind: "firmware" };
-  paramDefaultOverrides["junction_deviation_mm"] = { default: 0.01, defaultKind: "firmware" };
-  paramDefaultOverrides["verbose_errors"] = { default: true, defaultKind: "firmware" };
-  paramDefaultOverrides["report_inches"] = { default: false, defaultKind: "firmware" };
-  paramDefaultOverrides["enable_parking_override_control"] = { default: false, defaultKind: "firmware" };
-  paramDefaultOverrides["use_line_numbers"] = { default: false, defaultKind: "firmware" };
-  paramDefaultOverrides["planner_blocks"] = { default: 16, defaultKind: "firmware" };
 
   // Optional top-level sections with no board-resource correlation
   // (Parking/Macros/OLED/ATC Manual) -- see OPTIONAL_SECTIONS' own
