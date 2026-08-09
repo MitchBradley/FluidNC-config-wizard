@@ -1858,7 +1858,15 @@ function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverride
   Object.keys(node).forEach(k => {
     const v = node[k];
     const p = path ? `${path}.${k}` : k;
-    if (keySlots) keySlots.push({ path: p, key: k });
+    // __ANNOTATE_FOR_<key>__ marker keys (see annotate() in generateDraft())
+    // never survive as literal "key:" text for wrapDocKeys() to find --
+    // annotateYaml() always converts them to "# <label>" comment lines
+    // before buildInteractiveYaml() ever scans the text. Recording a
+    // keySlots entry for one anyway would permanently desync the shared
+    // walking index the moment any resource gets bound (the first thing
+    // that plants one of these), silently killing tooltips/underlines for
+    // every plain-literal key rendered afterward, not just this one.
+    if (keySlots && !/^__ANNOTATE_FOR_.*__$/.test(k)) keySlots.push({ path: p, key: k });
     if (v === "TBD") {
       const override = defaultOverrides && defaultOverrides[p];
       // Three layers, most specific wins. specForKey(k)'s hand-maintained
