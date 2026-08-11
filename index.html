@@ -773,9 +773,10 @@ function checkSchemaForKnownGaps(schema) {
     );
   }
   // (userOutputsSection's analogN_hz fields used to have no wizard UI
-  // counterpart -- fixed by specForKey()'s analogN_hz case + generateDraft()'s
-  // analog_output dispatch stubbing it as an open TBD, so there's nothing
-  // left to warn about here.)
+  // counterpart -- fixed by generateDraft()'s analog_output dispatch
+  // stubbing it as an open TBD; shape/default now come from
+  // config_items.yaml's own analog0_hz..analog3_hz entries via
+  // resolveFieldSpec(), so there's nothing left to warn about here.)
 }
 
 let INPUT_ROLE_TREE, SPINDLE_TYPES, DIGITAL_OUTPUT_COUNT, ANALOG_OUTPUT_COUNT, EITHER_ROLE_TREE;
@@ -1128,10 +1129,11 @@ async function loadConfigItemDocs() {
       if (!configDocsHaveTuningData) {
         console.warn(
           "schema/config_items.yaml (local fallback) ALSO has no @tuning data on any item -- every " +
-          "field silently falls back to specForKey()'s own hardcoded guess: no field auto-fills " +
-          "anymore, and known-fixed bare-name collisions (e.g. RC Servo's min_pulse_us/max_pulse_us " +
-          "borrowing BESC's 900/2200, PlasmaSpindle's arc_wait_ms showing 3000 instead of 1000) are " +
-          "back. Re-sync this file from a FluidNC release/build that includes the migration."
+          "field silently falls back to specForKey()'s generic {type: \"text\"} guess: no field " +
+          "auto-fills, and every field renders as a plain text box instead of its real enum/number " +
+          "widget shape (specForKey() has carried no per-field data since shapeForDocType() took " +
+          "over deriving shape from config_items.yaml's own type/values). Re-sync this file from a " +
+          "FluidNC release/build that includes the migration."
         );
       }
     }
@@ -1239,9 +1241,90 @@ function configDocSpecFor(parentPath, key) {
   const item = section && section[key];
   if (!item) return null;
   return {
+    type: item.type || null,
+    values: item.values || null,
     tuning: item.tuning || null,
     default: coerceConfigDocDefault(item.default, item.type),
   };
+}
+
+/* Widget SHAPE (type/enum-options) derived mechanically from config_items.yaml's
+ * own type/values -- the source-of-truth counterpart to specForKey()'s
+ * hand-maintained per-NAME guess, viable now that Phase A (gen_config_docs.py)
+ * closed the type-inference gaps that used to leave many fields as
+ * type: unknown or an enum with no captured values list. Plain "true"/
+ * "false" is used for every boolean -- config_items.yaml's own hover
+ * tooltip (see lookupItemDoc()) is where a field-specific explanation
+ * belongs, not the option label itself. The remaining irreducible residue
+ * is a couple of text-shaped types with a real syntax template worth
+ * showing as a placeholder even before any real default is known
+ * (TEXT_TYPE_PLACEHOLDERS) -- a real per-field default, when
+ * config_items.yaml has one, always wins over these via resolveFieldSpec()
+ * below regardless. */
+const BOOLEAN_OPTIONS_GENERIC = [["true", "true"], ["false", "false"]];
+const TEXT_TYPE_PLACEHOLDERS = {
+  uart_mode: "8N1",
+  "std::vector<float>": "0.0 0.0 0.0",
+  "std::vector<Configuration::speedEntry>": "0=0% 100=100%",
+};
+// Fields whose real widget shape is a constrained enum even though
+// config_items.yaml's own type is plain "integer" -- the legal-value SET
+// (not just a min/max range) is a hardware/firmware constraint enforced by
+// runtime validation in the driver's own code, not expressed via the
+// EnumItem-array item() overload the way axis/run_mode/message_level/etc.
+// genuinely are -- config_items.yaml has no way to carry this. Confirmed:
+// microsteps is the only field across the whole tree where the previous
+// hand-authored specForKey() offered an enum but config_items.yaml's type
+// alone can't reproduce it (found by diffing specForKey() against
+// shapeForDocType() for every documented field).
+const NUMERIC_ENUM_OVERRIDES = {
+  microsteps: [1, 2, 4, 8, 16, 32, 64, 128, 256].map(n => [String(n), String(n)]),
+};
+function shapeForDocType(key, docType, docValues) {
+  if (NUMERIC_ENUM_OVERRIDES[key]) {
+    return { type: "enum", options: NUMERIC_ENUM_OVERRIDES[key] };
+  }
+  if (docType === "boolean") {
+    return { type: "enum", options: BOOLEAN_OPTIONS_GENERIC };
+  }
+  if (docType === "enum" && docValues && docValues.length) {
+    return { type: "enum", options: docValues.map(v => [v, v]) };
+  }
+  if (docType === "axis") {
+    return { type: "enum", options: AXES.map(a => [a, a]) };
+  }
+  if (docType === "integer" || docType === "float") {
+    return { type: "number" };
+  }
+  // string, macro, pin (only reached here when genuinely unbound to a real
+  // board resource -- see collectAndInjectSlots()'s isPinLeaf() branch,
+  // which never reaches specForKey/shapeForDocType at all for a REAL pin),
+  // unknown, uart_mode, floatArray, speedMap, the rgbled hex-color type --
+  // all plain text, optionally with a syntax-template placeholder.
+  return { type: "text", placeholder: TEXT_TYPE_PLACEHOLDERS[docType] || "" };
+}
+
+/* Full field-spec resolution for a TBD slot at (parentPath, key) -- shape
+ * plus default/defaultKind -- the single function collectAndInjectSlots(),
+ * setParam(), and setParamDefault() all now call, so a given field is
+ * treated identically everywhere instead of each call site re-deriving its
+ * own answer. Shape comes from config_items.yaml (shapeForDocType()) for
+ * any item this exact path+key is documented for -- effectively everything,
+ * after this session's annotation rollout -- falling back to specForKey()'s
+ * much smaller hand-maintained guess only when there's no doc coverage at
+ * all (docs fetch failed, or a genuinely unannotated field). default/
+ * defaultKind always prefer config_items.yaml's own @default/@tuning over
+ * whatever specForKey() might otherwise have guessed. */
+function resolveFieldSpec(parentPath, key) {
+  const docSpec = configDocSpecFor(parentPath, key);
+  let spec = docSpec && docSpec.type ? shapeForDocType(key, docSpec.type, docSpec.values) : specForKey(key);
+  if (docSpec && docSpec.tuning) {
+    spec = Object.assign({}, spec, { defaultKind: docSpec.tuning === "typical" ? "firmware" : "suggested" });
+  }
+  if (docSpec && docSpec.default !== undefined) {
+    spec = Object.assign({}, spec, { default: docSpec.default, placeholder: String(docSpec.default) });
+  }
+  return spec;
 }
 
 /* Generic two-step cascade lookup: given a step-1 category value, returns
@@ -1626,204 +1709,13 @@ function isFixedProtocolPath(path) {
  * keyed by the leaf key name. Real FluidNC has more fields than this
  * prototype models; unknown keys fall back to a plain text box.
  * ------------------------------------------------------------------- */
+// Widget-shape fallback for the rare key with NO config_items.yaml doc
+// coverage at all -- resolveFieldSpec() always prefers the doc-derived
+// shape (shapeForDocType(), from config_items.yaml's own type/values) when
+// this exact path+key is documented, which is now true across virtually
+// the whole tree. Nothing left here needs its own case.
 function specForKey(key) {
-  // defaultKind: "firmware"  -- this is FluidNC's own documented default
-  //              "suggested" -- just a common/reasonable starting point,
-  //                             not a spec value -- verify for your hardware
-  // Placeholder is always just the default value itself -- no separate
-  // hand-written hint text to keep in sync.
-  const numeric = (def, defaultKind) => ({ type: "number", placeholder: String(def), default: def, defaultKind });
-  // analog0_hz..analogN_hz (userOutputsSection, N driven by ANALOG_OUTPUT_COUNT)
-  // -- per-channel analog output PWM frequency, real schema default 5000,
-  // range 1-20000000. Matched by pattern rather than one case per index
-  // since the count itself comes from the schema, not a fixed literal here.
-  if (/^analog\d+_hz$/.test(key)) return numeric(5000, "firmware");
-  switch (key) {
-    case "soft_limits":
-      return { type: "enum", options: [["true","true — Yes"], ["false","false — No"]], default: "false", defaultKind: "firmware" };
-    // Per-MOTOR (schema's motorBlock $def -- a sibling of the driver-type
-    // key/limit_neg_pin/limit_pos_pin/limit_all_pin/pulloff_mm inside each
-    // motor0:/motor1: block), not per-axis like soft_limits above -- each
-    // motor has its own limit switch wiring, so each gets its own hard-
-    // limits enable too. Schema default false, same firmware-default
-    // pattern as soft_limits.
-    case "hard_limits":
-      return { type: "enum", options: [["true","true — Yes"], ["false","false — No"]], default: "false", defaultKind: "firmware" };
-    // Machine::Start's 3 fields (src/Machine/MachineConfig.h) -- all 3 are
-    // @tuning typical in source and pre-populated via config_items.yaml
-    // (see configDocSpecFor()), editable inline like any other typical field.
-    case "must_home":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "true", defaultKind: "firmware" };
-    case "deactivate_parking":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
-    case "check_limits":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "true", defaultKind: "firmware" };
-    // MachineConfig's 7 uncategorized top-level items (MachineConfig.cpp:
-    // 83-89 / MachineConfig.h member initializers) -- see their
-    // defaultOverrides entries in generateDraft(), which pre-populate
-    // these from the real compiled-in defaults below rather than leaving
-    // them open.
-    case "arc_tolerance_mm": return numeric(0.002, "firmware");
-    case "junction_deviation_mm": return numeric(0.01, "firmware");
-    case "verbose_errors":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "true", defaultKind: "firmware" };
-    case "report_inches":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
-    case "enable_parking_override_control":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
-    case "use_line_numbers":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
-    case "planner_blocks": return numeric(16, "firmware");
-    case "cycle":
-      return numeric(1, "suggested");
-    case "positive_direction":
-      return { type: "enum", options: [["true","true — Positive (toward max)"], ["false","false — Negative (toward min)"]], default: "false", defaultKind: "firmware" };
-    case "mpos_mm": return numeric(0, "suggested");
-    case "feed_mm_per_min": return numeric(100, "suggested");
-    case "seek_mm_per_min": return numeric(200, "suggested");
-    case "settle_ms": return numeric(500, "firmware");
-    case "seek_scaler": return numeric(1.1, "firmware");
-    case "feed_scaler": return numeric(1.1, "firmware");
-    case "microsteps":
-      return { type: "enum", options: [1,2,4,8,16,32,64,128,256].map(n => [String(n), String(n)]), default: "16", defaultKind: "suggested" };
-    case "idle_ms": return numeric(255, "firmware");
-    case "pulse_us": return numeric(4, "firmware");
-    case "dir_delay_us": return numeric(1, "firmware");
-    case "disable_delay_us": return numeric(0, "firmware");
-    case "steps_per_mm": return numeric(100, "suggested");
-    case "max_rate_mm_per_min": return numeric(5000, "suggested");
-    case "acceleration_mm_per_sec2": return numeric(100, "suggested");
-    case "max_travel_mm": return numeric(300, "suggested");
-    case "r_sense_ohms": return numeric(0.11, "suggested");
-    case "run_amps": return numeric(1.0, "suggested");
-    case "hold_amps": return numeric(0.5, "suggested");
-    case "cal_min_mm": return numeric(0, "suggested");
-    case "cal_max_mm": return numeric(30, "suggested");
-    case "pwm_hz": return numeric(5000, "firmware");
-    case "spinup_ms": case "spindown_ms": return numeric(0, "firmware");
-    case "tool_num": return numeric(0, "firmware");
-    case "speed_map": return { type: "text", placeholder: "0=0% 10000=100%", default: "0=0% 10000=100%", defaultKind: "firmware" };
-    // Common to every SPINDLE_TYPES entry (see COMMON_TUNING_FIELDS in
-    // buildSpindleTypes()) -- real schema defaults confirmed against
-    // fluidnc-config-schema.json's spindle_* $defs, off_on_alarm/
-    // s0_with_disable/disable_with_s0's "default" keys.
-    case "off_on_alarm":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
-    case "s0_with_disable":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "true", defaultKind: "firmware" };
-    case "disable_with_s0":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
-    // atc: string, no "default" key in the schema at all (unlike the 3
-    // booleans above) -- absence just means "no ATC block used", so an
-    // empty string is the natural, if not schema-confirmed, starting
-    // point; marked "suggested" rather than "firmware" to be honest that
-    // this isn't a documented default the way the booleans are.
-    case "atc": return { type: "text", placeholder: "", default: "", defaultKind: "suggested" };
-    // arc_wait_ms (spindle_PlasmaSpindle only, via COMMON_TUNING_FIELDS) --
-    // how long to wait for the torch's arc-ok signal before giving up.
-    case "arc_wait_ms": return numeric(3000, "firmware");
-    // Probe::group() boolean settings (probeSection $def) -- real
-    // compiled-in defaults confirmed against fluidnc-config-schema.json's
-    // own "default" keys (check_mode_start true, the other two false).
-    case "check_mode_start":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "true", defaultKind: "firmware" };
-    case "hard_stop": case "probe_hard_limit":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
-    // coolant: delay_ms (coolantSection $def) -- only delays turn-ON, never
-    // M9/off, per the schema's own field description.
-    case "delay_ms": return numeric(0, "firmware");
-    // sdcard: frequency_hz -- SPI clock speed override, schema default 8MHz.
-    case "frequency_hz": return numeric(8000000, "firmware");
-    // axes: homing_runs -- number of homing passes, schema default 2
-    // (range 1-5, not separately enforced here -- same as every other
-    // numeric field's lack of client-side min/max validation).
-    case "homing_runs": return numeric(2, "firmware");
-    // m6_macro: macroLine's own schema description says explicitly that
-    // an empty string (or an absent key) both mean "do nothing" -- a real,
-    // spec-documented default, not just a placeholder guess.
-    case "m6_macro": return { type: "text", placeholder: "", default: "", defaultKind: "firmware" };
-    case "addr": return numeric(0, "suggested");
-    case "modbus_id": return numeric(1, "suggested");
-    case "min_pulse_us": return numeric(900, "firmware");
-    case "max_pulse_us": return numeric(2200, "firmware");
-    case "uart_num": return numeric(2, "suggested");
-    // Only ever open TBD fields for a repurposed I2C-connector-as-UART
-    // (see i2c_connectors handling in generateDraft()) -- a dedicated
-    // expansion_uart connector's baud/mode are fixed board facts instead,
-    // never TBD. 115200/8N1 are plain common-UART conventions, not a
-    // FluidNC-specific default.
-    case "baud": return numeric(115200, "suggested");
-    case "mode": return { type: "text", placeholder: "8N1", default: "8N1", defaultKind: "suggested" };
-    // Status_Outputs' real compiled default (Status_outputs.h: int32_t
-    // _report_interval_ms = 500), confirmed against the connected FluidNC
-    // source -- also used, as a reasonable starting point, for
-    // uart_channel's field of the same name (whose own real default isn't
-    // separately verified, but 75ms from wiki examples wasn't a firmware
-    // default either).
-    case "report_interval_ms": return numeric(500, "firmware");
-    // ParallelDelta geometry -- defaults are the compiled-in member
-    // initializers in Kinematics/ParallelDelta.h, confirmed against the
-    // connected FluidNC source (a specific delta arm's real dimensions,
-    // not universal -- every real machine must override these).
-    case "crank_mm": return numeric(70.0, "firmware");
-    case "base_triangle_mm": return numeric(179.437, "firmware");
-    case "linkage_mm": return numeric(133.50, "firmware");
-    case "end_effector_triangle_mm": return numeric(86.603, "firmware");
-    case "kinematic_segment_len_mm": return numeric(1.0, "firmware");
-    case "use_servos": return { type: "enum", options: [["true","true — Yes"], ["false","false — No"]], default: "false", defaultKind: "firmware" };
-    case "up_degrees": return numeric(-30, "firmware");
-    // WallPlotter geometry -- same provenance (Kinematics/WallPlotter.h
-    // member initializers), a specific two-cord layout, not universal.
-    case "left_axis": return numeric(0, "firmware");
-    case "left_anchor_x": return numeric(-100, "firmware");
-    case "left_anchor_y": return numeric(100, "firmware");
-    case "right_axis": return numeric(1, "firmware");
-    case "right_anchor_x": return numeric(100, "firmware");
-    case "right_anchor_y": return numeric(100, "firmware");
-    case "segment_length": return numeric(10, "firmware");
-    // Parking (parkingSection $def, Machine/Parking.h member initializers) --
-    // real compiled-in defaults confirmed against the connected FluidNC
-    // source.
-    case "enable":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
-    case "axis":
-      return { type: "enum", options: [["x","x"],["y","y"],["z","z"],["a","a"],["b","b"],["c","c"]], default: "z", defaultKind: "firmware" };
-    case "target_mpos_mm": return numeric(-5.0, "firmware");
-    case "rate_mm_per_min": return numeric(800.0, "firmware");
-    case "pullout_distance_mm": return numeric(5.0, "firmware");
-    case "pullout_rate_mm_per_min": return numeric(250.0, "firmware");
-    // Macros (macrosSection $def) -- every field is a macroLine, same
-    // "empty string / absent key both mean do nothing" schema-documented
-    // default as m6_macro above.
-    case "startup_line0": case "startup_line1":
-    case "macro0": case "macro1": case "macro2": case "macro3":
-    case "after_homing": case "after_reset": case "after_unlock":
-      return { type: "text", placeholder: "", default: "", defaultKind: "firmware" };
-    // OLED (oledSection $def) -- real compiled-in defaults confirmed
-    // against the connected FluidNC source (report_interval_ms already
-    // has its own case above, shared with uart_channel).
-    case "i2c_num": return numeric(0, "firmware");
-    case "i2c_address": return numeric(60, "firmware");
-    case "width": return numeric(64, "firmware");
-    case "height": return numeric(48, "firmware");
-    case "flip":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "true", defaultKind: "firmware" };
-    case "mirror":
-      return { type: "enum", options: [["true","true"], ["false","false"]], default: "false", defaultKind: "firmware" };
-    case "radio_delay_ms": return numeric(0, "firmware");
-    // ATC Manual ($defs.atc_manual) -- real compiled-in defaults confirmed
-    // against the connected FluidNC source. change_mpos_mm/ets_mpos_mm are
-    // floatArray (space-separated "x y z", no brackets/commas) and are
-    // deliberately left with NO default -- genuinely machine-specific, per
-    // the schema's own field description.
-    case "safe_z_mpos_mm": return numeric(50.0, "firmware");
-    case "probe_seek_rate_mm_per_min": return numeric(200.0, "firmware");
-    case "probe_feed_rate_mm_per_min": return numeric(80.0, "firmware");
-    case "ets_rapid_z_mpos_mm": return numeric(0.0, "firmware");
-    case "change_mpos_mm": case "ets_mpos_mm":
-      return { type: "text", placeholder: "0.0 0.0 0.0" };
-    default: return { type: "text", placeholder: "" };
-  }
+  return { type: "text", placeholder: "" };
 }
 
 /* Walk a freshly-cloned cfg and, in one pass, in the same order jsyaml.dump
@@ -1834,13 +1726,14 @@ function specForKey(key) {
 /* defaultOverrides: optional path -> {default, defaultKind} map, for the
  * rare TBD field whose sensible default genuinely varies by BOARD (or even
  * by specific motor socket), not just by field name -- e.g. r_sense_ohms
- * is normally a generic per-driver-family guess (specForKey's plain
- * default), but a board can document its own, verified-correct value for
- * its own onboard chips (e.g. BTT Rodent's real 0.075 ohm sense resistor,
- * vs. the erroneous 0.022 its own schematic/example configs show) -- see
- * where motorBlockFor()'s tmc_5160 branch records such an override during
- * the motor-socket loop in generateDraft(). Merged over specForKey(k)'s
- * result so unrelated fields are unaffected. */
+ * is normally a generic per-driver-family guess (config_items.yaml's own
+ * default, via resolveFieldSpec()), but a board can document its own,
+ * verified-correct value for its own onboard chips (e.g. BTT Rodent's real
+ * 0.075 ohm sense resistor, vs. the erroneous 0.022 its own schematic/
+ * example configs show) -- see where motorBlockFor()'s tmc_5160 branch
+ * records such an override during the motor-socket loop in generateDraft().
+ * Merged over resolveFieldSpec()'s result so unrelated fields are
+ * unaffected. */
 // keySlots: EVERY key encountered, in the exact order jsyaml.dump() will
 // emit their lines (same Object.keys() traversal, so this holds regardless
 // of type -- TBD, pin, plain literal, or a nested object/section key).
@@ -1865,29 +1758,19 @@ function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverride
     if (keySlots && !/^__ANNOTATE_FOR_.*__$/.test(k)) keySlots.push({ path: p, key: k });
     if (v === "TBD") {
       const override = defaultOverrides && defaultOverrides[p];
-      // Three layers, most specific wins. specForKey(k)'s hand-maintained
-      // per-NAME guess is the foundation -- it's still the only source for
-      // widget SHAPE (type/enum options), which config_items.yaml doesn't
-      // encode. configDocSpecFor() then overrides just default/defaultKind
-      // with the section-scoped (PATH-resolved) source-of-truth from
-      // config_items.yaml's @tuning/@default annotations, when this exact
-      // item has one -- this is what lets e.g. BESC's min_pulse_us and
-      // RcServo's min_pulse_us end up with their own correct, different
-      // values despite sharing a bare field name (see
+      // Two layers, most specific wins. resolveFieldSpec() resolves shape
+      // (config_items.yaml's own type/values, falling back to specForKey()'s
+      // much smaller hand-maintained guess only when this exact item has no
+      // doc coverage at all) plus default/defaultKind from config_items.yaml's
+      // @tuning/@default when present -- this is what lets e.g. BESC's
+      // min_pulse_us and RcServo's min_pulse_us end up with their own
+      // correct, different values despite sharing a bare field name (see
       // TUNING_CLASSIFICATION_REVIEW.md). An explicit board-specific
       // `override` -- a documented, verified fact about THIS board's own
       // hardware (e.g. the BTT Rodent's real 0.075 ohm sense resistor),
       // not just a generic classification -- wins over even that.
       const docSpec = configDocSpecFor(path, k);
-      let base = specForKey(k);
-      if (docSpec && docSpec.tuning) {
-        base = Object.assign({}, base, {
-          defaultKind: docSpec.tuning === "typical" ? "firmware" : "suggested",
-        });
-        if (docSpec.default !== undefined) {
-          base = Object.assign({}, base, { default: docSpec.default, placeholder: String(docSpec.default) });
-        }
-      }
+      const base = resolveFieldSpec(path, k);
       // NOTE: also re-derive placeholder from the override's own default --
       // otherwise the merge below only changes spec.default/defaultKind
       // (used by the "def" button), while the input's visible placeholder
@@ -1936,18 +1819,19 @@ function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverride
 // silently no-op on any field whose default happens to be "". Goes
 // straight to paramValues instead of through that ambiguous convention.
 // domDefault is the "def" button's own data-default attribute -- the
-// ALREADY-MERGED value (specForKey(key)'s generic default, overridden by
-// paramDefaultOverrides when one applies -- e.g. a board-specific
-// r_sense_ohms, or a spindle's next-available tool_num, see generateDraft())
-// shown to the user on the button itself and used as the field's
-// placeholder. Recomputing from specForKey(key) alone here (the previous
-// behavior) silently ignored any such override -- clicking "def" would
-// apply the generic value even though the button visibly promised a
-// different (correct, per-instance) one. Passed as a plain HTML attribute
-// string, so it needs the same type coercion setParam() already does for
-// typed-in values.
+// ALREADY-MERGED value (resolveFieldSpec()'s config_items.yaml-derived
+// default, overridden by paramDefaultOverrides when one applies -- e.g. a
+// board-specific r_sense_ohms, or a spindle's next-available tool_num, see
+// generateDraft()) shown to the user on the button itself and used as the
+// field's placeholder. Recomputing from resolveFieldSpec() alone here (the
+// previous behavior, back when this called specForKey() directly) would
+// silently ignore any such override -- clicking "def" would apply the
+// generic value even though the button visibly promised a different
+// (correct, per-instance) one. Passed as a plain HTML attribute string, so
+// it needs the same type coercion setParam() already does for typed-in
+// values.
 function setParamDefault(path, key, domDefault) {
-  const spec = specForKey(key);
+  const spec = resolveFieldSpec(parentPathOf(path, key), key);
   const raw = domDefault !== undefined ? domDefault : spec.default;
   if (raw === undefined) return;
   if (spec.type === "number") {
@@ -1961,7 +1845,7 @@ function setParamDefault(path, key, domDefault) {
 }
 
 function setParam(path, key, rawValue) {
-  const spec = specForKey(key);
+  const spec = resolveFieldSpec(parentPathOf(path, key), key);
   if (rawValue === "" || rawValue === undefined) {
     delete paramValues[path];
   } else if (spec.type === "number") {
@@ -3639,21 +3523,16 @@ function countResources() {
  *
  * Field lists/defaults confirmed directly against RcServo.h/Solenoid.h
  * (schema/config_items.yaml's axes.<letter>.motorN.rc_servo:/.solenoid:
- * sections mirror this exactly) -- this replaces an earlier version of the
- * rc_servo case here that stubbed nonexistent cal_min_mm/cal_max_mm fields
- * (no such fields exist anywhere in RcServo's real group(); likely stale
- * from an earlier FluidNC version) instead of the driver's actual pwm_hz/
+ * sections mirror this exactly) -- the driver's actual pwm_hz/
  * min_pulse_us/max_pulse_us/timer_ms.
  *
- * No explicit `overrides` here (unlike an earlier version of this
- * function) -- every field below is @tuning-tagged in source now, so
- * configDocSpecFor()'s section-scoped config_items.yaml lookup (see
- * collectAndInjectSlots()) already resolves each one correctly on its own,
- * including telling RcServo's min_pulse_us/max_pulse_us (real per-servo
- * travel-range facts, left open) apart from BESC's identically-named fields
- * (a bare-name collision specForKey()'s old hand-written table could never
- * distinguish -- see TUNING_CLASSIFICATION_REVIEW.md). A hand-written
- * override here would now just be a second, driftable copy of what source
+ * No explicit `overrides` here -- every field below is @tuning-tagged in
+ * source, so configDocSpecFor()'s section-scoped config_items.yaml lookup
+ * (see collectAndInjectSlots()) already resolves each one correctly on its
+ * own, including telling RcServo's min_pulse_us/max_pulse_us (real
+ * per-servo travel-range facts, left open) apart from BESC's identically-
+ * named fields (see TUNING_CLASSIFICATION_REVIEW.md). A hand-written
+ * override here would just be a second, driftable copy of what source
  * already says. */
 function axisMotorBlockFor(type, outputPin) {
   if (type === "solenoid") {
