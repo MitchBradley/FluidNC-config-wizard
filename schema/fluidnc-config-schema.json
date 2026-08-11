@@ -762,7 +762,7 @@
         "object",
         "null"
       ],
-      "description": "spec \u00a75.4.6. Only use when the chip's UART is actually wired -- otherwise use stepstick. Individually addressable via addr: 0-3 (hardware MS1/MS2 pins), up to 4 chips per UART bus. homing_amps is TMC2209-SPECIFIC (does not exist on 2130/2208/5160); if left at its default of 0 it is silently set equal to run_amps at parse time. stallguard range here is 0-255, NOT -64 to 63 like every SPI driver type.",
+      "description": "spec \u00a75.4.6. Only use when the chip's UART is actually wired -- otherwise use stepstick. Individually addressable via addr: 0-3 (hardware MS1/MS2 pins), up to 4 independently readable chips per UART bus. Selectorless drivers may share an address only when every member explicitly enables shared_address_write_only and has identical UART-controlled settings. homing_amps is TMC2209-SPECIFIC (does not exist on 2130/2208/5160); if left at its default of 0 it is silently set equal to run_amps at parse time. stallguard range here is 0-255, NOT -64 to 63 like every SPI driver type.",
       "additionalProperties": false,
       "properties": {
         "step_pin": {
@@ -874,6 +874,15 @@
             }
           ],
           "default": false
+        },
+        "shared_address_write_only": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/boolean"
+            }
+          ],
+          "default": false,
+          "description": "Explicitly permits selectorless TMC2209s with the same uart_num and addr to receive identical writes. Every group member must enable it, use cs_pin: NO_PIN, and have identical UART-controlled settings. UART readback and stallguard_debug are unavailable."
         },
         "homing_amps": {
           "type": "number",
@@ -1814,9 +1823,17 @@
         "object",
         "null"
       ],
-      "description": "spec \u00a713.2. No config fields. Cannot combine two axes into one homing.cycle group (see homingBlock description).",
+      "description": "spec \u00a713.2. Cannot combine two axes into one homing.cycle group (see homingBlock description).",
       "additionalProperties": false,
-      "properties": {}
+      "properties": {
+        "x_scaler": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 10.0,
+          "default": 1.0,
+          "description": "Compensation factor for midTbot-style machines where the motors themselves move in X. Leave at 1 on CoreXY machines where the motors don't move in X."
+        }
+      }
     },
     "kinematics_midtbot": {
       "type": [
@@ -2291,7 +2308,7 @@
         "object",
         "null"
       ],
-      "description": "spec \u00a710.7. Chain: Spindle -> OnOff -> Laser via groupCommon only -- explicitly NO direction_pin. pwm_hz range is narrower than plain PWM (1000-100000).",
+      "description": "spec \u00a710.7. Chain: Spindle -> OnOff -> Laser via groupCommon only -- explicitly NO direction_pin, and NO spinup_ms/spindown_ms (Laser::group() calls OnOff::groupCommon() specifically to skip Spindle::groupDelaySettings(), unlike every other OnOff-derived type). pwm_hz range is narrower than plain PWM (1000-100000).",
       "additionalProperties": false,
       "properties": {
         "tool_num": {
@@ -2335,19 +2352,6 @@
             }
           ],
           "default": false
-        },
-        "spinup_ms": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 60000,
-          "default": 0,
-          "description": "Only present if the type's use_delay_settings() is true (all types below except PlasmaSpindle)."
-        },
-        "spindown_ms": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 60000,
-          "default": 0
         },
         "pwm_hz": {
           "type": "integer",
@@ -2737,6 +2741,19 @@
           ],
           "default": false
         },
+        "spinup_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60000,
+          "default": 0,
+          "description": "Only present if the type's use_delay_settings() is true (all types below except PlasmaSpindle)."
+        },
+        "spindown_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60000,
+          "default": 0
+        },
         "uart_num": {
           "type": "integer",
           "description": "References a top-level uartN: section (spec \u00a79). Preferred/current form."
@@ -2814,6 +2831,19 @@
             }
           ],
           "default": false
+        },
+        "spinup_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60000,
+          "default": 0,
+          "description": "Only present if the type's use_delay_settings() is true (all types below except PlasmaSpindle)."
+        },
+        "spindown_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60000,
+          "default": 0
         },
         "uart_num": {
           "type": "integer",
