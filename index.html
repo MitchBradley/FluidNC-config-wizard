@@ -749,6 +749,20 @@ function buildSpindleTypes(schema) {
   return ordered;
 }
 
+// Builds an all-"TBD" stub object from a schema $def's own property list,
+// same idea as buildSpindleTypes()'s stubFields above -- lets OPTIONAL_SECTIONS
+// and the ModbusVFD dispatch (below) track the schema instead of hand-listing
+// their own field sets, which is exactly how the atc/m6_macro ModbusVFD bug
+// happened (see generateDraft()'s ModbusVFD block). Requires SCHEMA to be
+// loaded (set at the end of loadRoleData()) -- only called from stub()
+// closures invoked during/after generateDraft(), never at module-load time.
+function schemaStub(defName, allowSet) {
+  const props = (SCHEMA.$defs[defName] || {}).properties || {};
+  const keys = allowSet ? Object.keys(props).filter(k => allowSet.has(k)) : Object.keys(props);
+  return Object.fromEntries(keys.map(k => [k, "TBD"]));
+}
+let SCHEMA;
+
 function checkSchemaForKnownGaps(schema) {
   if (!("status_outputs" in (schema.properties || {}))) {
     console.warn(
@@ -769,6 +783,7 @@ let INPUT_ROLE_TREE, SPINDLE_TYPES, DIGITAL_OUTPUT_COUNT, ANALOG_OUTPUT_COUNT, E
 async function loadRoleData() {
   const schemaText = await fetchYamlText("schema/fluidnc-config-schema.json");
   const schema = JSON.parse(schemaText);
+  SCHEMA = schema;
 
   checkSchemaForKnownGaps(schema);
 
@@ -1384,36 +1399,17 @@ function kinematicsOptions() {
  * (control/coolant/probe/user_outputs/user_inputs/spindle types/
  * status_outputs) IS resource-bound and already has its own left-pane
  * row(s) instead. */
+// Field sets are schema-derived (schemaStub(), above) rather than hand-listed
+// -- each stub() used to be its own literal object here, duplicating the
+// corresponding $def's property list byte-for-byte with no way to notice
+// drift if the schema ever gained/renamed a field (the same anti-pattern
+// that let ModbusVFD's atc/m6_macro go missing for a full release cycle;
+// see generateDraft()'s ModbusVFD block and schemaStub()'s own comment).
 const OPTIONAL_SECTIONS = {
-  parking: {
-    label: "Parking",
-    stub: () => ({
-      enable: "TBD", axis: "TBD", target_mpos_mm: "TBD", rate_mm_per_min: "TBD",
-      pullout_distance_mm: "TBD", pullout_rate_mm_per_min: "TBD",
-    }),
-  },
-  macros: {
-    label: "Macros",
-    stub: () => ({
-      startup_line0: "TBD", startup_line1: "TBD",
-      macro0: "TBD", macro1: "TBD", macro2: "TBD", macro3: "TBD",
-      after_homing: "TBD", after_reset: "TBD", after_unlock: "TBD",
-    }),
-  },
-  oled: {
-    label: "OLED",
-    stub: () => ({
-      report_interval_ms: "TBD", i2c_num: "TBD", i2c_address: "TBD",
-      width: "TBD", height: "TBD", flip: "TBD", mirror: "TBD", radio_delay_ms: "TBD",
-    }),
-  },
-  atc_manual: {
-    label: "ATC Manual",
-    stub: () => ({
-      safe_z_mpos_mm: "TBD", probe_seek_rate_mm_per_min: "TBD", probe_feed_rate_mm_per_min: "TBD",
-      change_mpos_mm: "TBD", ets_mpos_mm: "TBD", ets_rapid_z_mpos_mm: "TBD",
-    }),
-  },
+  parking: { label: "Parking", stub: () => schemaStub("parkingSection") },
+  macros: { label: "Macros", stub: () => schemaStub("macrosSection") },
+  oled: { label: "OLED", stub: () => schemaStub("oledSection") },
+  atc_manual: { label: "ATC Manual", stub: () => schemaStub("atc_manual") },
 };
 function sectionSentinel(key) { return `SECTIONSELECT_${key}`; }
 let sectionEnabled = {};   // section key -> bool, defaults to false (falsy) if unset
@@ -4122,26 +4118,19 @@ function generateDraft() {
     annotate(cfg, `uart${n}`, annotateLabel);
     cfg[`uart${n}`] = uartBlock;
     annotate(cfg, "ModbusVFD", annotateLabel);
-    // VFDSpindle::group() (VFDSpindle.cpp) calls Spindle::group() (tool_num/
-    // speed_map/off_on_alarm/atc/m6_macro/s0_with_disable/disable_with_s0)
-    // AND Spindle::groupDelaySettings() (spinup_ms/spindown_ms) -- all 9 are
-    // real ModbusVFD fields, confirmed against the connected FluidNC source
-    // (same "ModbusVFD" section build_config_docs.py's SECTIONS table
-    // generates). Previously only 3 of the 9 were stubbed here by hand;
-    // the other 6 (including atc/m6_macro) silently never appeared at all.
+    // Tuning-field stub is schema-derived (schemaStub(), like
+    // OPTIONAL_SECTIONS above), not hand-listed -- exactly the fix for the
+    // bug that let atc/m6_macro/off_on_alarm/s0_with_disable/disable_with_s0/
+    // spinup_ms/spindown_ms silently never appear here (only tool_num/
+    // speed_map were hand-listed before). fluidnc-config-schema.json's own
+    // spindle_ModbusVFD $def used to be missing spinup_ms/spindown_ms too
+    // (every other spindle_* $def had them) -- fixed there directly rather
+    // than patched around here, so this stays a plain, honest derivation.
     cfg.ModbusVFD = {
       model: model,
       uart_num: n,
       modbus_id: 1,
-      tool_num: "TBD",
-      speed_map: "TBD",
-      off_on_alarm: "TBD",
-      atc: "TBD",
-      m6_macro: "TBD",
-      s0_with_disable: "TBD",
-      disable_with_s0: "TBD",
-      spinup_ms: "TBD",
-      spindown_ms: "TBD",
+      ...schemaStub("spindle_ModbusVFD", COMMON_TUNING_FIELDS),
     };
   });
 
