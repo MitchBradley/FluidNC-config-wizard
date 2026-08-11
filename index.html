@@ -4122,13 +4122,26 @@ function generateDraft() {
     annotate(cfg, `uart${n}`, annotateLabel);
     cfg[`uart${n}`] = uartBlock;
     annotate(cfg, "ModbusVFD", annotateLabel);
+    // VFDSpindle::group() (VFDSpindle.cpp) calls Spindle::group() (tool_num/
+    // speed_map/off_on_alarm/atc/m6_macro/s0_with_disable/disable_with_s0)
+    // AND Spindle::groupDelaySettings() (spinup_ms/spindown_ms) -- all 9 are
+    // real ModbusVFD fields, confirmed against the connected FluidNC source
+    // (same "ModbusVFD" section build_config_docs.py's SECTIONS table
+    // generates). Previously only 3 of the 9 were stubbed here by hand;
+    // the other 6 (including atc/m6_macro) silently never appeared at all.
     cfg.ModbusVFD = {
       model: model,
       uart_num: n,
       modbus_id: 1,
+      tool_num: "TBD",
+      speed_map: "TBD",
+      off_on_alarm: "TBD",
+      atc: "TBD",
+      m6_macro: "TBD",
+      s0_with_disable: "TBD",
+      disable_with_s0: "TBD",
       spinup_ms: "TBD",
       spindown_ms: "TBD",
-      tool_num: "TBD"
     };
   });
 
