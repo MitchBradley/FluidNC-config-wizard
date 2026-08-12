@@ -686,31 +686,12 @@ function countSlots(props, prefix) {
   return Object.keys(props).filter(k => k.startsWith(prefix) && k.endsWith("_pin")).length;
 }
 
-// digitalN_pin/analogN_pin children, keyed by their own index N, labeled
-// with their own real (stripped) name -- e.g. "digital0", not a
-// hand-formatted "Digital 0" -- derived from whichever of userInputsSection's
-// own properties are pin-typed (config_items.yaml's type: pin, via
-// isPinType()) and match the given prefix, rather than a separately-counted
-// range with manufactured labels.
-function userInputKindChildren(props, docSection, prefix) {
-  const children = {};
-  const re = new RegExp(`^${prefix}(\\d+)_pin$`);
-  Object.keys(props).forEach(fullKey => {
-    const m = fullKey.match(re);
-    if (m && isPinType(docSection, fullKey)) children[m[1]] = { label: stripPinSuffix(fullKey) };
-  });
-  return children;
-}
-
+// Flat list of digital0-7/analog0-3 -- no Digital/Analog sub-grouping (the
+// distinction isn't a pin_attributes one: both kinds are tagged plain
+// "input" in config_items.yaml, so there's no schema-derivable signal to
+// split on, only the field's own name -- not worth a tree level for it).
 function buildUserInputTree(schema) {
-  const props = schema.$defs.userInputsSection.properties;
-  return {
-    label: "User Input",
-    children: {
-      digital: { label: "Digital", children: userInputKindChildren(props, "user_inputs", "digital") },
-      analog: { label: "Analog", children: userInputKindChildren(props, "user_inputs", "analog") },
-    },
-  };
+  return { label: "User Input", children: sectionRoleChildren(schema.$defs.userInputsSection.properties, "user_inputs", "input", true) };
 }
 
 function buildSpindleTypes(schema) {
@@ -3933,10 +3914,10 @@ function generateDraft() {
     } else if (role.startsWith("user_input:")) {
       // Machine::UserInputs -- generic digital0-7/analog0-3 pins under
       // "user_inputs:", unrelated to Limit/Probe/Control.
-      const [, subtype, idx] = role.split(":");
+      const which = role.split(":")[1];
       cfg.user_inputs = cfg.user_inputs || {};
-      annotate(cfg.user_inputs, `${subtype}${idx}_pin`, p.label);
-      cfg.user_inputs[`${subtype}${idx}_pin`] = pin;
+      annotate(cfg.user_inputs, `${which}_pin`, p.label);
+      cfg.user_inputs[`${which}_pin`] = pin;
     } else if (role.startsWith("spindle:")) {
       // Spindle type picks both the top-level config key and the exact
       // TBD tuning stub via SPINDLE_TYPES -- same dispatch-by-chosen-
@@ -4916,9 +4897,9 @@ function importConfig(doc, rawText) {
 
   const userInputsDoc = doc.user_inputs || {};
   Object.keys(userInputsDoc).forEach(field => {
-    const m = field.match(/^(digital|analog)(\d+)_pin$/);
-    if (!m) return;
-    claimPin(userInputsDoc[field], `user_input:${m[1]}:${m[2]}`, `user_inputs.${field}`);
+    if (!isPinType("user_inputs", field)) return;
+    const which = field.slice(0, -4);
+    claimPin(userInputsDoc[field], `user_input:${which}`, `user_inputs.${field}`);
   });
 
   // --- coolant ---
