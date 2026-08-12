@@ -4135,10 +4135,15 @@ function generateDraft() {
       // <analogN>_hz -- per-channel PWM frequency, a real config field
       // with no resource/pin of its own to bind, so it's stubbed as an
       // ordinary open TBD the moment this channel gets a pin, same as a
-      // spindle type's tuning fields. Only set once per channel (never
-      // overwrites a value the user already typed in).
-      if (which.startsWith("analog") && cfg.user_outputs[`${which}_hz`] === undefined) {
-        cfg.user_outputs[`${which}_hz`] = TBD;
+      // spindle type's tuning fields. Whether a companion "<which>_hz"
+      // field exists at all is looked up in CONFIG_ITEM_DOCS directly
+      // (true only for analogN today) rather than hardcoded as
+      // which.startsWith("analog") -- config_items.yaml already answers
+      // that, no naming-convention guess needed. Only set once per
+      // channel (never overwrites a value the user already typed in).
+      const hzField = `${which}_hz`;
+      if (CONFIG_ITEM_DOCS.user_outputs && CONFIG_ITEM_DOCS.user_outputs[hzField] && cfg.user_outputs[hzField] === undefined) {
+        cfg.user_outputs[hzField] = TBD;
       }
     } else if (role.startsWith("status_output:")) {
       // Status_Outputs -- machine-state indicator pins (e.g. tower
@@ -5170,8 +5175,8 @@ function importConfig(doc, rawText) {
     // "_pin" stripped, same convention as coolant/control/status_output.
     const which = field.slice(0, -4);
     const resourceKey = claimPin(userOutputsDoc[field], `user_output:${which}`, `user_outputs.${field}`);
-    if (resourceKey && which.startsWith("analog")) {
-      const hzField = `${which}_hz`;
+    const hzField = `${which}_hz`;
+    if (resourceKey && CONFIG_ITEM_DOCS.user_outputs[hzField]) {
       if (userOutputsDoc[hzField] != null && userOutputsDoc[hzField] !== TBD) {
         paramValues[`user_outputs.${hzField}`] = userOutputsDoc[hzField];
       }
