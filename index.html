@@ -721,8 +721,9 @@ function sectionForRolePrefix(prefix) {
 // of these in its own branch BEFORE the final generic else (see below);
 // importConfig() uses this same set to exclude them from its matching
 // generic import loop. Every other EITHER_ROLE_TREE key -- control/probe/
-// user_input/coolant/status_output/sdcard/ethernet today -- automatically
-// gets the generic treatment with no need to list them by name here; a
+// user_input/coolant/status_output/sdcard/ethernet/i2so today --
+// automatically gets the generic treatment with no need to list them by
+// name here; a
 // brand-new generically-scanned section (see buildGenericRoleBranches())
 // picks it up for free, the same "denylist the exceptions" pattern
 // GENERIC_ROLE_SECTIONS_EXCLUDED already uses one level up.
@@ -4232,7 +4233,7 @@ function generateDraft() {
       axis[slot].hard_limits = TBD;
     } else {
       // Every role prefix NOT already handled above (control/probe/
-      // user_input/coolant/status_output/sdcard/ethernet today, per
+      // user_input/coolant/status_output/sdcard/ethernet/i2so today, per
       // SPECIAL_CASE_ROLE_PREFIXES' own comment) reduces to the exact
       // same shape: write a pin into cfg[<section>][<field>], then stub
       // any of that section's own non-pin tuning fields (probe's
@@ -5150,8 +5151,8 @@ function importConfig(doc, rawText) {
     }
   });
 
-  // --- probe/control/user_inputs/coolant/status_outputs/sdcard/ethernet:
-  // same flat "claim every pin field via whichForField()'s which, then
+  // --- probe/control/user_inputs/coolant/status_outputs/sdcard/ethernet/
+  // i2so: same flat "claim every pin field via whichForField()'s which, then
   // copy back whichever of the section's own non-pin tuning fields are
   // set" shape generateDraft()'s matching else branch produces on the way
   // out (see stubNonPinFields()) -- e.g. probe's check_mode_start/
