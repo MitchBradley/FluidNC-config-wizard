@@ -692,14 +692,6 @@ const GENERIC_ROLE_SECTIONS_EXCLUDED = new Set([
           // together at all), never something a Generic-Pin role
           // assignment could retroactively create -- see
           // board.schema.json's own shared_disable_pin description.
-  "i2so", // oe_pin is its one output-tagged field (bck_pin/data_pin/
-          // ws_pin are already excluded for free, being i2s-tagged, not
-          // output-tagged) -- now representable in board.schema.json's
-          // i2so def (required, mcu_pin_or_none, explicit NO_PIN on
-          // every current board), but generateDraft()/importConfig()
-          // still have no "i2so:" role dispatch case, so offering it
-          // here would be a silently-dropped dead option. Revisit once
-          // that dispatch exists.
 ]);
 
 // config_items.yaml section name -> role-prefix key, ONLY for the three
@@ -766,44 +758,54 @@ function buildGenericRoleBranches(attrs) {
   return branches;
 }
 
+// Generically-scanned sections that are a real board.fixed_peripherals
+// concept -- this board either has the block (with real facts, some
+// fields possibly left NO_PIN for the user to wire up themselves) or
+// doesn't have the hardware at all. No bolt-on support: a board that
+// doesn't have this peripheral has nothing for one of its accessory pins
+// (sdcard.card_detect_pin, ethernet's cs/int/rst, i2so.oe_pin) to attach
+// to -- unlike control/probe/user_inputs/coolant/status_outputs, which
+// are pure user-wiring sections with no fixed_peripherals counterpart on
+// ANY board, and so are always fully user-assignable. A user wanting a
+// genuine one-off lashup (an external SPI Ethernet module wired to spare
+// GPIOs, say) writes their own board file describing it as a real fixed
+// fact instead. See computeBoardFixedRoles(), the one place this
+// distinction matters.
+const BOARD_FIXED_SECTIONS = new Set(["sdcard", "ethernet", "i2so"]);
+
 // Per-board Set of Generic-Pin ROLE PATHS (e.g. "sdcard:cs",
-// "sdcard:card_detect") that THIS board's own fixed_peripherals data has
-// already committed to a real pin -- consulted by isRoleClaimedByOther()
-// so a role a board has already wired down is greyed out the same way an
+// "sdcard:card_detect") that are NOT available for a user to assign via
+// an ordinary Generic Pin on this board -- consulted by
+// isRoleClaimedByOther() so these are greyed out the same way an
 // already-user-assigned role is, with no separate UI code path needed.
 // Walks every section the generic role-tree scan covers (see
-// buildGenericRoleBranches() above) that ALSO happens to have a same-named
-// board.fixed_peripherals block on THIS board -- today, only sdcard, on
-// any board that actually has SD card hardware (control/probe/
-// user_inputs/coolant/status_outputs never have a fixed_peripherals
-// counterpart on ANY board, so nothing about them is ever blacklisted
-// this way, correctly: they're genuinely always user-assignable). A
-// section with no matching block AT ALL for this board -- either because
-// it conceptually never has one (control, ...) or because this
-// particular board lacks that feature entirely (e.g. no SD card slot) --
-// contributes nothing to the blacklist; a currently-unhandled corner case
-// for the latter (a board with no sdcard: block would leave cs_pin
-// wrongly offered as open too, rather than also excluded) that no real
-// board file hits today, so it's left as a known gap rather than adding a
-// board.schema.json fetch just to close it. Within an EXISTING matching
-// block, a field explicitly "NO_PIN" is deliberately left OFF the
-// blacklist -- it means this board's hardware leaves that resource
-// unwired, exactly the case a user might want to wire up themselves (see
-// sdcard.card_detect_pin). Any other value (a real pin, or a field an
-// older board file hasn't been updated to state explicitly) is treated
-// as "already fixed" -- the conservative default within a block that
-// DOES exist, so an incomplete board file fails safe.
+// buildGenericRoleBranches() above). Within an EXISTING
+// board.fixed_peripherals block for that section, a field explicitly
+// "NO_PIN" is deliberately left OFF the blacklist -- it means this
+// board's hardware leaves that resource unwired, exactly the case a user
+// might want to wire up themselves (see sdcard.card_detect_pin); any
+// other value (a real pin, or a field an older board file hasn't been
+// updated to state explicitly) is treated as "already fixed," the
+// conservative default within a block that DOES exist, so an incomplete
+// board file fails safe. For a BOARD_FIXED_SECTIONS section with NO
+// matching block on this board at all (e.g. no i2so: block -- this board
+// has no I2S output hardware), EVERY one of its pin-typed fields is
+// blacklisted instead of left open -- no bolt-on (see
+// BOARD_FIXED_SECTIONS' own comment). A section that's never a
+// fixed_peripherals concept at all (control, ...) always has boardBlock
+// undefined too, but isn't in BOARD_FIXED_SECTIONS, so nothing is
+// blacklisted for it -- genuinely always user-assignable, same as before.
 function computeBoardFixedRoles() {
   const fixed = new Set();
   const fp = (board && board.fixed_peripherals) || {};
   Object.keys(CONFIG_ITEM_DOCS).forEach(sectionName => {
     if (!isGenericRoleSection(sectionName)) return;
     const boardBlock = fp[sectionName];
-    if (!boardBlock) return;
+    if (!boardBlock && !BOARD_FIXED_SECTIONS.has(sectionName)) return;
     const items = CONFIG_ITEM_DOCS[sectionName] || {};
     Object.keys(items).forEach(fullKey => {
       if (!isPinType(sectionName, fullKey)) return;
-      if (boardBlock[fullKey] === "NO_PIN") return;
+      if (boardBlock && boardBlock[fullKey] === "NO_PIN") return;
       const key = ROLE_PREFIX_OVERRIDES[sectionName] || sectionName;
       fixed.add(`${key}:${stripPinSuffix(fullKey)}`);
     });
@@ -1540,7 +1542,14 @@ function shapeForDocType(key, docType, docValues) {
     return { type: "enum", options: BOOLEAN_OPTIONS_GENERIC };
   }
   if (docType === "enum" && docValues && docValues.length) {
-    return { type: "enum", options: docValues.map(v => [v, v]) };
+    // String(v) -- config_items.yaml's own enum values are whatever
+    // literal type the source's EnumItem array uses (i2so.min_pulse_us's
+    // are genuinely numeric: [1, 2, 4]), but option values/labels and
+    // paramValues[] comparisons throughout this file are string-typed
+    // (see paramWidgetHtml's `cur = String(paramValues[slot.path])`) --
+    // a bare numeric value here would both crash escapeHtml() (expects
+    // a string) and never match `cur` on reimport.
+    return { type: "enum", options: docValues.map(v => [String(v), String(v)]) };
   }
   if (docType === "axis") {
     return { type: "enum", options: AXES.map(a => [a, a]) };
@@ -4007,7 +4016,16 @@ function generateDraft() {
     // configDocSpecFor().
     cfg.sdcard.frequency_hz = TBD;
   }
-  if (fp.i2so) cfg.i2so = { bck_pin: fp.i2so.bck_pin, data_pin: fp.i2so.data_pin, ws_pin: fp.i2so.ws_pin };
+  if (fp.i2so) {
+    cfg.i2so = { bck_pin: fp.i2so.bck_pin, data_pin: fp.i2so.data_pin, ws_pin: fp.i2so.ws_pin };
+    // min_pulse_us -- @tuning typical in source, pre-filled from
+    // config_items.yaml via configDocSpecFor() once stubbed here, same
+    // as sdcard.frequency_hz above. Stubbed unconditionally (not via the
+    // oe_pin role dispatch below) since it's relevant whenever I2SO
+    // stepping is used at all, regardless of whether oe_pin ever gets a
+    // pin assigned.
+    cfg.i2so.min_pulse_us = TBD;
+  }
   if (fp.ethernet) {
     // No current board actually has an onboard Ethernet PHY (unlike
     // spi:/sdcard:/i2so:, every board file's fixed_peripherals.ethernet
