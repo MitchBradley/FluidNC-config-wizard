@@ -1441,6 +1441,7 @@ axes.<letter>.motorN.tmc_2209:
     description: |
       Acknowledges that this chip's UART address (uart_num + addr) is intentionally shared with other TMC2209 motors on the same bus rather than uniquely assigned -- required on every driver sharing that address, or validation fails with a "must set shared_address_write_only: true" error. Since replies can't be distinguished on a shared address, this also requires cs_pin: NO_PIN and disallows stallguard_debug, and every driver sharing the address must agree on the same current/microstep/mode settings (a mismatch is a validation error, not a silent inconsistency).
 
+# Also registered as tmc_2160 (own SECTIONS entry just below, sharing this contributor list) -- confirmed via TMC2160Driver.h's own class (extends TMC5160Driver, this same ordinary TrinamicSpiDriver-based type) and TMC2160Driver.cpp's registration("tmc_2160") call. NOT the same driver as tmc_2160Pro below, despite the similar name -- that one is a raw-register tmc_5160Pro alias instead (a DIFFERENT class, confusingly also named TMC2160Driver, declared in TMC2160ProDriver.h) -- verify against the actual registration() call before trusting a name-similarity assumption here again.
 axes.<letter>.motorN.tmc_5160:
   step_pin:
     type: pin
@@ -1594,8 +1595,244 @@ axes.<letter>.motorN.tmc_5160:
     description: |
       TMC5160-specific passive fast decay time register value -- affects current ripple/step smoothness at low microstepping in StealthChop mode. Consult the TMC5160 datasheet before changing from the default.
 
-# Also registered as tmc_2160Pro and tmc_2160 -- all three names are the exact same driver class/fields (raw-register expert mode). Bypasses TrinamicBase/TrinamicSpiDriver entirely, unlike every other tmc_* type -- no run_amps/microsteps/etc. here.
+# Registration alias of tmc_5160 -- see that entry's own note (and do not confuse with tmc_2160Pro, a different, raw-register alias of tmc_5160Pro instead).
+axes.<letter>.motorN.tmc_2160:
+  step_pin:
+    type: pin
+    default: 'NO_PIN'
+    description: |
+      Step pulse output to the driver.
+
+  direction_pin:
+    type: pin
+    default: 'NO_PIN'
+    description: |
+      Direction output to the driver.
+
+  disable_pin:
+    type: pin
+    default: 'NO_PIN'
+    description: |
+      Enable/disable output to the driver (active state depends on the driver hardware -- invert with the pin's :low attribute if needed).
+
+  r_sense_ohms:
+    type: float
+    min: 0.0
+    max: 1.00
+    default: '0.0'
+    tuning: per-machine
+    description: |
+      Sense resistor value for the physical driver module, in ohms. The 0.0 default is not a real, functional value -- TrinamicBase itself has no correct generic default, since this is purely a property of the specific module in hand (e.g. 0.11 is typical for genuine TMC2130/TMC2208/TMC2209 modules, 0.075 for TMC5160). A real value appropriate to the actual hardware must always be set explicitly.
+
+  run_amps:
+    type: float
+    min: 0.05
+    max: 10.0
+    default: '0.5'
+    tuning: per-machine
+    description: |
+      Motor current while running, in amps RMS.
+
+  hold_amps:
+    type: float
+    min: 0.05
+    max: 10.0
+    default: '0.5'
+    tuning: per-machine
+    description: |
+      Motor current while holding position (not moving), in amps RMS.
+
+  microsteps:
+    type: integer
+    min: 1
+    max: 256
+    default: '16'
+    tuning: per-machine
+    description: |
+      Microstep resolution. Needs to be reflected in the axis's steps_per_mm.
+
+  toff_disable:
+    type: integer
+    min: 0
+    max: 15
+    default: '0'
+    description: |
+      TOFF (off-time) register value used while the driver is disabled.
+
+  toff_stealthchop:
+    type: integer
+    min: 2
+    max: 15
+    default: '5'
+    description: |
+      TOFF (off-time) register value used in StealthChop mode.
+
+  use_enable:
+    type: boolean
+    default: 'false'
+    description: |
+      Uses disable_pin as an active enable signal (inverted sense) instead of the ordinary active-disable sense -- some driver modules wire this pin the opposite way from the FluidNC default.
+
+  cs_pin:
+    type: pin
+    default: 'NO_PIN'
+    description: |
+      SPI chip-select for this driver. In independent (non-daisy-chained) SPI mode each driver needs its own; in a daisy chain, define this only on the motor with spi_index: 1 -- the rest share that same physical CS line.
+
+  spi_index:
+    type: integer
+    min: -1
+    max: 127
+    default: '-1'
+    description: |
+      -1 means independent SPI mode (used on all drivers when not daisy-chaining). In a daisy chain, each driver gets a distinct position number (1, 2, 3, ...) in chain order -- every physical position in the chain must be represented by a motor entry, even unused ones, or the chain's data alignment breaks.
+
+  run_mode:
+    type: enum
+    values: *trinamicModes
+    default: 'StealthChop'
+    description: |
+      Chopper algorithm while running: StealthChop (very quiet), CoolStep (runs cooler, allows higher current), or StallGuard (CoolStep plus stall/load detection).
+
+  homing_mode:
+    type: enum
+    values: *trinamicModes
+    default: 'StealthChop'
+    description: |
+      Chopper algorithm while homing (same choices as run_mode) -- StallGuard is typically used here for sensorless homing.
+
+  stallguard:
+    type: integer
+    min: -64
+    max: 63
+    default: '0'
+    description: |
+      StallGuard sensitivity threshold for this SPI-driven chip family, -64 (most sensitive) to 63 (least sensitive). Only meaningful when run_mode or homing_mode is StallGuard.
+
+  stallguard_debug:
+    type: boolean
+    default: 'false'
+    description: |
+      Logs live StallGuard sensor values -- useful for tuning the stallguard threshold for sensorless homing.
+
+  toff_coolstep:
+    type: integer
+    min: 2
+    max: 15
+    default: '3'
+    description: |
+      TOFF (off-time) register value used in CoolStep/StallGuard mode.
+
+  diag0_error:
+    type: boolean
+    default: 'false'
+    description: |
+      Enables the DIAG0 pin to signal driver error conditions. SPI-driver-specific -- not available on the UART-controlled Trinamic drivers.
+
+  diag0_otpw:
+    type: boolean
+    default: 'false'
+    description: |
+      Enables the DIAG0 pin to signal an over-temperature pre-warning. SPI-driver-specific -- not available on the UART-controlled Trinamic drivers.
+
+  diag0_int_pushpull:
+    type: boolean
+    default: 'false'
+    description: |
+      Configures the DIAG0 pin's output stage as push-pull instead of open-drain. SPI-driver-specific -- not available on the UART-controlled Trinamic drivers.
+
+  tpfd:
+    type: integer
+    min: 0
+    max: 15
+    default: '4'
+    description: |
+      TMC5160-specific passive fast decay time register value -- affects current ripple/step smoothness at low microstepping in StealthChop mode. Consult the TMC5160 datasheet before changing from the default.
+
+# Also registered as tmc_2160Pro (own SECTIONS entry just below, sharing this contributor list) -- confirmed via TMC2160ProDriver.h's own class (extends TMC5160ProDriver, this same raw-register-expert-mode type) and TMC2160ProDriver.cpp's registration("tmc_2160Pro") call. Bypasses TrinamicBase/TrinamicSpiDriver entirely, unlike every other tmc_* type -- no run_amps/microsteps/etc. here. An EARLIER version of this note incorrectly also claimed tmc_2160 (no "Pro") as a third alias of this same raw-register class -- it is not; see tmc_5160's own entry above.
 axes.<letter>.motorN.tmc_5160Pro:
+  step_pin:
+    type: pin
+    default: 'NO_PIN'
+    description: |
+      Step pulse output to the driver.
+
+  direction_pin:
+    type: pin
+    default: 'NO_PIN'
+    description: |
+      Direction output to the driver.
+
+  disable_pin:
+    type: pin
+    default: 'NO_PIN'
+    description: |
+      Enable/disable output to the driver (active state depends on the driver hardware -- invert with the pin's :low attribute if needed).
+
+  cs_pin:
+    type: pin
+    default: 'NO_PIN'
+    description: |
+      SPI chip-select for this driver. In independent (non-daisy-chained) SPI mode each driver needs its own; in a daisy chain, define this only on the motor with spi_index: 1.
+
+  spi_index:
+    type: integer
+    min: -1
+    max: 127
+    default: '-1'
+    description: |
+      -1 means independent SPI mode. In a daisy chain, each driver gets a distinct position number (1, 2, 3, ...) in chain order.
+
+  use_enable:
+    type: boolean
+    default: 'false'
+    description: |
+      Uses disable_pin as an active enable signal (inverted sense) instead of the ordinary active-disable sense.
+
+  CHOPCONF:
+    type: integer
+    default: '322994520'
+    description: |
+      Raw TMC5160 CHOPCONF register value. Consult the TMC5160 datasheet -- these 7 register fields are not semantic settings (no run_amps/microsteps/etc. here at all), just the literal register contents applied at init.
+
+  COOLCONF:
+    type: integer
+    default: '0'
+    description: |
+      Raw TMC5160 COOLCONF register value.
+
+  THIGH:
+    type: integer
+    default: '0'
+    description: |
+      Raw TMC5160 THIGH register value.
+
+  TCOOLTHRS:
+    type: integer
+    default: '0'
+    description: |
+      Raw TMC5160 TCOOLTHRS register value.
+
+  GCONF:
+    type: integer
+    default: '4'
+    description: |
+      Raw TMC5160 GCONF register value.
+
+  PWMCONF:
+    type: integer
+    default: '3289120798'
+    description: |
+      Raw TMC5160 PWMCONF register value.
+
+  IHOLD_IRUN:
+    type: integer
+    default: '7948'
+    description: |
+      Raw TMC5160 IHOLD_IRUN register value (packs both hold and run current directly, unlike the semantic run_amps/hold_amps fields used by tmc_5160).
+
+# Registration alias of tmc_5160Pro -- see that entry's own note.
+axes.<letter>.motorN.tmc_2160Pro:
   step_pin:
     type: pin
     default: 'NO_PIN'
@@ -1816,9 +2053,8 @@ axes.<letter>.motorN.dynamixel2:
     description: |
       Update interval, in milliseconds, for refreshing the servo's commanded position.
 
-# axes.<letter>.motorN.null_motor: (no config items)
-#   Explicit no-op driver -- takes no fields.
-
+# Explicit no-op driver -- takes no fields.
+axes.<letter>.motorN.null_motor:
 PWM:
   tool_num:
     type: integer
@@ -2679,9 +2915,8 @@ PlasmaSpindle:
     description: |
       How long to wait for arc_ok_pin to confirm the arc has started before giving up.
 
-# NoSpindle: (no config items)
-#   The "Null" spindle -- takes no fields, no I/O.
-
+# The "Null" spindle -- takes no fields, no I/O.
+NoSpindle:
 # Also backs Huanyang/YL620/H2A/SiemensV20/NowForever/FolinnBD600/DeltaMS300/H100/MollomG70/DanfossVLT2800 -- each registers under its own name with fixed constructor-supplied command strings, adding no fields of its own. spinup_ms/spindown_ms are always present here (VFDSpindle::group() always calls groupDelaySettings()), but only actually applied at runtime when get_rpm_cmd is left unset -- see get_rpm_cmd's own description for why.
 ModbusVFD:
   tool_num:
@@ -2985,8 +3220,8 @@ kinematics.CoreXY:
     description: |
       Compensation factor for midTbot-style machines where the motors themselves move in X, so a cartesian X move corresponds to a larger motor-space move. Leave at 1 on CoreXY machines where the motors don't move in X.
 
+# No config items at all -- Midtbot::group()/Cartesian::group() are empty. Midtbot hardcodes its x_scaler to 2.0 in init() rather than exposing it as a config item, since that ratio is a fixed property of the midTbot hardware design, not something a user should tune.
 # kinematics.midtbot / kinematics.Cartesian: (no config items)
-#   No config items at all -- Midtbot::group()/Cartesian::group() are empty. Midtbot hardcodes its x_scaler to 2.0 in init() rather than exposing it as a config item, since that ratio is a fixed property of the midTbot hardware design, not something a user should tune.
 
 # Registered via a runtime loop over a list of (event, name, letter) tuples, not literal handler.item() calls -- see ItemDocs.md's "data-driven item lists" section. Extracted here from the @config annotations directly.
 control:

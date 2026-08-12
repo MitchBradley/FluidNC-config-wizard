@@ -569,9 +569,11 @@ async function fetchYamlTextOptional(path) {
  * What's still hand-authored here (the schema has no concept of these --
  * they're UI vocabulary, not config-file structure): AXES, MOTOR_LABELS,
  * LIMIT_DIRECTIONS (axis/motor-as-a-selectable-thing is a wizard UI
- * grouping choice, not a schema concept), SPINDLE_LABELS + the few
- * *_LABEL_OVERRIDES maps (display text the schema doesn't carry), and
- * STATUS_OUTPUT_PINS (fluidnc-config-schema.json has NO status_outputs
+ * grouping choice, not a schema concept -- every other field/pin label
+ * (spindle types, control/probe children, spindle pins) is derived
+ * mechanically from the schema's own key names via titleLabel()/cfgKey, no
+ * separate label map needed), and STATUS_OUTPUT_PINS
+ * (fluidnc-config-schema.json has NO status_outputs
  * section at all, despite it being a real registered config key --
  * confirmed in the connected FluidNC source, Status_outputs.cpp's own
  * ConfigurableModuleFactory::InstanceBuilder<Status_Outputs>
@@ -586,33 +588,22 @@ async function fetchYamlTextOptional(path) {
  * (which config.yaml field(s) a given leaf path writes to) -- tied to
  * FluidNC's config schema, not expressible as passive data without
  * inventing a schema language. */
+// The sentinel value marking an unanswered config item -- both in cfg's own
+// data model (every stub() function below plants this as a leaf value) and
+// in the rendered draft text/HTML (the literal word shown to the user, e.g.
+// paramWidgetHtml()'s TBD <option> and the placeholder ghost text) --
+// same literal deliberately used for both, so there's exactly one place
+// that says what an open field looks like. A single named constant instead
+// of ~110 separate string literals also makes TBD stop showing up as
+// false-positive noise when grepping the file for hardcoded config-item
+// names.
+const TBD = "TBD";
+// Maybe we should inject an axes enum in config.json
 const AXES = ["x", "y", "z", "a", "b", "c"];
 const MOTOR_LABELS = { motor0: "First Motor", motor1: "Second Motor" };
 const LIMIT_DIRECTIONS = { neg: "Negative", pos: "Positive", all: "(shared/all)" };
-const SPINDLE_LABELS = {
-  pwm: "PWM", laser: "Laser", "10v": "0-10V", relay: "Relay (on/off)",
-  dac: "DAC", besc: "BESC (RC ESC)", hbridge: "H-Bridge",
-  plasmaspindle: "Plasma",
-};
-// NOTE: "OnOff" (spindle_OnOff) is deliberately NOT in this map -- per
-// explicit direction, it's a base class FluidNC itself never instantiates
-// directly (Relay is the real, selectable on/off spindle type end users
-// configure); NoSpindle/ModbusVFD remain excluded too, for their own
-// existing reasons (see buildSpindleTypes()' comment).
-const CONTROL_LABEL_OVERRIDES = {
-  estop: "E-Stop", macro0: "Macro Button 0", macro1: "Macro Button 1",
-  macro2: "Macro Button 2", macro3: "Macro Button 3",
-};
-const PROBE_LABEL_OVERRIDES = { pin: "Probe", toolsetter_pin: "Toolsetter" };
-const SPINDLE_PIN_LABEL_OVERRIDES = { output_cw: "Output CW", output_ccw: "Output CCW", arc_ok: "Arc OK" };
-const COMMON_TUNING_FIELDS = new Set([
-  "tool_num", "speed_map", "off_on_alarm", "atc", "m6_macro", "s0_with_disable",
-  "disable_with_s0", "spinup_ms", "spindown_ms", "pwm_hz", "min_pulse_us", "max_pulse_us",
-  "arc_wait_ms", // spindle_PlasmaSpindle only
-]);
-// Every spindle's tuning stub field opens as "TBD", same as every other
-// role's tuning fields (see COMMON_TUNING_FIELDS below and buildSpindleTypes())
-// -- this used to special-case tool_num to a baked-in literal 0, which made
+// Every spindle's tuning stub field opens as TBD, same as every other
+// role's tuning fields -- this used to special-case tool_num to a baked-in literal 0, which made
 // it the one spindle field the wizard's normal inline-field/"def"/"clear"
 // machinery never touched, so it couldn't be changed from the UI at all
 // (only by hand-editing the exported YAML). specForKey's own
@@ -621,9 +612,7 @@ const COMMON_TUNING_FIELDS = new Set([
 // lets that spec take over, so tool_num now gets the same editable widget
 // (pre-fillable with 0 via the "def" button, but genuinely changeable) every
 // other tuning field already has.
-const STATUS_OUTPUT_PINS = [
-  ["idle", "Idle"], ["run", "Run"], ["hold", "Hold"], ["alarm", "Alarm"], ["door", "Door"],
-];
+const STATUS_OUTPUT_PINS = ["idle", "run", "hold", "alarm", "door"];
 
 function titleLabel(fieldKey) {
   return fieldKey.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
@@ -678,8 +667,9 @@ function buildControlTree(schema) {
   const props = schema.$defs.controlSection.properties;
   const children = {};
   Object.keys(props).forEach(fullKey => {
+    if (!isPinType("control", fullKey)) return;
     const key = stripPinSuffix(fullKey);
-    children[key] = { label: CONTROL_LABEL_OVERRIDES[key] || titleLabel(key) };
+    children[key] = { label: titleLabel(key) };
   });
   return { label: "Control", children };
 }
@@ -687,8 +677,8 @@ function buildControlTree(schema) {
 function buildProbeTree(schema) {
   const props = schema.$defs.probeSection.properties;
   const children = {};
-  ["pin", "toolsetter_pin"].forEach(fullKey => {
-    if (fullKey in props) children[fullKey] = { label: PROBE_LABEL_OVERRIDES[fullKey] };
+  Object.keys(props).forEach(fullKey => {
+    if (isPinType("probe", fullKey)) children[fullKey] = { label: titleLabel(fullKey) };
   });
   return { label: "Probe", children };
 }
@@ -697,21 +687,29 @@ function countSlots(props, prefix) {
   return Object.keys(props).filter(k => k.startsWith(prefix) && k.endsWith("_pin")).length;
 }
 
+// digitalN_pin/analogN_pin children, keyed by their own index N, labeled
+// with their own real (stripped) name -- e.g. "digital0", not a
+// hand-formatted "Digital 0" -- derived from whichever of userInputsSection's
+// own properties are pin-typed (config_items.yaml's type: pin, via
+// isPinType()) and match the given prefix, rather than a separately-counted
+// range with manufactured labels.
+function userInputKindChildren(props, docSection, prefix) {
+  const children = {};
+  const re = new RegExp(`^${prefix}(\\d+)_pin$`);
+  Object.keys(props).forEach(fullKey => {
+    const m = fullKey.match(re);
+    if (m && isPinType(docSection, fullKey)) children[m[1]] = { label: stripPinSuffix(fullKey) };
+  });
+  return children;
+}
+
 function buildUserInputTree(schema) {
   const props = schema.$defs.userInputsSection.properties;
-  const digitalCount = countSlots(props, "digital");
-  const analogCount = countSlots(props, "analog");
   return {
     label: "User Input",
     children: {
-      digital: {
-        label: "Digital",
-        children: Object.fromEntries(Array.from({ length: digitalCount }, (_, i) => [String(i), { label: `Digital ${i}` }])),
-      },
-      analog: {
-        label: "Analog",
-        children: Object.fromEntries(Array.from({ length: analogCount }, (_, i) => [String(i), { label: `Analog ${i}` }])),
-      },
+      digital: { label: "Digital", children: userInputKindChildren(props, "user_inputs", "digital") },
+      analog: { label: "Analog", children: userInputKindChildren(props, "user_inputs", "analog") },
     },
   };
 }
@@ -723,33 +721,51 @@ function buildSpindleTypes(schema) {
     if (!defName.startsWith("spindle_")) return;
     const cfgKey = defName.slice("spindle_".length);
     const typeId = cfgKey.toLowerCase();
-    if (!(typeId in SPINDLE_LABELS)) return; // OnOff / PlasmaSpindle / NoSpindle / ModbusVFD -- unmodeled by design
     const props = defs[defName].properties || {};
     const pins = [];
     const stubFields = [];
     Object.keys(props).forEach(fullKey => {
-      if (fullKey.endsWith("_pin")) {
+      if (isPinType(cfgKey, fullKey)) {
         const key = stripPinSuffix(fullKey);
-        pins.push([key, SPINDLE_PIN_LABEL_OVERRIDES[key] || titleLabel(key)]);
-      } else if (COMMON_TUNING_FIELDS.has(fullKey)) {
-        stubFields.push([fullKey, "TBD"]);
+        pins.push([key, titleLabel(key)]);
+      } else {
+        stubFields.push([fullKey, TBD]);
       }
     });
     result[typeId] = {
-      label: SPINDLE_LABELS[typeId],
+      // The real config.yaml type name (e.g. "10V", "HBridge") -- not worth
+      // a separate hand-authored label map just to add cosmetic touches
+      // ("0-10V", "H-Bridge") that don't help pick the right one.
+      label: cfgKey,
       cfgKey,
       pins,
       stub: () => Object.fromEntries(stubFields),
     };
   });
-  // Stable, deliberate dropdown order (schema $defs order isn't what we want in the UI).
-  const order = ["pwm", "laser", "10v", "relay", "dac", "besc", "hbridge", "plasmaspindle"];
+  // Excluded, by NAME, because each genuinely needs different treatment,
+  // not because of being forgotten: OnOff (a base class FluidNC itself
+  // never instantiates directly -- Relay is the real, selectable on/off
+  // type; note it still has its own real config_items.yaml section, since
+  // Relay/DAC's own group() calls OnOff::group(), so "has doc coverage"
+  // alone can't distinguish it), NoSpindle (not currently offered as a
+  // dropdown choice), and ModbusVFD/VFD_named (dispatched separately via
+  // the RS485 role -- see generateDraft()'s allRs485Channels loop).
+  const SPINDLE_TYPES_EXCLUDED = new Set(["onoff", "nospindle", "modbusvfd", "vfd_named"]);
+  // Deliberate display-order preference for the common types, most-likely
+  // first -- NOT a filter (unlike an earlier version of this list, which
+  // silently dropped any spindle_* type it didn't happen to name). Any
+  // real type not named here still appears, just appended afterward in
+  // whatever order remains -- e.g. a newly-added spindle_* class nobody's
+  // updated this preference list for yet shows up somewhere rather than
+  // silently vanishing from the dropdown the way a pure allowlist would.
+  const ORDER_HINT = ["pwm", "laser", "10v", "relay", "dac", "besc", "hbridge", "plasmaspindle"];
   const ordered = {};
-  order.forEach(t => { if (result[t]) ordered[t] = result[t]; });
+  ORDER_HINT.forEach(t => { if (result[t]) { ordered[t] = result[t]; delete result[t]; } });
+  Object.keys(result).forEach(t => { if (!SPINDLE_TYPES_EXCLUDED.has(t)) ordered[t] = result[t]; });
   return ordered;
 }
 
-// Builds an all-"TBD" stub object from a schema $def's own property list,
+// Builds an all-TBD stub object from a schema $def's own property list,
 // same idea as buildSpindleTypes()'s stubFields above -- lets OPTIONAL_SECTIONS
 // and the ModbusVFD dispatch (below) track the schema instead of hand-listing
 // their own field sets, which is exactly how the atc/m6_macro ModbusVFD bug
@@ -759,7 +775,7 @@ function buildSpindleTypes(schema) {
 function schemaStub(defName, allowSet) {
   const props = (SCHEMA.$defs[defName] || {}).properties || {};
   const keys = allowSet ? Object.keys(props).filter(k => allowSet.has(k)) : Object.keys(props);
-  return Object.fromEntries(keys.map(k => [k, "TBD"]));
+  return Object.fromEntries(keys.map(k => [k, TBD]));
 }
 let SCHEMA;
 
@@ -788,6 +804,20 @@ async function loadRoleData() {
 
   checkSchemaForKnownGaps(schema);
 
+  // Loaded here, before the tree-building calls below, specifically so
+  // isPinType() (config_items.yaml's own @config type: pin -- the
+  // authoritative signal, not a "_pin" naming-convention guess) has real
+  // data to check against. Same graceful-degradation contract as before:
+  // CONFIG_ITEM_DOCS defaults to {}, so a fetch failure here just means
+  // every isPinType() call returns false (falls back to non-pin/stub-field
+  // treatment) rather than throwing -- a real, temporary degradation of the
+  // wizard's structure (not just tooltips, now), which is the accepted
+  // tradeoff for not hand-duplicating pin-ness as a second, driftable
+  // signal (see interrupt0-3's own known gap in config_items.yaml -- the
+  // one case where this genuinely is less complete than the schema's own
+  // $ref-based pin typing was).
+  await loadConfigItemDocs();
+
   INPUT_ROLE_TREE = {
     limit: buildLimitBranch(),
     probe: buildProbeTree(schema),
@@ -811,7 +841,6 @@ async function loadRoleData() {
   EITHER_ROLE_TREE = Object.assign({}, INPUT_ROLE_TREE, buildOutputRoleBranches());
 
   await loadModuleCatalog();
-  await loadConfigItemDocs();
 }
 
 // id -> parsed modules/<id>.module.yaml (see schema/module.schema.json).
@@ -1009,7 +1038,8 @@ function buildOutputRoleBranches() {
     },
     status_output: {
       label: "Status Output",
-      children: Object.fromEntries(STATUS_OUTPUT_PINS.map(([v, l]) => [v, { label: l }])),
+      // Infer from children with type: pin
+      children: Object.fromEntries(STATUS_OUTPUT_PINS.map(v => [v, { label: v }])),
     },
     // Reuses MOTOR_ROLE_TREE by reference for both branches (it's read-only
     // here, never mutated by the tree walker) -- keeps this in lockstep with
@@ -1248,6 +1278,39 @@ function configDocSpecFor(parentPath, key) {
   };
 }
 
+// Which of a config_items.yaml SECTION's own fields carry a @tuning tag --
+// used to filter a schema $def's property list down to just the fields
+// worth offering as a wizard tuning slot, without a separate hand-authored
+// allowlist. Used only by the ModbusVFD dispatch in generateDraft() (every
+// other spindle type's stub, via buildSpindleTypes(), already includes
+// every non-pin schema field with no filtering needed at all -- ModbusVFD's
+// $def uniquely also carries protocol/connection detail like debug/
+// poll_ms/cw_cmd that config_items.yaml correctly leaves untagged).
+function tuningFieldNames(docSection) {
+  const items = CONFIG_ITEM_DOCS[docSection] || {};
+  return new Set(Object.keys(items).filter(k => items[k] && items[k].tuning));
+}
+
+// Whether a field is pin-typed, per config_items.yaml's own @config
+// type: pin annotation -- the authoritative signal (mechanically derived
+// from the real C++ Pin/InputPin/EventPin member type), used in place of
+// the "_pin" naming-convention guess the role-tree builders used to make.
+// The naming convention is NOT reliable: extenders.pinextenderN's
+// interrupt0-3 fields are genuinely pin-typed (confirmed against the
+// schema's own $ref: pinAny) but aren't "_pin"-suffixed at all -- and,
+// going the other direction, config_items.yaml doesn't yet resolve THEIR
+// type either (gen_config_docs.py can't follow the nested
+// _isrData[0]._pin struct-array member access -- a known, accepted gap,
+// see gen_config_docs.py's own comments), so those 4 fields fall back to
+// non-pin treatment here until that's separately fixed. Requires
+// CONFIG_ITEM_DOCS to be loaded -- loadRoleData() now awaits
+// loadConfigItemDocs() before calling any of the tree-building functions
+// that use this, specifically to make that true.
+function isPinType(docSection, key) {
+  const item = CONFIG_ITEM_DOCS[docSection] && CONFIG_ITEM_DOCS[docSection][key];
+  return !!item && item.type === "pin";
+}
+
 /* Widget SHAPE (type/enum-options) derived mechanically from config_items.yaml's
  * own type/values -- the source-of-truth counterpart to specForKey()'s
  * hand-maintained per-NAME guess, viable now that Phase A (gen_config_docs.py)
@@ -1348,7 +1411,7 @@ function cascadeOptionsFor(category) {
     return Array.from({ length: ANALOG_OUTPUT_COUNT }, (_, i) => [String(i), `Output ${i}`]);
   }
   if (category === "status_output") {
-    return STATUS_OUTPUT_PINS;
+    return STATUS_OUTPUT_PINS.map(v => [v, v]);
   }
   return null;
 }
@@ -1442,15 +1505,15 @@ const KINEMATICS_TYPES = {
   midtbot:        { cfgKey: "midtbot", label: "Midtbot", stub: () => ({}) },
   parallel_delta: { cfgKey: "parallel_delta", label: "Parallel Delta",
                     stub: () => ({
-                      crank_mm: "TBD", base_triangle_mm: "TBD", linkage_mm: "TBD",
-                      end_effector_triangle_mm: "TBD", kinematic_segment_len_mm: "TBD",
-                      use_servos: "TBD", up_degrees: "TBD",
+                      crank_mm: TBD, base_triangle_mm: TBD, linkage_mm: TBD,
+                      end_effector_triangle_mm: TBD, kinematic_segment_len_mm: TBD,
+                      use_servos: TBD, up_degrees: TBD,
                     }) },
   WallPlotter:    { cfgKey: "WallPlotter", label: "Wall Plotter",
                     stub: () => ({
-                      left_axis: "TBD", left_anchor_x: "TBD", left_anchor_y: "TBD",
-                      right_axis: "TBD", right_anchor_x: "TBD", right_anchor_y: "TBD",
-                      segment_length: "TBD",
+                      left_axis: TBD, left_anchor_x: TBD, left_anchor_y: TBD,
+                      right_axis: TBD, right_anchor_x: TBD, right_anchor_y: TBD,
+                      segment_length: TBD,
                     }) },
 };
 
@@ -1655,7 +1718,7 @@ let homingEnabled = {};    // axis letter -> bool, defaults to false (falsy) if 
  * either of those) is eligible for FluidNC pin attributes like :low/:pu. */
 function isPinLeaf(key, value) {
   if (typeof value !== "string") return false;
-  if (value === "TBD" || value === "NO_PIN") return false;
+  if (value === TBD || value === "NO_PIN") return false;
   return key.endsWith("_pin") || key === "pin";
 }
 
@@ -1719,7 +1782,7 @@ function specForKey(key) {
 }
 
 /* Walk a freshly-cloned cfg and, in one pass, in the same order jsyaml.dump
- * will visit it: (a) record every "TBD" slot as before, and (b) replace
+ * will visit it: (a) record every TBD slot as before, and (b) replace
  * every real pin leaf with the sentinel "PINSLOT" (recording its original
  * value), so the dumped text's tokens can be swapped for widgets below.
  * This mutates `node` -- always call it on a clone, never the real cfg. */
@@ -1756,7 +1819,7 @@ function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverride
     // that plants one of these), silently killing tooltips/underlines for
     // every plain-literal key rendered afterward, not just this one.
     if (keySlots && !/^__ANNOTATE_FOR_.*__$/.test(k)) keySlots.push({ path: p, key: k });
-    if (v === "TBD") {
+    if (v === TBD) {
       const override = defaultOverrides && defaultOverrides[p];
       // Two layers, most specific wins. resolveFieldSpec() resolves shape
       // (config_items.yaml's own type/values, falling back to specForKey()'s
@@ -1890,7 +1953,7 @@ function paramWidgetHtml(slot) {
   let html;
   if (slot.spec.type === "enum") {
     const cur = has ? String(paramValues[slot.path]) : "";
-    let opts = `<option value="">TBD</option>`;
+    let opts = `<option value="">${TBD}</option>`;
     slot.spec.options.forEach(([val, label]) => {
       opts += `<option value="${escapeAttr(val)}"${val === cur ? " selected" : ""}>${escapeHtml(label)}</option>`;
     });
@@ -1899,13 +1962,13 @@ function paramWidgetHtml(slot) {
     const cur = has ? paramValues[slot.path] : "";
     const type = slot.spec.type === "number" ? "number" : "text";
     const step = slot.spec.type === "number" ? ` step="any"` : "";
-    // Once answered (has === true), the "TBD" placeholder is dropped
+    // Once answered (has === true), the TBD placeholder is dropped
     // entirely rather than just recolored -- an empty, answered field
     // (e.g. atc/m6_macro's real "" default) would otherwise still show
-    // "TBD" as ghost text, indistinguishable at a glance from a genuinely
+    // TBD as ghost text, indistinguishable at a glance from a genuinely
     // still-open field despite the border/text color already having
     // changed. Only ever shown for a real UNANSWERED field.
-    const placeholder = has ? "" : (slot.spec.placeholder || "TBD");
+    const placeholder = has ? "" : (slot.spec.placeholder || TBD);
     html = `<input class="${cls}" type="${type}"${step}${titleAttr} placeholder="${escapeAttr(placeholder)}" value="${escapeAttr(cur)}" data-path="${escapeAttr(slot.path)}" data-key="${escapeAttr(slot.key)}">`;
   }
   if (slot.spec.default !== undefined) {
@@ -1937,16 +2000,16 @@ function pinWidgetHtml(slot) {
   // REAL, consequential choice (silently means active-high, FluidNC's
   // compiled-in default) that's easy to make by simply never touching the
   // control -- exactly the kind of silent-wrong-default this whole feature
-  // exists to prevent. So for these pins the blank option reads "TBD" and
+  // exists to prevent. So for these pins the blank option reads TBD and
   // is styled like any other open TBD field (see the .attr-field.tbd CSS
   // rule) until the user actively picks one, rather than looking identical
   // to "I deliberately want no suffix." Pins with no known active level
   // (unrecognized/no conditioning fact) keep the plain "—" -- there's
   // nothing here to prompt a decision about.
   const levelOpts = activeLevel === "low"
-    ? [["", "TBD"], ["low", ":low (NO switch)"], ["high", ":high (NC switch)"]]
+    ? [["", TBD], ["low", ":low (NO switch)"], ["high", ":high (NC switch)"]]
     : activeLevel === "high"
-    ? [["", "TBD"], ["low", ":low (NC switch)"], ["high", ":high (NO switch)"]]
+    ? [["", TBD], ["low", ":low (NC switch)"], ["high", ":high (NO switch)"]]
     : [["", "—"], ["low", ":low"], ["high", ":high"]];
   const pullOpts = [["", "—"], ["pu", ":pu"], ["pd", ":pd"]];
   // I2SO pins are outputs of an external shift register, not real GPIOs --
@@ -2015,7 +2078,7 @@ function pinWidgetHtml(slot) {
   return html;
 }
 
-/* Build the inline-editable HTML for the <pre>: every "TBD" or "PINSLOT"
+/* Build the inline-editable HTML for the <pre>: every TBD or "PINSLOT"
  * token in the dumped YAML text is replaced, in order, by the matching
  * widget -- editable right where it sits in the document, pre-filled if
  * already answered, so fixing a mistake is just clicking the same spot
@@ -2047,7 +2110,7 @@ function wrapDocKeys(escapedText, keySlots, kiRef) {
 }
 
 function buildInteractiveYaml(yamlText, paramSlots, pinSlots, keySlots) {
-  const tokens = yamlText.split(/(TBD|PINSLOT|KINSELECT|HOMINGSELECT_[a-z]+|SECTIONSELECT_[a-z_]+)/);
+  const tokens = yamlText.split(new RegExp(`(${TBD}|PINSLOT|KINSELECT|HOMINGSELECT_[a-z]+|SECTIONSELECT_[a-z_]+)`));
   let html = "";
   let pi = 0, si = 0;
   // Plain object (not a bare let) so wrapDocKeys() can advance it by
@@ -2057,7 +2120,7 @@ function buildInteractiveYaml(yamlText, paramSlots, pinSlots, keySlots) {
   tokens.forEach(tok => {
     const homingMatch = tok.match(HOMING_SENTINEL_RE);
     const sectionMatch = tok.match(SECTION_SENTINEL_RE);
-    if (tok === "TBD") {
+    if (tok === TBD) {
       html += paramWidgetHtml(paramSlots[pi++]);
     } else if (tok === "PINSLOT") {
       html += pinWidgetHtml(pinSlots[si++]);
@@ -3540,14 +3603,14 @@ function axisMotorBlockFor(type, outputPin) {
       key: "solenoid",
       body: {
         output_pin: outputPin,
-        pwm_hz: "TBD", off_percent: "TBD", pull_percent: "TBD",
-        hold_percent: "TBD", pull_ms: "TBD", direction_invert: "TBD", timer_ms: "TBD",
+        pwm_hz: TBD, off_percent: TBD, pull_percent: TBD,
+        hold_percent: TBD, pull_ms: TBD, direction_invert: TBD, timer_ms: TBD,
       },
     };
   }
   return {
     key: "rc_servo",
-    body: { output_pin: outputPin, pwm_hz: "TBD", min_pulse_us: "TBD", max_pulse_us: "TBD", timer_ms: "TBD" },
+    body: { output_pin: outputPin, pwm_hz: TBD, min_pulse_us: TBD, max_pulse_us: TBD, timer_ms: TBD },
   };
 }
 
@@ -3572,8 +3635,8 @@ function motorBlockFor(socket) {
         direction_pin: socket.pins.direction_pin,
         disable_pin: socket.pins.disable_pin,
         uart_num: 1,
-        addr: socket.extra ? socket.extra.addr : "TBD",
-        r_sense_ohms: "TBD", run_amps: "TBD", hold_amps: "TBD", microsteps: "TBD"
+        addr: socket.extra ? socket.extra.addr : TBD,
+        r_sense_ohms: TBD, run_amps: TBD, hold_amps: TBD, microsteps: TBD
       }};
     }
     if (t === "tmc_2130") {
@@ -3581,7 +3644,7 @@ function motorBlockFor(socket) {
         step_pin: socket.pins.step_pin,
         direction_pin: socket.pins.direction_pin,
         cs_pin: socket.pins.cs_pin,
-        r_sense_ohms: "TBD", run_amps: "TBD", hold_amps: "TBD", microsteps: "TBD"
+        r_sense_ohms: TBD, run_amps: TBD, hold_amps: TBD, microsteps: TBD
       }};
     }
     if (t === "tmc_5160") {
@@ -3598,11 +3661,11 @@ function motorBlockFor(socket) {
         direction_pin: socket.pins.direction_pin,
         disable_pin: socket.pins.disable_pin || "NO_PIN",
         cs_pin: socket.pins.cs_pin || "NO_PIN",
-        spi_index: socket.extra ? socket.extra.spi_index : "TBD",
-        r_sense_ohms: "TBD", run_amps: "TBD", hold_amps: "TBD", microsteps: "TBD"
+        spi_index: socket.extra ? socket.extra.spi_index : TBD,
+        r_sense_ohms: TBD, run_amps: TBD, hold_amps: TBD, microsteps: TBD
       }};
     }
-    return { key: t || "onboard_fixed", body: Object.assign({}, socket.pins, { run_amps: "TBD" }) };
+    return { key: t || "onboard_fixed", body: Object.assign({}, socket.pins, { run_amps: TBD }) };
   }
   if (dc === "stepstick_socket") {
     // Current is set by the module's trimpot, and many boards select some
@@ -3645,20 +3708,20 @@ function homingSentinel(letter) { return `HOMINGSELECT_${letter}`; }
 function ensureAxis(cfg, letter) {
   if (!cfg.axes[letter]) {
     cfg.axes[letter] = {
-      steps_per_mm: "TBD",
-      max_rate_mm_per_min: "TBD",
-      acceleration_mm_per_sec2: "TBD",
-      max_travel_mm: "TBD",
-      soft_limits: "TBD",
+      steps_per_mm: TBD,
+      max_rate_mm_per_min: TBD,
+      acceleration_mm_per_sec2: TBD,
+      max_travel_mm: TBD,
+      soft_limits: TBD,
       [homingSentinel(letter)]: homingEnabled[letter] ? {
-        cycle: "TBD",
-        positive_direction: "TBD",
-        mpos_mm: "TBD",
-        feed_mm_per_min: "TBD",
-        seek_mm_per_min: "TBD",
-        settle_ms: "TBD",
-        seek_scaler: "TBD",
-        feed_scaler: "TBD"
+        cycle: TBD,
+        positive_direction: TBD,
+        mpos_mm: TBD,
+        feed_mm_per_min: TBD,
+        seek_mm_per_min: TBD,
+        settle_ms: TBD,
+        seek_scaler: TBD,
+        feed_scaler: TBD
       } : null
     };
   }
@@ -3667,7 +3730,7 @@ function ensureAxis(cfg, letter) {
 
 function generateDraft() {
   const cfg = {};
-  cfg.name = "TBD";
+  cfg.name = TBD;
   cfg.board = board.board.name;
 
   // Board-specific/pre-populated default overrides for open TBD fields --
@@ -3718,12 +3781,12 @@ function generateDraft() {
   // "# <label>" annotate() comment here -- unlike every other annotated
   // section/pin, Start isn't associated with any particular board resource,
   // so there's no "which board fact triggered this" fact worth captioning.
-  cfg.start = { must_home: "TBD", deactivate_parking: "TBD", check_limits: "TBD" };
+  cfg.start = { must_home: TBD, deactivate_parking: TBD, check_limits: TBD };
 
   const engineMap = { i2s: "I2S_STREAM", rmt: "RMT", timed: "Timed", pio: "PIO" };
   cfg.stepping = {
     engine: engineMap[(board.stepping.engines||["rmt"])[0]] || "RMT",
-    idle_ms: "TBD", pulse_us: "TBD", dir_delay_us: "TBD", disable_delay_us: "TBD"
+    idle_ms: TBD, pulse_us: TBD, dir_delay_us: TBD, disable_delay_us: TBD
   };
 
   // Fixed peripherals: fully known facts, copied straight through, no TBD.
@@ -3742,7 +3805,7 @@ function generateDraft() {
     // sdcard: field (cs_pin/card_detect_pin are fixed board facts, not user
     // choices) -- @tuning typical in source, pre-filled from
     // config_items.yaml via configDocSpecFor().
-    cfg.sdcard.frequency_hz = "TBD";
+    cfg.sdcard.frequency_hz = TBD;
   }
   if (fp.i2so) cfg.i2so = { bck_pin: fp.i2so.bck_pin, data_pin: fp.i2so.data_pin, ws_pin: fp.i2so.ws_pin };
   // NOTE: I2C is intentionally NOT handled here as a fixed peripheral --
@@ -3770,7 +3833,7 @@ function generateDraft() {
   // enabled -- harmless/ignorable if no axis homes, and axes: itself is
   // always present regardless. @tuning typical in source, pre-filled from
   // config_items.yaml via configDocSpecFor().
-  cfg.axes.homing_runs = "TBD";
+  cfg.axes.homing_runs = TBD;
 
   // (paramDefaultOverrides declared up front, near cfg.name/-cfg.board above --
   // populated below when a motor socket's own extra facts document a
@@ -3800,7 +3863,7 @@ function generateDraft() {
     // per-MOTOR, not per-axis (see specForKey's own comment on this key),
     // so it's stubbed here alongside the driver body, once per bound motor
     // socket, regardless of whether a limit pin ends up bound to it.
-    axis[slot].hard_limits = "TBD";
+    axis[slot].hard_limits = TBD;
     if (socket.extra && socket.extra.r_sense_ohms_hint != null) {
       paramDefaultOverrides[`axes.${letter}.${slot}.${block.key}.r_sense_ohms`] = {
         default: socket.extra.r_sense_ohms_hint,
@@ -3861,9 +3924,9 @@ function generateDraft() {
       // configDocSpecFor() pre-fills them from config_items.yaml once
       // stubbed here -- still an ordinary editable field, just answered
       // from the start rather than sitting open/amber.
-      if (cfg.probe.check_mode_start === undefined) cfg.probe.check_mode_start = "TBD";
-      if (cfg.probe.hard_stop === undefined) cfg.probe.hard_stop = "TBD";
-      if (cfg.probe.probe_hard_limit === undefined) cfg.probe.probe_hard_limit = "TBD";
+      if (cfg.probe.check_mode_start === undefined) cfg.probe.check_mode_start = TBD;
+      if (cfg.probe.hard_stop === undefined) cfg.probe.hard_stop = TBD;
+      if (cfg.probe.probe_hard_limit === undefined) cfg.probe.probe_hard_limit = TBD;
     } else if (role.startsWith("control:")) {
       // Covers all real Control:: pins, including the 4 macro buttons
       // and fault/estop/homing_button, which are siblings of feed_hold
@@ -3900,7 +3963,7 @@ function generateDraft() {
       // delay_ms -- coolant-on delay (never delays M9/off, per the
       // schema's own field description); @tuning typical in source, so
       // configDocSpecFor() pre-fills it once stubbed here.
-      if (cfg.coolant.delay_ms === undefined) cfg.coolant.delay_ms = "TBD";
+      if (cfg.coolant.delay_ms === undefined) cfg.coolant.delay_ms = TBD;
     } else if (role.startsWith("digital_output:")) {
       cfg.user_outputs = cfg.user_outputs || {};
       const n = role.split(":")[1];
@@ -3916,14 +3979,14 @@ function generateDraft() {
       // stubbed as an ordinary open TBD the moment this channel gets a pin,
       // same as a spindle type's tuning fields. Only set once per channel
       // (never overwrites a value the user already typed in).
-      if (cfg.user_outputs[`analog${n}_hz`] === undefined) cfg.user_outputs[`analog${n}_hz`] = "TBD";
+      if (cfg.user_outputs[`analog${n}_hz`] === undefined) cfg.user_outputs[`analog${n}_hz`] = TBD;
     } else if (role.startsWith("status_output:")) {
       // Status_Outputs -- machine-state indicator pins (e.g. tower
       // lights), independent of Limit/Probe/Control/Spindle/Coolant/user
       // I/O. report_interval_ms is stubbed once per board, same as
       // uart_channel's.
       const which = role.split(":")[1];
-      cfg.status_outputs = cfg.status_outputs || { report_interval_ms: "TBD" };
+      cfg.status_outputs = cfg.status_outputs || { report_interval_ms: TBD };
       annotate(cfg.status_outputs, `${which}_pin`, p.label);
       cfg.status_outputs[`${which}_pin`] = pin;
     } else if (role.startsWith("axis:")) {
@@ -3941,7 +4004,7 @@ function generateDraft() {
       annotate(axis, slot, p.label);
       axis[slot] = axis[slot] || {};
       axis[slot][block.key] = block.body;
-      axis[slot].hard_limits = "TBD";
+      axis[slot].hard_limits = TBD;
     }
   });
   if (Object.keys(cfg.control).length === 0) delete cfg.control;
@@ -4005,11 +4068,16 @@ function generateDraft() {
     // spindle_ModbusVFD $def used to be missing spinup_ms/spindown_ms too
     // (every other spindle_* $def had them) -- fixed there directly rather
     // than patched around here, so this stays a plain, honest derivation.
+    // modbus_id is NOT set explicitly here (unlike model/uart_num, which
+    // are genuine per-instance facts this loop already knows) -- it's a
+    // real @tuning typical, default 1 config_items.yaml item like any
+    // other, so leaving it as a TBD stub lets the normal autofill path
+    // (see collectAndInjectSlots()) pre-fill it with a real, editable
+    // widget instead of a silent, unchangeable literal.
     cfg.ModbusVFD = {
       model: model,
       uart_num: n,
-      modbus_id: 1,
-      ...schemaStub("spindle_ModbusVFD", COMMON_TUNING_FIELDS),
+      ...schemaStub("spindle_ModbusVFD", tuningFieldNames("ModbusVFD")),
     };
   });
 
@@ -4041,7 +4109,7 @@ function generateDraft() {
     annotate(cfg, `uart${n}`, annotateLabel);
     cfg[`uart${n}`] = uartBlock;
     annotate(cfg, `uart_channel${n}`, annotateLabel);
-    cfg[`uart_channel${n}`] = { report_interval_ms: "TBD", uart_num: n };
+    cfg[`uart_channel${n}`] = { report_interval_ms: TBD, uart_num: n };
   });
 
   // I2C connectors -> either a real i2c0: bus (e.g. the deprecated OLED
@@ -4066,13 +4134,13 @@ function generateDraft() {
         rxd_pin: ic.sda_pin,
         rts_pin: "NO_PIN",
         cts_pin: "NO_PIN",
-        baud: "TBD",
-        mode: "TBD",
+        baud: TBD,
+        mode: TBD,
       };
       annotate(cfg, `uart${n}`, ic.label);
       cfg[`uart${n}`] = uartBlock;
       annotate(cfg, `uart_channel${n}`, ic.label);
-      cfg[`uart_channel${n}`] = { report_interval_ms: "TBD", uart_num: n };
+      cfg[`uart_channel${n}`] = { report_interval_ms: TBD, uart_num: n };
     }
   });
 
@@ -4086,13 +4154,13 @@ function generateDraft() {
   // @tuning typical in source, so configDocSpecFor() pre-populates them
   // from config_items.yaml automatically -- editable inline, not left as
   // open TBDs.
-  cfg.arc_tolerance_mm = "TBD";
-  cfg.junction_deviation_mm = "TBD";
-  cfg.verbose_errors = "TBD";
-  cfg.report_inches = "TBD";
-  cfg.enable_parking_override_control = "TBD";
-  cfg.use_line_numbers = "TBD";
-  cfg.planner_blocks = "TBD";
+  cfg.arc_tolerance_mm = TBD;
+  cfg.junction_deviation_mm = TBD;
+  cfg.verbose_errors = TBD;
+  cfg.report_inches = TBD;
+  cfg.enable_parking_override_control = TBD;
+  cfg.use_line_numbers = TBD;
+  cfg.planner_blocks = TBD;
 
   // Optional top-level sections with no board-resource correlation
   // (Parking/Macros/OLED/ATC Manual) -- see OPTIONAL_SECTIONS' own
@@ -4114,7 +4182,7 @@ function generateDraft() {
   // child; never nested deeper) would otherwise have every one of them
   // suggest the same "0". Two passes: first collect tool numbers already
   // ANSWERED (a real committed value in paramValues, not just the cfg-level
-  // "TBD" sentinel every unanswered field always shows regardless -- cfg
+  // TBD sentinel every unanswered field always shows regardless -- cfg
   // itself never carries the user's actual answer, only paramValues does,
   // see collectAndInjectSlots), then walk the still-open ones in cfg's own
   // key order (== bind order) assigning each the lowest number not yet
@@ -4125,13 +4193,13 @@ function generateDraft() {
     const usedToolNums = new Set();
     Object.keys(cfg).forEach(k => {
       const v = cfg[k];
-      if (!v || typeof v !== "object" || v.tool_num !== "TBD") return;
+      if (!v || typeof v !== "object" || v.tool_num !== TBD) return;
       const val = paramValues[`${k}.tool_num`];
       if (typeof val === "number") usedToolNums.add(val);
     });
     Object.keys(cfg).forEach(k => {
       const v = cfg[k];
-      if (!v || typeof v !== "object" || v.tool_num !== "TBD") return;
+      if (!v || typeof v !== "object" || v.tool_num !== TBD) return;
       const path = `${k}.tool_num`;
       if (Object.prototype.hasOwnProperty.call(paramValues, path)) return; // already answered -- no suggestion needed
       let n = 0;
@@ -4143,7 +4211,7 @@ function generateDraft() {
 
   // Work on a clone for the interactive view: it gets its pin leaves
   // overwritten with a "PINSLOT" sentinel (so we can splice in attribute
-  // widgets at those positions) while every "TBD" slot is left untouched
+  // widgets at those positions) while every TBD slot is left untouched
   // and simply collected, exactly as before. `cfg` itself stays pristine.
   const liveCfg = JSON.parse(JSON.stringify(cfg));
   const paramSlots = [];
@@ -4609,9 +4677,9 @@ function importConfig(doc, rawText) {
   // blocks (motor driver bodies, spindle stubs, homing, kinematics, etc.)
   // where the field NAMES are already known to line up with what
   // specForKey()/collectAndInjectSlots expect, since they're the real
-  // config.yaml field names either way. Skipping literal "TBD" values
+  // config.yaml field names either way. Skipping literal TBD values
   // matters for files that are themselves a previous half-finished export
-  // from this tool -- copying the literal string "TBD" into paramValues
+  // from this tool -- copying the literal string TBD into paramValues
   // would make collectAndInjectSlots' `hasOwnProperty(paramValues, path)`
   // check see it as "answered" (rendered green/filled) even though its
   // content is the same unresolved placeholder, rather than leaving it as
@@ -4621,29 +4689,52 @@ function importConfig(doc, rawText) {
     Object.keys(src).forEach(k => {
       if (skipKeys && skipKeys.has(k)) return;
       const v = src[k];
-      if (v === null || typeof v === "object" || v === "TBD") return;
+      if (v === null || typeof v === "object" || v === TBD) return;
       paramValues[`${pathPrefix}.${k}`] = v;
     });
   }
 
   // --- axes: motor sockets, limit pins, axis-level tuning, homing ---
-  const motorDriverKeys = new Set([
-    "standard_stepper", "stepstick", "tmc_2130", "tmc_2208", "tmc_5160",
-    "tmc_2209", "tmc_5160Pro", "tmc_2160Pro", "tmc_2160", "rc_servo",
-    "solenoid", "dynamixel2", "null_motor",
-  ]);
-  const axisNonMotorKeys = new Set(["motor0", "motor1", "homing", "shared_stepper_disable_pin"]);
+  // Derived from config_items.yaml's own section names
+  // (axes.<letter>.motorN.<driverKey>) rather than hand-listed -- needed two
+  // upstream fixes first (see build_config_docs.py's SECTIONS table):
+  // null_motor used to render as a comment only (zero real fields -> no real
+  // YAML key at all), and tmc_2160/tmc_2160Pro had no section of their own
+  // (registration aliases of tmc_5160/tmc_5160Pro respectively -- note the
+  // PREVIOUS version of that SECTIONS entry's own note incorrectly claimed
+  // tmc_2160 was ALSO a raw-register tmc_5160Pro alias; confirmed against
+  // the real registration() calls that it aliases the ordinary tmc_5160
+  // instead -- see that entry's corrected note).
+  const MOTOR_SECTION_PREFIX = "axes.<letter>.motorN.";
+  // The shared/common per-motor section (limit_neg_pin/limit_pos_pin/
+  // limit_all_pin/hard_limits/pulloff_mm) -- a sibling of, not one of, the
+  // per-driver-type sections MOTOR_SECTION_PREFIX matches (note: no
+  // trailing dot).
+  const MOTOR_COMMON_SECTION = "axes.<letter>.motorN";
+  const motorDriverKeys = new Set(
+    Object.keys(CONFIG_ITEM_DOCS)
+      .filter(section => section.startsWith(MOTOR_SECTION_PREFIX))
+      .map(section => section.slice(MOTOR_SECTION_PREFIX.length))
+  );
   // homing_runs -- a top-level axes: scalar (see generateDraft()'s own
   // comment), sibling to shared_stepper_disable_pin/reset_pin, NOT an
   // axis letter -- captured here, before the per-axis forEach below (which
   // would otherwise misidentify it as an unrecognized "axis letter" and
   // report a spurious warning, the same reason shared_stepper_disable_pin
   // is skipped just below).
-  if (doc.axes && doc.axes.homing_runs != null && doc.axes.homing_runs !== "TBD") {
+  if (doc.axes && doc.axes.homing_runs != null && doc.axes.homing_runs !== TBD) {
     paramValues["axes.homing_runs"] = doc.axes.homing_runs;
   }
+  // Non-letter siblings of x/y/z/a/b/c under axes: -- derived from
+  // config_items.yaml's own "axes" section (Group-level keys, siblings of
+  // the axis letters -- see build_config_docs.py's SECTIONS table) instead
+  // of a hand-listed 3-name exclude set, so a future field added there
+  // (e.g. a new shared_* pin) is automatically recognized as a legitimate
+  // non-letter key rather than needing this list updated too or falling
+  // through to a spurious "not a recognized axis letter" warning below.
+  const axisSiblingKeys = new Set(Object.keys(CONFIG_ITEM_DOCS.axes || {}));
   Object.keys(doc.axes || {}).forEach(letter => {
-    if (letter === "shared_stepper_disable_pin" || letter === "shared_stepper_reset_pin" || letter === "homing_runs") return;
+    if (axisSiblingKeys.has(letter)) return;
     const axisDoc = doc.axes[letter];
     if (!axisDoc || typeof axisDoc !== "object") return;
     if (!AXES.includes(letter)) {
@@ -4656,15 +4747,18 @@ function importConfig(doc, rawText) {
       if (!motorDoc || typeof motorDoc !== "object") return;
       const driverKey = Object.keys(motorDoc).find(k => motorDriverKeys.has(k));
       const driverBody = driverKey ? motorDoc[driverKey] : null;
-      const motorPinFields = [
-        "step_pin", "direction_pin", "disable_pin", "cs_pin",
-        "ms1_pin", "ms2_pin", "ms3_pin", "reset_pin",
-        // rc_servo/solenoid's only pin -- unlike the others above, this one
-        // can resolve to EITHER a dedicated Motor socket (a board's own
-        // onboard_fixed rc_servo/solenoid connector) OR an ordinary
-        // output-capable Generic pin/module connector (see below).
-        "output_pin",
-      ];
+      // This driver type's own pin fields (step_pin/direction_pin/cs_pin/
+      // ms1_pin/.../output_pin, whichever ones it actually has), derived
+      // from its own config_items.yaml section instead of a hand-listed
+      // union across every driver type -- rc_servo/solenoid's output_pin
+      // is included the same way as any other type's pins here (it can
+      // still resolve to EITHER a dedicated Motor socket or an ordinary
+      // output-capable Generic pin/module connector, same as before -- see
+      // below).
+      const driverSection = driverKey ? CONFIG_ITEM_DOCS[MOTOR_SECTION_PREFIX + driverKey] : null;
+      const motorPinFields = driverSection
+        ? Object.keys(driverSection).filter(k => isPinType(MOTOR_SECTION_PREFIX + driverKey, k))
+        : [];
 
       // Identify the physical resource via any one of its own pins
       // (step_pin preferred for driver-socket types) -- all of a socket's
@@ -4692,7 +4786,18 @@ function importConfig(doc, rawText) {
       }
 
       const isMotorSocket = resourceKeyPrefix(resourceKey) === "motor";
-      if (!isMotorSocket && driverKey !== "rc_servo" && driverKey !== "solenoid") {
+      // Whether this driver type genuinely needs a dedicated motor socket's
+      // own STEP/DIR/UART/SPI pins, inferred from whether it HAS a
+      // step_pin field at all in its own config_items.yaml section --
+      // rc_servo/solenoid/dynamixel2 are the only types that don't (each a
+      // single-PWM-pin or UART-bus virtual axis, no STEP/DIR wiring).
+      // Replaces a hardcoded 2-name exemption (rc_servo/solenoid only) that
+      // had actually missed dynamixel2 -- confirmed against its own real
+      // motor_dynamixel2 schema $def (no step_pin there either) -- meaning
+      // a loaded config with a Dynamixel2 axis motor was silently rejected
+      // by this check before this fix.
+      const needsDedicatedSocket = isPinType(MOTOR_SECTION_PREFIX + driverKey, "step_pin");
+      if (!isMotorSocket && needsDedicatedSocket) {
         // Every OTHER driver type needs a dedicated motor socket's own
         // STEP/DIR/UART/SPI pins, which only a "motor" resourceKey can
         // provide -- resolving to anything else here means this pin
@@ -4743,9 +4848,15 @@ function importConfig(doc, rawText) {
     ["motor0", "motor1"].forEach(slot => {
       const motorDoc = axisDoc[slot];
       if (!motorDoc || typeof motorDoc !== "object") return;
-      [["limit_neg_pin", "neg"], ["limit_pos_pin", "pos"], ["limit_all_pin", "all"]].forEach(([field, which]) => {
-        if (motorDoc[field] == null) return;
-        claimPin(motorDoc[field], `limit:${letter}:${slot}:${which}`, `axes.${letter}.${slot}.${field}`);
+      // limit_neg_pin/limit_pos_pin/limit_all_pin -- the shared/common
+      // "axes.<letter>.motorN" section's own pin-typed fields matching
+      // limit_*_pin, the "which" resource-key suffix extracted from the
+      // field name itself (neg/pos/all) rather than a separately
+      // hand-paired [field, which] list.
+      Object.keys(CONFIG_ITEM_DOCS[MOTOR_COMMON_SECTION] || {}).forEach(field => {
+        const m = field.match(/^limit_(.+)_pin$/);
+        if (!m || !isPinType(MOTOR_COMMON_SECTION, field) || motorDoc[field] == null) return;
+        claimPin(motorDoc[field], `limit:${letter}:${slot}:${m[1]}`, `axes.${letter}.${slot}.${field}`);
       });
       // hard_limits (and any other future plain per-motor scalar) --
       // motorDoc's own direct fields, distinct from the driver body's
@@ -4757,11 +4868,26 @@ function importConfig(doc, rawText) {
       // driver body's own tuning fields) -- this key's path
       // (axes.<letter>.<slot>.hard_limits) doesn't depend on which driver
       // type is in use, so it's always safe to copy back.
+      // Skip set derived the same way as the claiming loop just above:
+      // MOTOR_COMMON_SECTION's own pin-typed fields (currently just the 3
+      // limit pins) -- these were already claimed as pins there, so
+      // copyScalarParams() must not also copy them as plain scalar values
+      // (pins are strings, so its generic object-value check alone
+      // wouldn't otherwise skip them).
       copyScalarParams(motorDoc, `axes.${letter}.${slot}`,
-        new Set(["limit_neg_pin", "limit_pos_pin", "limit_all_pin"]));
+        new Set(Object.keys(CONFIG_ITEM_DOCS[MOTOR_COMMON_SECTION] || {})
+          .filter(k => isPinType(MOTOR_COMMON_SECTION, k))));
     });
 
-    copyScalarParams(axisDoc, `axes.${letter}`, axisNonMotorKeys);
+    // No skipKeys needed -- motor0/motor1/homing are all object-valued
+    // (schema $ref properties, same as motorDoc's own driver-type key
+    // above), so copyScalarParams()'s own generic object check already
+    // excludes them. shared_stepper_disable_pin doesn't even belong at
+    // this nesting level to begin with -- it's a sibling of the axis
+    // letters at the axesSection level (see cfg.axes.shared_stepper_disable_pin
+    // elsewhere in this file), never a child of one, so it can't
+    // structurally appear as a key inside axisDoc for a well-formed file.
+    copyScalarParams(axisDoc, `axes.${letter}`, null);
 
     if (axisDoc.homing && typeof axisDoc.homing === "object") {
       homingEnabled[letter] = true;
@@ -4782,11 +4908,12 @@ function importConfig(doc, rawText) {
   // comment) -- if neither pin claim succeeded, these values are simply
   // never re-surfaced, same as re-loading any config for a board it
   // doesn't match.
-  copyScalarParams(probeDoc, "probe", new Set(["pin", "toolsetter_pin"]));
+  copyScalarParams(probeDoc, "probe",
+    new Set(Object.keys(CONFIG_ITEM_DOCS.probe || {}).filter(k => isPinType("probe", k))));
 
   const controlDoc = doc.control || {};
   Object.keys(controlDoc).forEach(field => {
-    if (!field.endsWith("_pin")) return;
+    if (!isPinType("control", field)) return;
     const which = field.slice(0, -4);
     claimPin(controlDoc[field], `control:${which}`, `control.${field}`);
   });
@@ -4800,13 +4927,14 @@ function importConfig(doc, rawText) {
 
   // --- coolant ---
   const coolantDoc = doc.coolant || {};
-  ["flood_pin", "mist_pin"].forEach(field => {
+  const coolantPinFields = Object.keys(CONFIG_ITEM_DOCS.coolant || {}).filter(k => isPinType("coolant", k));
+  coolantPinFields.forEach(field => {
     if (coolantDoc[field] == null) return;
     const which = field.slice(0, -4);
     claimPin(coolantDoc[field], `coolant:${which}`, `coolant.${field}`);
   });
   // delay_ms -- same generic-sweep reasoning as probe's booleans above.
-  copyScalarParams(coolantDoc, "coolant", new Set(["flood_pin", "mist_pin"]));
+  copyScalarParams(coolantDoc, "coolant", new Set(coolantPinFields));
 
   // --- sdcard: frequency_hz is the one genuinely user-adjustable field
   // (cs_pin/card_detect_pin are fixed board facts, always regenerated from
@@ -4814,7 +4942,8 @@ function importConfig(doc, rawText) {
   // there's no pin to "claim" here the way probe/coolant/control's pins
   // are -- see isFixedProtocolPath()). ---
   if (doc.sdcard && typeof doc.sdcard === "object") {
-    copyScalarParams(doc.sdcard, "sdcard", new Set(["cs_pin", "card_detect_pin"]));
+    copyScalarParams(doc.sdcard, "sdcard",
+      new Set(Object.keys(CONFIG_ITEM_DOCS.sdcard || {}).filter(k => isPinType("sdcard", k))));
   }
 
   // --- user_outputs (digital/analog outputs + status_outputs) ---
@@ -4827,7 +4956,7 @@ function importConfig(doc, rawText) {
     const resourceKey = claimPin(userOutputsDoc[field], role, `user_outputs.${field}`);
     if (resourceKey && kind === "analog") {
       const hzField = `analog${n}_hz`;
-      if (userOutputsDoc[hzField] != null && userOutputsDoc[hzField] !== "TBD") {
+      if (userOutputsDoc[hzField] != null && userOutputsDoc[hzField] !== TBD) {
         paramValues[`user_outputs.${hzField}`] = userOutputsDoc[hzField];
       }
     }
@@ -4839,7 +4968,7 @@ function importConfig(doc, rawText) {
     if (!m) return;
     claimPin(statusOutputsDoc[field], `status_output:${m[1]}`, `status_outputs.${field}`);
   });
-  if (statusOutputsDoc.report_interval_ms != null && statusOutputsDoc.report_interval_ms !== "TBD") {
+  if (statusOutputsDoc.report_interval_ms != null && statusOutputsDoc.report_interval_ms !== TBD) {
     paramValues["status_outputs.report_interval_ms"] = statusOutputsDoc.report_interval_ms;
   }
 
@@ -4882,12 +5011,13 @@ function importConfig(doc, rawText) {
         }
       }
       if (resourceKey) {
-        // ModbusVFD is deliberately excluded from SPINDLE_TYPES (see the
-        // comment by SPINDLE_LABELS -- it's unmodeled there since it has no
-        // pin-picker UI of its own), so it never goes through the generic
+        // ModbusVFD is deliberately excluded from SPINDLE_TYPES (see
+        // buildSpindleTypes()'s `order` array comment -- it has no
+        // pin-picker UI of its own, dispatched via RS485 instead), so it
+        // never goes through the generic
         // "--- spindles ---" copyScalarParams() loop above. Its genuinely
         // open tuning fields (spinup_ms/spindown_ms/tool_num) still need the
-        // same treatment here, or they silently reset to "TBD" on reimport
+        // same treatment here, or they silently reset to TBD on reimport
         // even though the source file had real values. model/uart_num are
         // re-derived above (from the RS485 role pick / claimPin), and
         // modbus_id is emitted as a fixed, non-editable 1 by generateDraft
@@ -4929,7 +5059,7 @@ function importConfig(doc, rawText) {
         const resourceKey = resourceKeyModConn(inferred.si, inferred.ci);
         report.notes.push(`${key}: inferred pendant module "${inferred.moduleId}" via module socket ${inferred.si}`);
         bind(resourceKey, "uart_channel", key);
-        if (doc[key].report_interval_ms != null && doc[key].report_interval_ms !== "TBD") {
+        if (doc[key].report_interval_ms != null && doc[key].report_interval_ms !== TBD) {
           paramValues[`${key}.report_interval_ms`] = doc[key].report_interval_ms;
         }
         return;
@@ -4956,7 +5086,7 @@ function importConfig(doc, rawText) {
       report.ambiguous.push(`${key}: ${message} -- skipped`);
       recordFailedImport(key, doc[key], message);
     }
-    if (doc[key].report_interval_ms != null && doc[key].report_interval_ms !== "TBD") {
+    if (doc[key].report_interval_ms != null && doc[key].report_interval_ms !== TBD) {
       paramValues[`${key}.report_interval_ms`] = doc[key].report_interval_ms;
     }
   });
@@ -4981,17 +5111,23 @@ function importConfig(doc, rawText) {
   }
 
   // --- start / stepping / uncategorized top-level scalars, and name: ---
-  // (name: is set unconditionally to "TBD" by generateDraft() itself, same
+  // (name: is set unconditionally to TBD by generateDraft() itself, same
   // open-TBD mechanism as these others -- not tied to any board resource.)
-  if (doc.name != null && doc.name !== "TBD") paramValues.name = doc.name;
+  if (doc.name != null && doc.name !== TBD) paramValues.name = doc.name;
   if (doc.start) copyScalarParams(doc.start, "start", null);
   if (doc.stepping) copyScalarParams(doc.stepping, "stepping", new Set(["engine"]));
-  [
-    "arc_tolerance_mm", "junction_deviation_mm", "verbose_errors", "report_inches",
-    "enable_parking_override_control", "use_line_numbers", "planner_blocks",
-  ].forEach(key => {
-    if (doc[key] != null && doc[key] !== "TBD") paramValues[key] = doc[key];
-  });
+  // Every other scalar in config_items.yaml's "(top-level machine items)"
+  // section -- board (handled above via board-detection, not a plain
+  // paramValue) and name/meta (name handled just above; meta isn't
+  // surfaced by this wizard at all) are the only ones excluded, so a
+  // future scalar added there is picked up automatically instead of
+  // needing this list hand-updated too.
+  const TOP_LEVEL_SCALAR_EXCLUDE = new Set(["board", "name", "meta"]);
+  Object.keys(CONFIG_ITEM_DOCS["(top-level machine items)"] || {})
+    .filter(key => !TOP_LEVEL_SCALAR_EXCLUDE.has(key))
+    .forEach(key => {
+      if (doc[key] != null && doc[key] !== TBD) paramValues[key] = doc[key];
+    });
 
   // --- optional top-level sections with no board correlation: parking /
   // macros / oled / atc_manual --- mirrors the KINSELECT/homing sentinel
