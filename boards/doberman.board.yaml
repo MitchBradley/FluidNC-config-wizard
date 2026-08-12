@@ -33,7 +33,7 @@ fixed_peripherals:
     sck_pin: gpio.21
   sdcard:
     cs_pin: gpio.9
-    notes: "Wiki's own config snippet explicitly sets card_detect_pin: NO_PIN -- no physical card-detect wire, not merely unconfirmed."
+    card_detect_pin: NO_PIN
   i2so:
     bck_pin: gpio.16
     data_pin: gpio.17
@@ -42,6 +42,8 @@ fixed_peripherals:
     notes: "Inferred from the highest I2SO index used across the 8 motor connectors (I2SO.23)."
 
 motor_sockets:
+  shared_disable_pin: NO_PIN
+  shared_reset_pin: NO_PIN
   notes: >
     Wiki, verbatim: "Any motor output can be used for any axis or motor
     number... They are labeled XYZACBUV, just for reference" -- same

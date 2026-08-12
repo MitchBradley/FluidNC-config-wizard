@@ -34,7 +34,7 @@ fixed_peripherals:
     sck_pin: gpio.18
   sdcard:
     cs_pin: gpio.5
-    notes: "Wiki's own example config explicitly sets card_detect_pin: NO_PIN -- this board has no physical card-detect wire, not merely an unconfirmed one."
+    card_detect_pin: NO_PIN
   i2so:
     bck_pin: gpio.22
     data_pin: gpio.21
@@ -43,6 +43,8 @@ fixed_peripherals:
     notes: "Inferred from highest I2SO index used by the 6 motor sockets (I2SO.23), identical reasoning/value to the 6x controller (same motor wiring)."
 
 motor_sockets:
+  shared_disable_pin: NO_PIN
+  shared_reset_pin: NO_PIN
   sockets:
     - label: "Motor Driver Signals - i2so.1,2,0"
       generic_name: "Driver1"

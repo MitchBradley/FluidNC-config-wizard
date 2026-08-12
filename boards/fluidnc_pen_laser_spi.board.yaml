@@ -9,9 +9,10 @@ stepping:
   engines: [rmt, timed]
 fixed_peripherals:
   spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
-  sdcard: { cs_pin: gpio.5 }
+  sdcard: { cs_pin: gpio.5, card_detect_pin: NO_PIN }
 motor_sockets:
   shared_disable_pin: gpio.13
+  shared_reset_pin: NO_PIN
   sockets:
     - label: "X"
       generic_name: "Motor1"

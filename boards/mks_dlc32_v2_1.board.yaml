@@ -14,6 +14,7 @@ i2c_connectors:
   - { label: "I2C", generic_name: "I2C", sda_pin: gpio.0, scl_pin: gpio.4 }
 motor_sockets:
   shared_disable_pin: i2so.0
+  shared_reset_pin: NO_PIN
   sockets:
     - label: "X"
       generic_name: "Motor1"

@@ -10,11 +10,13 @@ stepping:
   engines: [i2s]
 fixed_peripherals:
   spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
-  sdcard: { cs_pin: gpio.0 }
+  sdcard: { cs_pin: gpio.0, card_detect_pin: NO_PIN }
   i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 16 }
 i2c_connectors:
   - { label: "I2C", sda_pin: gpio.27, scl_pin: gpio.26 }
 motor_sockets:
+  shared_disable_pin: NO_PIN
+  shared_reset_pin: NO_PIN
   sockets:
     - label: "X"
       generic_name: "Motor1"

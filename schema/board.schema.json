@@ -65,6 +65,13 @@
       "pattern": "^(gpio|i2so)\\.[0-9]+$",
       "description": "Bare MCU-side pin reference: gpio.N (native GPIO) or i2so.N (I2S-expander virtual pin). No :high/:low/:pu/:pd/:dsN attributes here -- those are config-authoring/wiring choices, not board facts. Matches the pin-string vocabulary of fluidnc-config-schema.json minus its attribute suffixes."
     },
+    "mcu_pin_or_none": {
+      "oneOf": [
+        { "$ref": "#/$defs/mcu_pin" },
+        { "const": "NO_PIN" }
+      ],
+      "description": "Same as mcu_pin, but explicitly allows the literal NO_PIN for a field that's genuinely optional per board (unlike an ordinary mcu_pin field, e.g. a socket's step_pin, which is never meaningfully NO_PIN) -- required rather than omittable specifically so the wizard can tell 'genuinely unwired on this board' apart from 'board file just didn't fill this in yet.'"
+    },
     "board_identity": {
       "type": "object",
       "additionalProperties": false,
@@ -196,14 +203,16 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "cs_pin"
+            "cs_pin",
+            "card_detect_pin"
           ],
           "properties": {
             "cs_pin": {
               "$ref": "#/$defs/mcu_pin"
             },
             "card_detect_pin": {
-              "$ref": "#/$defs/mcu_pin"
+              "$ref": "#/$defs/mcu_pin_or_none",
+              "description": "Explicit NO_PIN if this board's SD socket has no card-detect switch wired -- required rather than omittable so the wizard can tell 'genuinely unwired, open for a user to assign a spare pin' apart from 'board file just didn't fill this in yet' without guessing."
             },
             "notes": {
               "type": "string",
@@ -282,16 +291,18 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "sockets"
+        "sockets",
+        "shared_disable_pin",
+        "shared_reset_pin"
       ],
       "properties": {
         "shared_disable_pin": {
-          "$ref": "#/$defs/mcu_pin",
-          "description": "Present only if ALL sockets in this file truly share one disable line (mirrors FluidNC's own axes.shared_stepper_disable_pin, which is a single global setting, not partial -- and matches FluidNC's own field name, disable_pin, not 'enable_pin'). If present, no individual socket may declare its own disable_pin. If absent, every socket must declare its own (even if some happen to coincide in practice)."
+          "$ref": "#/$defs/mcu_pin_or_none",
+          "description": "Explicit NO_PIN if this board's sockets do NOT truly share one disable line (mirrors FluidNC's own axes.shared_stepper_disable_pin, which is a single global setting, not partial -- and matches FluidNC's own field name, disable_pin, not 'enable_pin'). Required rather than omittable, same reasoning as sdcard.card_detect_pin -- unlike that field, though, this one's absence is never 'open for user assignment': it reflects which physical traces this board's PCB actually has, not a spare pin a Generic Pin picker could retroactively wire up. A real pin here means no individual socket may declare its own disable_pin; NO_PIN means every socket must declare its own (even if some happen to coincide in practice)."
         },
         "shared_reset_pin": {
-          "$ref": "#/$defs/mcu_pin",
-          "description": "Same either/or rule as shared_disable_pin, for stepstick sockets with a ganged driver RESET line."
+          "$ref": "#/$defs/mcu_pin_or_none",
+          "description": "Same either/or rule and required-explicit-NO_PIN reasoning as shared_disable_pin, for stepstick sockets with a ganged driver RESET line."
         },
         "sockets": {
           "type": "array",

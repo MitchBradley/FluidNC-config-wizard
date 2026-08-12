@@ -22,6 +22,7 @@ fixed_peripherals:
     sck_pin: gpio.18
   sdcard:
     cs_pin: gpio.5
+    card_detect_pin: NO_PIN
     notes: "No physical card-detect pin is documented."
   i2so:
     bck_pin: gpio.22
@@ -37,6 +38,8 @@ fixed_peripherals:
       mode: "8N1"
 
 motor_sockets:
+  shared_disable_pin: NO_PIN
+  shared_reset_pin: NO_PIN
   sockets:
     - label: "X"
       generic_name: "Motor1"

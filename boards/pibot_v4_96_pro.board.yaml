@@ -36,7 +36,7 @@ fixed_peripherals:
       StepStick or external driver modules.
   sdcard:
     cs_pin: gpio.5
-    notes: "PiBot's factory configuration uses card_detect_pin: NO_PIN."
+    card_detect_pin: NO_PIN
   i2so:
     bck_pin: gpio.22
     data_pin: gpio.21
@@ -47,6 +47,8 @@ fixed_peripherals:
       EN/STEP/DIR groups and six MS3/CS signals.
 
 motor_sockets:
+  shared_disable_pin: NO_PIN
+  shared_reset_pin: NO_PIN
   notes: >
     Each of the six positions can use an onboard StepStick module or an
     external standard driver. The external-driver routing jumpers connect

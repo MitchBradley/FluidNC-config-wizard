@@ -654,44 +654,153 @@ function buildLimitBranch() {
  * this runs live, but its header comment has the fuller rationale for each
  * choice below if it's ever useful to consult in FluidNC-config-wizard's
  * git history). */
-// Generic pin_attributes-filtered {key: {label}} children for a schema
-// section's own properties -- the shared core buildControlTree/
-// buildProbeTree/buildOutputRoleBranches' coolant+status_output branches
-// all reduce to: sweep a section's own properties for fields whose
-// config_items.yaml @pin_attributes matches (input on this tree's side,
-// output on buildOutputRoleBranches' side), keyed either by the field's
-// own full name (stripKeySuffix false, e.g. probe's "toolsetter_pin") or
-// with the "_pin" suffix stripped (stripKeySuffix true, e.g. control's
-// "safety_door") to match how generateDraft()'s own role dispatch for
-// that section expects its keys shaped.
-function sectionRoleChildren(schemaProps, docSection, attr, stripKeySuffix) {
+// Generic pin_attributes-filtered {key: {label}} children for one
+// config_items.yaml section -- the shared core every flat (non-spindle,
+// non-limit) role category reduces to: sweep the section's own fields for
+// ones whose @pin_attributes is in `attrs` (a single value, or an array
+// when a section needs the union of more than one -- e.g. sdcard mixes
+// output cs_pin with input card_detect_pin, so the "either-direction"
+// tree needs both), keyed with the "_pin" suffix stripped (matching every
+// section's own generateDraft()/importConfig() dispatch convention,
+// including probe's "pin" field -- stripPinSuffix("pin") is a no-op,
+// since "pin" itself doesn't end in "_pin", so the field's own name IS
+// its stripped key already). Reads CONFIG_ITEM_DOCS directly rather than
+// a schema $def's properties list -- config_items.yaml already has the
+// exact same field names, so there's no need to also cross-reference the
+// schema just to enumerate them.
+function sectionRoleChildren(docSection, attrs) {
+  const attrSet = new Set(Array.isArray(attrs) ? attrs : [attrs]);
   const children = {};
-  Object.keys(schemaProps).forEach(fullKey => {
-    if (pinAttributesOf(docSection, fullKey) !== attr) return;
-    const key = stripKeySuffix ? stripPinSuffix(fullKey) : fullKey;
+  const items = CONFIG_ITEM_DOCS[docSection] || {};
+  Object.keys(items).forEach(fullKey => {
+    const attr = pinAttributesOf(docSection, fullKey);
+    if (!attr || !attrSet.has(attr)) return;
+    const key = stripPinSuffix(fullKey);
     children[key] = { label: titleLabel(key) };
   });
   return children;
-}
-
-function buildControlTree(schema) {
-  return { label: "Control", children: sectionRoleChildren(schema.$defs.controlSection.properties, "control", "input", true) };
-}
-
-function buildProbeTree(schema) {
-  return { label: "Probe", children: sectionRoleChildren(schema.$defs.probeSection.properties, "probe", "input", false) };
 }
 
 function countSlots(props, prefix) {
   return Object.keys(props).filter(k => k.startsWith(prefix) && k.endsWith("_pin")).length;
 }
 
-// Flat list of digital0-7/analog0-3 -- no Digital/Analog sub-grouping (the
-// distinction isn't a pin_attributes one: both kinds are tagged plain
-// "input" in config_items.yaml, so there's no schema-derivable signal to
-// split on, only the field's own name -- not worth a tree level for it).
-function buildUserInputTree(schema) {
-  return { label: "User Input", children: sectionRoleChildren(schema.$defs.userInputsSection.properties, "user_inputs", "input", true) };
+// config_items.yaml top-level sections structurally excluded from the
+// generic role-category scan below, for reasons that hold regardless of
+// which board is loaded (a board-load-time, per-pin exclusion -- e.g.
+// sdcard.cs_pin already being fixed by THIS board's own data -- is a
+// separate concern, see computeBoardFixedRoles()):
+const GENERIC_ROLE_SECTIONS_EXCLUDED = new Set([
+  "enum_types", // not a real section -- the enum-anchor preamble config_items.yaml's own YAML anchors/aliases live under
+  "axes", // shared_stepper_disable_pin/reset_pin -- a hardware-topology fact
+          // (does this board's PCB tie multiple drivers' disable lines
+          // together at all), never something a Generic-Pin role
+          // assignment could retroactively create -- see
+          // board.schema.json's own shared_disable_pin description.
+  "ethernet", // no dispatch support yet (generateDraft()/importConfig()
+              // have no "ethernet:" role case) -- offering it would be a
+              // silently-dropped dead option. Revisit once EthPhy is
+              // modeled in board.schema.json and that dispatch exists.
+  "i2so", // oe_pin is its one output-tagged field, but isn't even
+          // representable in board.schema.json's i2so def at all
+          // (additionalProperties: false, and oe_pin isn't among its
+          // listed properties) -- same "no schema/dispatch support yet"
+          // reasoning as ethernet, not "board-fixed" (bck_pin/data_pin/
+          // ws_pin are already excluded for free, being i2s-tagged, not
+          // output-tagged).
+  "user_outputs", // digitalN_pin/analogN_pin already have their own
+                   // dedicated, index-based role mechanism (see
+                   // DIGITAL_OUTPUT_COUNT/ANALOG_OUTPUT_COUNT and the
+                   // "digital_output:N"/"analog_output:N" role-string
+                   // convention) predating this generic scan -- letting
+                   // this section ALSO appear generically (as
+                   // "user_outputs:digital0" etc., a role string
+                   // generateDraft() has no dispatch case for) would add
+                   // a second, conflicting, dead-end path to the exact
+                   // same underlying config.yaml fields.
+]);
+
+// config_items.yaml section name -> role-prefix key, ONLY for the two
+// sections whose already-established role-string convention
+// (generateDraft()'s dispatch, importConfig()'s claimPin() calls,
+// cascadeOptionsFor()) is singular while the section name itself is
+// plural. Every other section's role-prefix is just its own section
+// name, no mapping needed.
+const ROLE_PREFIX_OVERRIDES = { status_outputs: "status_output", user_inputs: "user_input" };
+
+function isGenericRoleSection(sectionName) {
+  if (GENERIC_ROLE_SECTIONS_EXCLUDED.has(sectionName)) return false;
+  if (sectionName.includes(".")) return false; // axes.<letter>.*, kinematics.*, extenders.* -- nested, not a flat top-level category
+  if (SCHEMA.$defs[`spindle_${sectionName}`]) return false; // spindle types -- own "Spindle" category via buildSpindleTypes(), not a flat one here
+  return true;
+}
+
+// {roleKey: {label, children}} for every config_items.yaml section that
+// (a) isn't structurally excluded above and (b) has at least one field
+// whose @pin_attributes is in `attrs` -- e.g. buildGenericRoleBranches
+// ("input") picks up control/probe/user_inputs (every field) plus
+// sdcard (card_detect_pin alone, cs_pin being output-only); a section
+// with nothing matching (e.g. sdcard under "output" alone would miss
+// card_detect_pin, but include cs_pin) is simply omitted rather than
+// added as an empty, dead category. A brand-new FluidNC feature with
+// input/output-role config pins shows up here automatically -- no
+// wizard change needed, unlike the hand-listed {control, probe,
+// user_input}/{coolant, status_output} objects this replaced.
+function buildGenericRoleBranches(attrs) {
+  const branches = {};
+  Object.keys(CONFIG_ITEM_DOCS).forEach(sectionName => {
+    if (!isGenericRoleSection(sectionName)) return;
+    const children = sectionRoleChildren(sectionName, attrs);
+    if (!Object.keys(children).length) return;
+    const key = ROLE_PREFIX_OVERRIDES[sectionName] || sectionName;
+    branches[key] = { label: titleLabel(key), children };
+  });
+  return branches;
+}
+
+// Per-board Set of Generic-Pin ROLE PATHS (e.g. "sdcard:cs",
+// "sdcard:card_detect") that THIS board's own fixed_peripherals data has
+// already committed to a real pin -- consulted by isRoleClaimedByOther()
+// so a role a board has already wired down is greyed out the same way an
+// already-user-assigned role is, with no separate UI code path needed.
+// Walks every section the generic role-tree scan covers (see
+// buildGenericRoleBranches() above) that ALSO happens to have a same-named
+// board.fixed_peripherals block on THIS board -- today, only sdcard, on
+// any board that actually has SD card hardware (control/probe/
+// user_inputs/coolant/status_outputs never have a fixed_peripherals
+// counterpart on ANY board, so nothing about them is ever blacklisted
+// this way, correctly: they're genuinely always user-assignable). A
+// section with no matching block AT ALL for this board -- either because
+// it conceptually never has one (control, ...) or because this
+// particular board lacks that feature entirely (e.g. no SD card slot) --
+// contributes nothing to the blacklist; a currently-unhandled corner case
+// for the latter (a board with no sdcard: block would leave cs_pin
+// wrongly offered as open too, rather than also excluded) that no real
+// board file hits today, so it's left as a known gap rather than adding a
+// board.schema.json fetch just to close it. Within an EXISTING matching
+// block, a field explicitly "NO_PIN" is deliberately left OFF the
+// blacklist -- it means this board's hardware leaves that resource
+// unwired, exactly the case a user might want to wire up themselves (see
+// sdcard.card_detect_pin). Any other value (a real pin, or a field an
+// older board file hasn't been updated to state explicitly) is treated
+// as "already fixed" -- the conservative default within a block that
+// DOES exist, so an incomplete board file fails safe.
+function computeBoardFixedRoles() {
+  const fixed = new Set();
+  const fp = (board && board.fixed_peripherals) || {};
+  Object.keys(CONFIG_ITEM_DOCS).forEach(sectionName => {
+    if (!isGenericRoleSection(sectionName)) return;
+    const boardBlock = fp[sectionName];
+    if (!boardBlock) return;
+    const items = CONFIG_ITEM_DOCS[sectionName] || {};
+    Object.keys(items).forEach(fullKey => {
+      if (!isPinType(sectionName, fullKey)) return;
+      if (boardBlock[fullKey] === "NO_PIN") return;
+      const key = ROLE_PREFIX_OVERRIDES[sectionName] || sectionName;
+      fixed.add(`${key}:${stripPinSuffix(fullKey)}`);
+    });
+  });
+  return fixed;
 }
 
 // Which pin_attributes values make a field reachable from an output-capable
@@ -779,7 +888,7 @@ function schemaStub(defName, allowSet) {
 }
 let SCHEMA;
 
-let INPUT_ROLE_TREE, SPINDLE_TYPES, DIGITAL_OUTPUT_COUNT, ANALOG_OUTPUT_COUNT, EITHER_ROLE_TREE;
+let INPUT_ROLE_TREE, SPINDLE_TYPES, DIGITAL_OUTPUT_COUNT, ANALOG_OUTPUT_COUNT, EITHER_ROLE_TREE, GENERIC_ROLE_TREE_OUTPUT_KEYS;
 
 async function loadRoleData() {
   const schemaText = await fetchYamlText("schema/fluidnc-config-schema.json");
@@ -802,9 +911,7 @@ async function loadRoleData() {
 
   INPUT_ROLE_TREE = {
     limit: buildLimitBranch(),
-    probe: buildProbeTree(schema),
-    control: buildControlTree(schema),
-    user_input: buildUserInputTree(schema),
+    ...buildGenericRoleBranches("input"),
   };
   SPINDLE_TYPES = buildSpindleTypes(schema);
   // Strict-input pins only ever see a spindle type's input-capable pins
@@ -817,6 +924,13 @@ async function loadRoleData() {
   }
   DIGITAL_OUTPUT_COUNT = countSlots(schema.$defs.userOutputsSection.properties, "digital");
   ANALOG_OUTPUT_COUNT = countSlots(schema.$defs.userOutputsSection.properties, "analog");
+  // Keys of every generically-scanned section reachable from the OUTPUT
+  // side (coolant/status_output/sdcard today) -- shared by
+  // outputCategoryOptions()/cascadeOptionsFor() (the flat picker strict-
+  // output pins use) and buildOutputRoleBranches() (the tree "either"
+  // pins use) below, so the two pickers can never disagree about which
+  // generic sections are output-reachable.
+  GENERIC_ROLE_TREE_OUTPUT_KEYS = Object.keys(buildGenericRoleBranches("output"));
   // "either" generic_pins (a bare, uncommitted GPIO usable as EITHER a
   // plain input OR a plain output -- see board.schema.json's own
   // "direction" description) need BOTH role spaces in one picker, not just
@@ -827,7 +941,13 @@ async function loadRoleData() {
   // same category/cascade data makeOutputRow itself uses into the
   // {label, children} tree shape makeInputRow expects -- rather than
   // building a second, parallel UI widget and uniqueness-checking path
-  // just for these pins.
+  // just for these pins. Note this is NOT a plain Object.assign(INPUT_ROLE_TREE,
+  // buildOutputRoleBranches()) -- a section reachable from BOTH directions
+  // (spindle's PlasmaSpindle, sdcard) needs the UNION of its input and
+  // output children here, which buildOutputRoleBranches() computes
+  // directly (via ["input","output"] on the generic portion, and
+  // pins.concat(inputPins) for spindle) rather than relying on a shallow
+  // merge to combine two separately-built halves.
   EITHER_ROLE_TREE = Object.assign({}, INPUT_ROLE_TREE, buildOutputRoleBranches());
 
   await loadModuleCatalog();
@@ -1031,7 +1151,16 @@ function spindleRoleChildren(pickPins) {
 function buildOutputRoleBranches() {
   return {
     spindle: { label: "Spindle", children: spindleRoleChildren(def => def.pins.concat(def.inputPins)) },
-    coolant: { label: "Coolant", children: sectionRoleChildren(SCHEMA.$defs.coolantSection.properties, "coolant", "output", true) },
+    // ["input","output"], not "output" alone -- a section reachable from
+    // an input-capable pin too (sdcard: cs_pin is output-only, but
+    // card_detect_pin is input-only, same mixed shape as PlasmaSpindle's
+    // arc_ok_pin above) needs the UNION here, since this object's keys
+    // OVERWRITE INPUT_ROLE_TREE's same-named keys entirely in the
+    // Object.assign() that builds EITHER_ROLE_TREE (see loadRoleData()) --
+    // a plain "output" scan here would silently lose card_detect_pin's
+    // reachability for "either"-direction pins the way it did before this
+    // was fixed for spindle above.
+    ...buildGenericRoleBranches(["input", "output"]),
     digital_output: {
       label: "Digital Output",
       children: Object.fromEntries(Array.from({ length: DIGITAL_OUTPUT_COUNT }, (_, i) => [String(i), { label: `Output ${i}` }])),
@@ -1039,10 +1168,6 @@ function buildOutputRoleBranches() {
     analog_output: {
       label: "Analog Output",
       children: Object.fromEntries(Array.from({ length: ANALOG_OUTPUT_COUNT }, (_, i) => [String(i), { label: `Output ${i}` }])),
-    },
-    status_output: {
-      label: "Status Output",
-      children: sectionRoleChildren(SCHEMA.$defs.statusOutputsSection.properties, "status_outputs", "output", true),
     },
     // Reuses MOTOR_ROLE_TREE by reference for both branches (it's read-only
     // here, never mutated by the tree walker) -- keeps this in lockstep with
@@ -1425,28 +1550,27 @@ function cascadeOptionsFor(category) {
   if (category === "analog_output") {
     return Array.from({ length: ANALOG_OUTPUT_COUNT }, (_, i) => [String(i), `Output ${i}`]);
   }
-  if (category === "status_output") {
-    // Same children EITHER_ROLE_TREE.status_output already computed via
+  if (GENERIC_ROLE_TREE_OUTPUT_KEYS.includes(category)) {
+    // Same children EITHER_ROLE_TREE[category] already computed via
     // sectionRoleChildren() -- reused here rather than re-derived, so
-    // there's exactly one place that decides what counts as a status
-    // output pin.
-    return Object.entries(EITHER_ROLE_TREE.status_output.children).map(([k, v]) => [k, v.label]);
+    // there's exactly one place that decides what counts as e.g. a
+    // coolant/status-output/sdcard pin.
+    return Object.entries(EITHER_ROLE_TREE[category].children).map(([k, v]) => [k, v.label]);
   }
   return null;
 }
 
 /* Top-level category options for an output-capable pin -- step 1 of the
- * two-step menu. Spindle types and "Digital Output" are cascading
- * categories (picking one reveals step 2); coolant is already a single
- * flat choice per option, same as before. */
+ * two-step menu. Every category here cascades (picking one reveals step 2
+ * via cascadeOptionsFor()) -- spindle types, "Digital Output"/"Analog
+ * Output", and every generically-scanned output section (coolant/
+ * status_output/sdcard today, see GENERIC_ROLE_TREE_OUTPUT_KEYS) alike. */
 function outputCategoryOptions() {
   const opts = [{ value: "unused", label: "— Unused —" }];
   Object.keys(SPINDLE_TYPES).forEach(t => opts.push({ value: `spindle:${t}`, label: `Spindle — ${SPINDLE_TYPES[t].label}` }));
-  opts.push({ value: "coolant:flood", label: "Coolant — Flood" });
-  opts.push({ value: "coolant:mist", label: "Coolant — Mist" });
+  GENERIC_ROLE_TREE_OUTPUT_KEYS.forEach(k => opts.push({ value: k, label: EITHER_ROLE_TREE[k].label }));
   opts.push({ value: "digital_output", label: "Digital Output" });
   opts.push({ value: "analog_output", label: "Analog Output" });
-  opts.push({ value: "status_output", label: "Status Output" });
   // RC Servo/Solenoid are single-PWM-pin "motors" (see Motors/RcServo.h,
   // Motors/Solenoid.h) -- unlike every other axis driver, they need no
   // dedicated motor socket (STEP/DIR/UART/SPI), so any output-capable pin
@@ -1465,7 +1589,7 @@ function roleCategory(full) {
   if (parts[0] === "spindle") return `spindle:${parts[1]}`;
   if (parts[0] === "digital_output") return "digital_output";
   if (parts[0] === "analog_output") return "analog_output";
-  if (parts[0] === "status_output") return "status_output";
+  if (GENERIC_ROLE_TREE_OUTPUT_KEYS.includes(parts[0])) return parts[0];
   if (parts[0] === "axis") return `axis:${parts[1]}`;
   return full;
 }
@@ -1474,7 +1598,7 @@ function roleSubValue(full) {
   if (parts[0] === "spindle") return parts[2];
   if (parts[0] === "digital_output") return parts[1];
   if (parts[0] === "analog_output") return parts[1];
-  if (parts[0] === "status_output") return parts[1];
+  if (GENERIC_ROLE_TREE_OUTPUT_KEYS.includes(parts[0])) return parts[1];
   if (parts[0] === "axis") return `${parts[2]}:${parts[3]}`;
   return undefined;
 }
@@ -1643,6 +1767,7 @@ function nextSpareUartNum(board, usedUartNums) {
  * State
  * ------------------------------------------------------------------- */
 let board = null;          // parsed board object
+let BOARD_FIXED_ROLES = new Set(); // recomputed per board load, see computeBoardFixedRoles()
 let bindings = {};         // resourceKey -> role value string
 let paramValues = {};      // JSON-pointer-ish path (e.g. "axes.x.steps_per_mm") -> user-entered value
 let pinAttrs = {};         // path -> { level: ""|"low"|"high", pull: ""|"pu"|"pd" }
@@ -2318,6 +2443,7 @@ async function loadBoard(id) {
  * currently-loaded board. */
 async function applyBoardDoc(doc, hotspotId) {
   board = doc;
+  BOARD_FIXED_ROLES = computeBoardFixedRoles();
   bindings = {};
   paramValues = {};
   pinAttrs = {};
@@ -2543,9 +2669,10 @@ function refreshGpioConflicts() {
  * three uniformly. What differs per row type is WHICH <option> elements
  * represent a "complete" role worth checking:
  *   - makeRow: every option IS a complete role (its own value).
- *   - makeOutputRow: only options that DON'T cascade (no secondary select,
- *     e.g. "coolant:flood") are complete on the primary select; a cascading
- *     category's completion happens on the secondary select's options
+ *   - makeOutputRow: only options that DON'T cascade (no secondary select --
+ *     today, only "unused") are complete on the primary select; every real
+ *     category (spindle/coolant/digital_output/status_output/sdcard/axis/...)
+ *     cascades, so its completion happens on the secondary select's options
  *     instead ("<primary.value>:<secondary option value>").
  *   - makeInputRow: only the DEEPEST select's options are complete (their
  *     path segments plus every select's value strictly before them) -- by
@@ -2593,11 +2720,17 @@ function axisSlotKeyOf(fullValue) {
 
 /* True if `fullValue` is currently bound to some resource other than
  * `ownKey` -- either literally, or (for axis-motor roles) via the shared
- * axis+motor-slot identity axisSlotKeyOf() extracts. Single source of truth
+ * axis+motor-slot identity axisSlotKeyOf() extracts, OR because THIS
+ * board's own fixed_peripherals data has already committed that role to a
+ * real pin (see computeBoardFixedRoles()) -- board-fixed claims behave
+ * exactly like a real resource's binding here, so a role a board has
+ * already wired down is greyed out the same way an already-user-assigned
+ * one is, with no separate UI code path needed. Single source of truth
  * for "is this role already taken", used both here and by makeInputRow's
  * firstLeafPathFrom()/makeOutputRow's unclaimed-preference and duplicate
  * guard, so all three can never disagree about what counts as claimed. */
 function isRoleClaimedByOther(fullValue, ownKey) {
+  if (BOARD_FIXED_ROLES.has(fullValue)) return true;
   const slot = axisSlotKeyOf(fullValue);
   return Object.keys(resourcePins).some(k => {
     if (k === ownKey) return false;
@@ -3819,11 +3952,21 @@ function generateDraft() {
   if (fp.spi) cfg.spi = { miso_pin: fp.spi.miso_pin, mosi_pin: fp.spi.mosi_pin, sck_pin: fp.spi.sck_pin };
   if (fp.sdcard) {
     cfg.sdcard = { cs_pin: fp.sdcard.cs_pin };
-    if (fp.sdcard.card_detect_pin) cfg.sdcard.card_detect_pin = fp.sdcard.card_detect_pin;
+    // card_detect_pin is only written here when THIS board's own data
+    // already fixes it to a real pin -- an explicit "NO_PIN" (now
+    // mandatory in every board file, see board.schema.json's own
+    // description) means this board's SD socket genuinely leaves it
+    // unwired, which is left open here for the "sdcard:card_detect" role
+    // dispatch below to fill in instead, if the user assigns a Generic
+    // Pin to it (computeBoardFixedRoles() is what makes that role
+    // selectable in the first place only when it's genuinely open).
+    if (fp.sdcard.card_detect_pin && fp.sdcard.card_detect_pin !== "NO_PIN") {
+      cfg.sdcard.card_detect_pin = fp.sdcard.card_detect_pin;
+    }
     // frequency_hz -- SPI clock speed, the one genuinely user-adjustable
-    // sdcard: field (cs_pin/card_detect_pin are fixed board facts, not user
-    // choices) -- @tuning typical in source, pre-filled from
-    // config_items.yaml via configDocSpecFor().
+    // sdcard: field whenever card_detect_pin isn't ALSO user-assignable --
+    // @tuning typical in source, pre-filled from config_items.yaml via
+    // configDocSpecFor().
     cfg.sdcard.frequency_hz = TBD;
   }
   if (fp.i2so) cfg.i2so = { bck_pin: fp.i2so.bck_pin, data_pin: fp.i2so.data_pin, ws_pin: fp.i2so.ws_pin };
@@ -3924,10 +4067,14 @@ function generateDraft() {
       annotate(axis[motorSlot], field, p.label);
       axis[motorSlot][field] = pin;
     } else if (role.startsWith("probe:")) {
-      // Child key is literally the real Probe:: config field name
-      // ("pin" or "toolsetter_pin") -- see Probe::group() in the
-      // connected FluidNC source.
-      const field = role.split(":")[1];
+      // which is "pin" for the plain "pin" field (stripPinSuffix("pin") is
+      // a no-op -- "pin" itself doesn't end in "_pin", being only 3
+      // characters) or "toolsetter" for toolsetter_pin -- same stripped-
+      // key/re-suffix convention every other section's dispatch uses
+      // (control/coolant/sdcard/etc.), so probe needs no special-casing in
+      // the generic role-tree scan.
+      const which = role.split(":")[1];
+      const field = which === "pin" ? "pin" : `${which}_pin`;
       cfg.probe = cfg.probe || {};
       annotate(cfg.probe, field, p.label);
       cfg.probe[field] = pin;
@@ -4024,6 +4171,17 @@ function generateDraft() {
       axis[slot] = axis[slot] || {};
       axis[slot][block.key] = block.body;
       axis[slot].hard_limits = TBD;
+    } else if (role.startsWith("sdcard:")) {
+      // Only ever reachable for card_detect -- cs_pin is always written
+      // unconditionally above from board.fixed_peripherals.sdcard, and
+      // computeBoardFixedRoles() permanently blacklists it from role
+      // candidacy otherwise (see that function's own comment). which is
+      // "card_detect" (stripPinSuffix's own convention, same as every
+      // other section's dispatch).
+      const which = role.split(":")[1];
+      cfg.sdcard = cfg.sdcard || {};
+      annotate(cfg.sdcard, `${which}_pin`, p.label);
+      cfg.sdcard[`${which}_pin`] = pin;
     }
   });
   if (Object.keys(cfg.control).length === 0) delete cfg.control;
@@ -4916,8 +5074,10 @@ function importConfig(doc, rawText) {
 
   // --- probe / control / user_inputs ---
   const probeDoc = doc.probe || {};
-  ["pin", "toolsetter_pin"].forEach(field => {
-    if (probeDoc[field] != null) claimPin(probeDoc[field], `probe:${field}`, `probe.${field}`);
+  Object.keys(probeDoc).forEach(field => {
+    if (!isPinType("probe", field)) return;
+    const which = stripPinSuffix(field); // "pin" for the plain "pin" field (no-op strip), "toolsetter" for toolsetter_pin -- matches generateDraft()'s own probe: dispatch
+    claimPin(probeDoc[field], `probe:${which}`, `probe.${field}`);
   });
   // check_mode_start/hard_stop/probe_hard_limit -- generic sweep (not
   // named individually) so any future probeSection scalar is picked up
@@ -4955,12 +5115,18 @@ function importConfig(doc, rawText) {
   // delay_ms -- same generic-sweep reasoning as probe's booleans above.
   copyScalarParams(coolantDoc, "coolant", new Set(coolantPinFields));
 
-  // --- sdcard: frequency_hz is the one genuinely user-adjustable field
-  // (cs_pin/card_detect_pin are fixed board facts, always regenerated from
+  // --- sdcard: cs_pin is always a fixed board fact, regenerated from
   // board.fixed_peripherals regardless of what's in the loaded file, so
-  // there's no pin to "claim" here the way probe/coolant/control's pins
-  // are -- see isFixedProtocolPath()). ---
+  // there's no pin to "claim" for it -- see isFixedProtocolPath(). But
+  // card_detect_pin genuinely can be a user-assigned Generic Pin on a
+  // board that leaves it unwired (its own value is "NO_PIN" there --
+  // see computeBoardFixedRoles()), so it needs the same claimPin()
+  // treatment probe/coolant/control's pins get. claimPin() harmlessly
+  // no-ops if this value doesn't match any known board resource (e.g. it
+  // equals THIS board's own already-fixed card_detect_pin instead of a
+  // Generic Pin's value).
   if (doc.sdcard && typeof doc.sdcard === "object") {
+    if (doc.sdcard.card_detect_pin != null) claimPin(doc.sdcard.card_detect_pin, "sdcard:card_detect", "sdcard.card_detect_pin");
     copyScalarParams(doc.sdcard, "sdcard",
       new Set(Object.keys(CONFIG_ITEM_DOCS.sdcard || {}).filter(k => isPinType("sdcard", k))));
   }

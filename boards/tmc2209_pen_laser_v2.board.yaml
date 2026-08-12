@@ -32,6 +32,7 @@ fixed_peripherals:
     sck_pin: gpio.18
   sdcard:
     cs_pin: gpio.5
+    card_detect_pin: NO_PIN
   dedicated_uarts:
     - label: "TMC2209 UART"
       txd_pin: gpio.17
@@ -44,6 +45,7 @@ fixed_peripherals:
 
 motor_sockets:
   shared_disable_pin: gpio.13
+  shared_reset_pin: NO_PIN
   sockets:
     - label: "X Motor"
       generic_name: "Motor1"

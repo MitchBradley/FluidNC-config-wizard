@@ -32,6 +32,7 @@ fixed_peripherals:
 
 motor_sockets:
   shared_disable_pin: gpio.8
+  shared_reset_pin: NO_PIN
   notes: >
     Wiki: "Use The motors use a shared disable pin (gpio.8). Use motor type
     'stepstick:' or 'standard_stepper:'" -- plain-GPIO stepstick sockets,
