@@ -674,7 +674,7 @@ function sectionRoleChildren(docSection, attrs) {
   Object.keys(items).forEach(fullKey => {
     const attr = pinAttributesOf(docSection, fullKey);
     if (!attr || !attrSet.has(attr)) return;
-    const key = stripPinSuffix(fullKey);
+    const key = whichForField(docSection, fullKey);
     children[key] = { label: titleLabel(key) };
   });
   return children;
@@ -708,6 +708,25 @@ const GENERIC_ROLE_SECTIONS_EXCLUDED = new Set([
 // plural. Every other section's role-prefix is just its own section
 // name, no mapping needed.
 const ROLE_PREFIX_OVERRIDES = { status_outputs: "status_output", user_inputs: "user_input", user_outputs: "user_output" };
+
+// Reverse of ROLE_PREFIX_OVERRIDES -- a role's leading ":"-segment back
+// to the real config_items.yaml/cfg object section name (identity for
+// every section with no override entry).
+function sectionForRolePrefix(prefix) {
+  const entry = Object.entries(ROLE_PREFIX_OVERRIDES).find(([, p]) => p === prefix);
+  return entry ? entry[0] : prefix;
+}
+
+// Role prefixes whose generateDraft()/importConfig() handling is nothing
+// more than "write a pin into cfg[<section>][<field>], stubbing any of
+// the section's own non-pin tuning fields via stubNonPinFields()" -- see
+// the single shared dispatch/import branch each uses. sdcard/ethernet/
+// user_output stay as their own separate branches -- each has one further
+// real behavior beyond this (sdcard's cs_pin is board-fixed and never
+// reaches this dispatch at all; ethernet's phy_type/phy_addr need seeding
+// when no board-fixed block exists; user_output's analogN_pin has a
+// per-channel _hz companion).
+const SIMPLE_PIN_SECTION_ROLES = ["control", "probe", "user_input", "coolant", "status_output"];
 
 function isGenericRoleSection(sectionName) {
   if (GENERIC_ROLE_SECTIONS_EXCLUDED.has(sectionName)) return false;
@@ -1449,6 +1468,28 @@ function stubNonPinFields(obj, docSection) {
 function pinAttributesOf(docSection, key) {
   const item = CONFIG_ITEM_DOCS[docSection] && CONFIG_ITEM_DOCS[docSection][key];
   return (item && item.type === "pin" && item.pin_attributes) || null;
+}
+
+// A section's own bare "pin" field (probe's own "pin", not a
+// "<name>_pin"-suffixed one -- see isPinType/config_items.yaml) strips
+// down to the section's own role key (e.g. "probe") instead of the
+// literal, undescriptive "pin" -- otherwise identical to
+// stripPinSuffix(). The one forward-direction transform every generic
+// section's role-tree/import field-to-role mapping goes through.
+function whichForField(docSection, field) {
+  if (field === "pin") return ROLE_PREFIX_OVERRIDES[docSection] || docSection;
+  return stripPinSuffix(field);
+}
+// Reverse of whichForField() -- reconstructs the real config_items.yaml
+// field name from a role's "which" segment. Only ever reconstructs the
+// bare "pin" field in the one case whichForField() itself produces it
+// (which equals this section's own role key AND the section genuinely
+// has a literal "pin" field, e.g. probe); every other section's fields
+// all end in "_pin", so this is a plain "<which>_pin" reconstruction.
+function pinFieldForWhich(docSection, which) {
+  const ownKey = ROLE_PREFIX_OVERRIDES[docSection] || docSection;
+  if (which === ownKey && isPinType(docSection, "pin")) return "pin";
+  return `${which}_pin`;
 }
 
 /* Widget SHAPE (type/enum-options) derived mechanically from config_items.yaml's
@@ -4069,37 +4110,23 @@ function generateDraft() {
       const field = which === "neg" ? "limit_neg_pin" : which === "pos" ? "limit_pos_pin" : "limit_all_pin";
       annotate(axis[motorSlot], field, p.label);
       axis[motorSlot][field] = pin;
-    } else if (role.startsWith("probe:")) {
-      // which is "pin" for the plain "pin" field (stripPinSuffix("pin") is
-      // a no-op -- "pin" itself doesn't end in "_pin", being only 3
-      // characters) or "toolsetter" for toolsetter_pin -- same stripped-
-      // key/re-suffix convention every other section's dispatch uses
-      // (control/coolant/sdcard/etc.), so probe needs no special-casing in
-      // the generic role-tree scan.
-      const which = role.split(":")[1];
-      const field = which === "pin" ? "pin" : `${which}_pin`;
-      cfg.probe = cfg.probe || {};
-      annotate(cfg.probe, field, p.label);
-      cfg.probe[field] = pin;
-      // check_mode_start/hard_stop/probe_hard_limit -- Probe::group()'s
-      // three boolean settings, real config fields with no pin/resource of
-      // their own to bind -- stubbed via stubNonPinFields() the moment
-      // probe: actually exists (i.e. once pin or toolsetter_pin is bound).
-      stubNonPinFields(cfg.probe, "probe");
-    } else if (role.startsWith("control:")) {
-      // Covers all real Control:: pins, including the 4 macro buttons
-      // and fault/estop/homing_button, which are siblings of feed_hold
-      // etc. in the actual "control:" config block.
-      const which = role.split(":")[1];
-      annotate(cfg.control, `${which}_pin`, p.label);
-      cfg.control[`${which}_pin`] = pin;
-    } else if (role.startsWith("user_input:")) {
-      // Machine::UserInputs -- generic digital0-7/analog0-3 pins under
-      // "user_inputs:", unrelated to Limit/Probe/Control.
-      const which = role.split(":")[1];
-      cfg.user_inputs = cfg.user_inputs || {};
-      annotate(cfg.user_inputs, `${which}_pin`, p.label);
-      cfg.user_inputs[`${which}_pin`] = pin;
+    } else if (SIMPLE_PIN_SECTION_ROLES.includes(role.split(":")[0])) {
+      // probe/control/user_input/coolant/status_output all reduce to the
+      // exact same shape: write a pin into cfg[<section>][<field>], then
+      // stub any of that section's own non-pin tuning fields (probe's
+      // check_mode_start/hard_stop/probe_hard_limit, coolant's delay_ms,
+      // status_outputs' report_interval_ms) via stubNonPinFields() the
+      // moment the section first exists. field is normally "<which>_pin",
+      // except probe's own bare "pin" field (pinFieldForWhich() handles
+      // that one exception -- see its own comment) -- so no per-section
+      // special-casing is needed here at all.
+      const [prefix, which] = role.split(":");
+      const docSection = sectionForRolePrefix(prefix);
+      const field = pinFieldForWhich(docSection, which);
+      cfg[docSection] = cfg[docSection] || {};
+      annotate(cfg[docSection], field, p.label);
+      cfg[docSection][field] = pin;
+      stubNonPinFields(cfg[docSection], docSection);
     } else if (role.startsWith("spindle:")) {
       // Spindle type picks both the top-level config key and the exact
       // TBD tuning stub via SPINDLE_TYPES -- same dispatch-by-chosen-
@@ -4114,14 +4141,6 @@ function generateDraft() {
       annotate(cfg[cfgKey], `${which}_pin`, p.label);
       cfg[cfgKey][`${which}_pin`] = pin;
       spindleBound = true;
-    } else if (role.startsWith("coolant:")) {
-      cfg.coolant = cfg.coolant || {};
-      const which = role.split(":")[1];
-      annotate(cfg.coolant, `${which}_pin`, p.label);
-      cfg.coolant[`${which}_pin`] = pin;
-      // delay_ms -- coolant-on delay (never delays M9/off, per the
-      // schema's own field description) -- stubbed via stubNonPinFields().
-      stubNonPinFields(cfg.coolant, "coolant");
     } else if (role.startsWith("user_output:")) {
       // "which" is "digital<n>" or "analog<n>" (stripPinSuffix's own
       // convention, same as every other section's dispatch) -- no
@@ -4145,16 +4164,6 @@ function generateDraft() {
       if (CONFIG_ITEM_DOCS.user_outputs && CONFIG_ITEM_DOCS.user_outputs[hzField] && cfg.user_outputs[hzField] === undefined) {
         cfg.user_outputs[hzField] = TBD;
       }
-    } else if (role.startsWith("status_output:")) {
-      // Status_Outputs -- machine-state indicator pins (e.g. tower
-      // lights), independent of Limit/Probe/Control/Spindle/Coolant/user
-      // I/O. report_interval_ms is stubbed via stubNonPinFields() the
-      // moment the section first exists.
-      const which = role.split(":")[1];
-      cfg.status_outputs = cfg.status_outputs || {};
-      stubNonPinFields(cfg.status_outputs, "status_outputs");
-      annotate(cfg.status_outputs, `${which}_pin`, p.label);
-      cfg.status_outputs[`${which}_pin`] = pin;
     } else if (role.startsWith("axis:")) {
       // "axis:<rc_servo|solenoid>:<letter>:<motor0|motor1>" -- an ordinary
       // output-capable pin standing in for a dedicated motor socket. Same
@@ -5090,48 +5099,24 @@ function importConfig(doc, rawText) {
     }
   });
 
-  // --- probe / control / user_inputs ---
-  const probeDoc = doc.probe || {};
-  Object.keys(probeDoc).forEach(field => {
-    if (!isPinType("probe", field)) return;
-    const which = stripPinSuffix(field); // "pin" for the plain "pin" field (no-op strip), "toolsetter" for toolsetter_pin -- matches generateDraft()'s own probe: dispatch
-    claimPin(probeDoc[field], `probe:${which}`, `probe.${field}`);
+  // --- probe/control/user_inputs/coolant/status_outputs: same flat
+  // "claim every pin field via whichForField()'s which, then copy back
+  // whichever of the section's own non-pin tuning fields are set" shape
+  // generateDraft()'s matching SIMPLE_PIN_SECTION_ROLES branch produces
+  // on the way out (see stubNonPinFields()) -- e.g. probe's check_mode_
+  // start/hard_stop/probe_hard_limit, coolant's delay_ms, status_outputs'
+  // report_interval_ms are all picked up the same generic way, no field
+  // named individually.
+  SIMPLE_PIN_SECTION_ROLES.forEach(prefix => {
+    const docSection = sectionForRolePrefix(prefix);
+    const sectionDoc = doc[docSection] || {};
+    const pinFields = Object.keys(CONFIG_ITEM_DOCS[docSection] || {}).filter(k => isPinType(docSection, k));
+    pinFields.forEach(field => {
+      if (sectionDoc[field] == null) return;
+      claimPin(sectionDoc[field], `${prefix}:${whichForField(docSection, field)}`, `${docSection}.${field}`);
+    });
+    copyScalarParams(sectionDoc, docSection, new Set(pinFields));
   });
-  // check_mode_start/hard_stop/probe_hard_limit -- generic sweep (not
-  // named individually) so any future probeSection scalar is picked up
-  // the same way automatically. Only meaningful once at least one probe
-  // pin claim above actually created the bound resource that makes
-  // generateDraft() stub these paths in the first place (see its own
-  // comment) -- if neither pin claim succeeded, these values are simply
-  // never re-surfaced, same as re-loading any config for a board it
-  // doesn't match.
-  copyScalarParams(probeDoc, "probe",
-    new Set(Object.keys(CONFIG_ITEM_DOCS.probe || {}).filter(k => isPinType("probe", k))));
-
-  const controlDoc = doc.control || {};
-  Object.keys(controlDoc).forEach(field => {
-    if (!isPinType("control", field)) return;
-    const which = field.slice(0, -4);
-    claimPin(controlDoc[field], `control:${which}`, `control.${field}`);
-  });
-
-  const userInputsDoc = doc.user_inputs || {};
-  Object.keys(userInputsDoc).forEach(field => {
-    if (!isPinType("user_inputs", field)) return;
-    const which = field.slice(0, -4);
-    claimPin(userInputsDoc[field], `user_input:${which}`, `user_inputs.${field}`);
-  });
-
-  // --- coolant ---
-  const coolantDoc = doc.coolant || {};
-  const coolantPinFields = Object.keys(CONFIG_ITEM_DOCS.coolant || {}).filter(k => isPinType("coolant", k));
-  coolantPinFields.forEach(field => {
-    if (coolantDoc[field] == null) return;
-    const which = field.slice(0, -4);
-    claimPin(coolantDoc[field], `coolant:${which}`, `coolant.${field}`);
-  });
-  // delay_ms -- same generic-sweep reasoning as probe's booleans above.
-  copyScalarParams(coolantDoc, "coolant", new Set(coolantPinFields));
 
   // --- sdcard: cs_pin is always a fixed board fact, regenerated from
   // board.fixed_peripherals regardless of what's in the loaded file, so
@@ -5182,16 +5167,6 @@ function importConfig(doc, rawText) {
       }
     }
   });
-
-  const statusOutputsDoc = doc.status_outputs || {};
-  Object.keys(statusOutputsDoc).forEach(field => {
-    const m = field.match(/^(idle|run|hold|alarm|door)_pin$/);
-    if (!m) return;
-    claimPin(statusOutputsDoc[field], `status_output:${m[1]}`, `status_outputs.${field}`);
-  });
-  if (statusOutputsDoc.report_interval_ms != null && statusOutputsDoc.report_interval_ms !== TBD) {
-    paramValues["status_outputs.report_interval_ms"] = statusOutputsDoc.report_interval_ms;
-  }
 
   // --- spindles: any top-level key matching a known SPINDLE_TYPES cfgKey ---
   Object.keys(SPINDLE_TYPES).forEach(typeId => {
