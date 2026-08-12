@@ -570,17 +570,9 @@ async function fetchYamlTextOptional(path) {
  * they're UI vocabulary, not config-file structure): AXES, MOTOR_LABELS,
  * LIMIT_DIRECTIONS (axis/motor-as-a-selectable-thing is a wizard UI
  * grouping choice, not a schema concept -- every other field/pin label
- * (spindle types, control/probe children, spindle pins) is derived
- * mechanically from the schema's own key names via titleLabel()/cfgKey, no
- * separate label map needed), and STATUS_OUTPUT_PINS
- * (fluidnc-config-schema.json has NO status_outputs
- * section at all, despite it being a real registered config key --
- * confirmed in the connected FluidNC source, Status_outputs.cpp's own
- * ConfigurableModuleFactory::InstanceBuilder<Status_Outputs>
- * registration("status_outputs") -- this looks like a genuine gap in the
- * schema itself; loadRoleData() below checks for it every load and
- * console.warns if it's ever added, so this comment doesn't silently go
- * stale).
+ * (spindle types, control/probe/coolant/status_output children, spindle
+ * pins) is derived mechanically from the schema's own key names via
+ * titleLabel()/cfgKey, no separate label map needed).
  *
  * What's still hardcoded LOGIC, not data at all: the tree-CONSTRUCTION
  * shape below (e.g. "build one Limit branch per axis, each with a
@@ -612,7 +604,6 @@ const LIMIT_DIRECTIONS = { neg: "Negative", pos: "Positive", all: "(shared/all)"
 // lets that spec take over, so tool_num now gets the same editable widget
 // (pre-fillable with 0 via the "def" button, but genuinely changeable) every
 // other tuning field already has.
-const STATUS_OUTPUT_PINS = ["idle", "run", "hold", "alarm", "door"];
 
 function titleLabel(fieldKey) {
   return fieldKey.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
@@ -663,24 +654,32 @@ function buildLimitBranch() {
  * this runs live, but its header comment has the fuller rationale for each
  * choice below if it's ever useful to consult in FluidNC-config-wizard's
  * git history). */
-function buildControlTree(schema) {
-  const props = schema.$defs.controlSection.properties;
+// Generic pin_attributes-filtered {key: {label}} children for a schema
+// section's own properties -- the shared core buildControlTree/
+// buildProbeTree/buildOutputRoleBranches' coolant+status_output branches
+// all reduce to: sweep a section's own properties for fields whose
+// config_items.yaml @pin_attributes matches (input on this tree's side,
+// output on buildOutputRoleBranches' side), keyed either by the field's
+// own full name (stripKeySuffix false, e.g. probe's "toolsetter_pin") or
+// with the "_pin" suffix stripped (stripKeySuffix true, e.g. control's
+// "safety_door") to match how generateDraft()'s own role dispatch for
+// that section expects its keys shaped.
+function sectionRoleChildren(schemaProps, docSection, attr, stripKeySuffix) {
   const children = {};
-  Object.keys(props).forEach(fullKey => {
-    if (!isPinType("control", fullKey)) return;
-    const key = stripPinSuffix(fullKey);
+  Object.keys(schemaProps).forEach(fullKey => {
+    if (pinAttributesOf(docSection, fullKey) !== attr) return;
+    const key = stripKeySuffix ? stripPinSuffix(fullKey) : fullKey;
     children[key] = { label: titleLabel(key) };
   });
-  return { label: "Control", children };
+  return children;
+}
+
+function buildControlTree(schema) {
+  return { label: "Control", children: sectionRoleChildren(schema.$defs.controlSection.properties, "control", "input", true) };
 }
 
 function buildProbeTree(schema) {
-  const props = schema.$defs.probeSection.properties;
-  const children = {};
-  Object.keys(props).forEach(fullKey => {
-    if (isPinType("probe", fullKey)) children[fullKey] = { label: titleLabel(fullKey) };
-  });
-  return { label: "Probe", children };
+  return { label: "Probe", children: sectionRoleChildren(schema.$defs.probeSection.properties, "probe", "input", false) };
 }
 
 function countSlots(props, prefix) {
@@ -779,30 +778,12 @@ function schemaStub(defName, allowSet) {
 }
 let SCHEMA;
 
-function checkSchemaForKnownGaps(schema) {
-  if (!("status_outputs" in (schema.properties || {}))) {
-    console.warn(
-      "fluidnc-config-schema.json has no status_outputs section (STATUS_OUTPUT_PINS stays " +
-      "hand-authored against the FluidNC source directly) -- if this ever appears, the schema " +
-      "gap noted in this file's comments has been fixed and STATUS_OUTPUT_PINS could move to " +
-      "schema-derived too."
-    );
-  }
-  // (userOutputsSection's analogN_hz fields used to have no wizard UI
-  // counterpart -- fixed by generateDraft()'s analog_output dispatch
-  // stubbing it as an open TBD; shape/default now come from
-  // config_items.yaml's own analog0_hz..analog3_hz entries via
-  // resolveFieldSpec(), so there's nothing left to warn about here.)
-}
-
 let INPUT_ROLE_TREE, SPINDLE_TYPES, DIGITAL_OUTPUT_COUNT, ANALOG_OUTPUT_COUNT, EITHER_ROLE_TREE;
 
 async function loadRoleData() {
   const schemaText = await fetchYamlText("schema/fluidnc-config-schema.json");
   const schema = JSON.parse(schemaText);
   SCHEMA = schema;
-
-  checkSchemaForKnownGaps(schema);
 
   // Loaded here, before the tree-building calls below, specifically so
   // isPinType() (config_items.yaml's own @config type: pin -- the
@@ -1027,7 +1008,7 @@ function buildOutputRoleBranches() {
   });
   return {
     spindle: { label: "Spindle", children: spindleChildren },
-    coolant: { label: "Coolant", children: { flood: { label: "Flood" }, mist: { label: "Mist" } } },
+    coolant: { label: "Coolant", children: sectionRoleChildren(SCHEMA.$defs.coolantSection.properties, "coolant", "output", true) },
     digital_output: {
       label: "Digital Output",
       children: Object.fromEntries(Array.from({ length: DIGITAL_OUTPUT_COUNT }, (_, i) => [String(i), { label: `Output ${i}` }])),
@@ -1038,8 +1019,7 @@ function buildOutputRoleBranches() {
     },
     status_output: {
       label: "Status Output",
-      // Infer from children with type: pin
-      children: Object.fromEntries(STATUS_OUTPUT_PINS.map(v => [v, { label: v }])),
+      children: sectionRoleChildren(SCHEMA.$defs.statusOutputsSection.properties, "status_outputs", "output", true),
     },
     // Reuses MOTOR_ROLE_TREE by reference for both branches (it's read-only
     // here, never mutated by the tree walker) -- keeps this in lockstep with
@@ -1311,6 +1291,18 @@ function isPinType(docSection, key) {
   return !!item && item.type === "pin";
 }
 
+// A pin-typed field's own @pin_attributes value (see FluidNC's ItemDocs.md)
+// -- input/output/io/pwm/isr/adc/dac for an ordinary GPIO-style field
+// matched against a board's generic-pin role selector, or spi/i2s/uart/i2c
+// for a field that IS one of that bus's own native signal lines instead.
+// null if the field isn't pin-typed, or (a handful of older releases'
+// config_items.yaml) doesn't carry this tag yet -- callers should treat
+// that the same as "doesn't match," not throw.
+function pinAttributesOf(docSection, key) {
+  const item = CONFIG_ITEM_DOCS[docSection] && CONFIG_ITEM_DOCS[docSection][key];
+  return (item && item.type === "pin" && item.pin_attributes) || null;
+}
+
 /* Widget SHAPE (type/enum-options) derived mechanically from config_items.yaml's
  * own type/values -- the source-of-truth counterpart to specForKey()'s
  * hand-maintained per-NAME guess, viable now that Phase A (gen_config_docs.py)
@@ -1411,7 +1403,11 @@ function cascadeOptionsFor(category) {
     return Array.from({ length: ANALOG_OUTPUT_COUNT }, (_, i) => [String(i), `Output ${i}`]);
   }
   if (category === "status_output") {
-    return STATUS_OUTPUT_PINS.map(v => [v, v]);
+    // Same children EITHER_ROLE_TREE.status_output already computed via
+    // sectionRoleChildren() -- reused here rather than re-derived, so
+    // there's exactly one place that decides what counts as a status
+    // output pin.
+    return Object.entries(EITHER_ROLE_TREE.status_output.children).map(([k, v]) => [k, v.label]);
   }
   return null;
 }
