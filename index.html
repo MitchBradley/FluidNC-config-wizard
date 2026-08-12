@@ -694,6 +694,21 @@ function buildUserInputTree(schema) {
   return { label: "User Input", children: sectionRoleChildren(schema.$defs.userInputsSection.properties, "user_inputs", "input", true) };
 }
 
+// Which pin_attributes values make a field reachable from an output-capable
+// vs an input-capable Generic Pin. Almost every spindle pin is output/pwm,
+// but PlasmaSpindle's arc_ok_pin is genuinely input (it reads the plasma
+// cutter's arc-transferred signal) -- lumping every spindle pin into one
+// list (as this used to) meant arc_ok_pin was only ever reachable from an
+// output-capable pin (the wrong direction for what it does) and never from
+// a genuinely input-only one. "io" would need both buckets if it ever
+// appeared here; isr/adc/dac don't occur on any current spindle field,
+// listed for forward-compat rather than guessed at. A pin field with no
+// recognized pin_attributes value defaults to the output bucket, matching
+// this function's pre-pin_attributes behavior of treating every pin field
+// as output-assignable, rather than silently dropping it from both.
+const SPINDLE_PIN_INPUT_ATTRS = new Set(["input", "isr", "adc", "io"]);
+const SPINDLE_PIN_OUTPUT_ATTRS = new Set(["output", "pwm", "dac", "io"]);
+
 function buildSpindleTypes(schema) {
   const defs = schema.$defs;
   const result = {};
@@ -703,14 +718,18 @@ function buildSpindleTypes(schema) {
     const typeId = cfgKey.toLowerCase();
     const props = defs[defName].properties || {};
     const pins = [];
+    const inputPins = [];
     const stubFields = [];
     Object.keys(props).forEach(fullKey => {
-      if (isPinType(cfgKey, fullKey)) {
-        const key = stripPinSuffix(fullKey);
-        pins.push([key, titleLabel(key)]);
-      } else {
+      if (!isPinType(cfgKey, fullKey)) {
         stubFields.push([fullKey, TBD]);
+        return;
       }
+      const key = stripPinSuffix(fullKey);
+      const entry = [key, titleLabel(key)];
+      const attr = pinAttributesOf(cfgKey, fullKey);
+      if (!attr || SPINDLE_PIN_OUTPUT_ATTRS.has(attr)) pins.push(entry);
+      if (attr && SPINDLE_PIN_INPUT_ATTRS.has(attr)) inputPins.push(entry);
     });
     result[typeId] = {
       // The real config.yaml type name (e.g. "10V", "HBridge") -- not worth
@@ -718,7 +737,8 @@ function buildSpindleTypes(schema) {
       // ("0-10V", "H-Bridge") that don't help pick the right one.
       label: cfgKey,
       cfgKey,
-      pins,
+      pins, // output/pwm-capable -- consumed by strict-output pins (cascadeOptionsFor) and, unioned with inputPins, by "either" pins (see buildOutputRoleBranches()).
+      inputPins, // input-capable -- consumed by strict-input pins (see INPUT_ROLE_TREE.spindle below).
       stub: () => Object.fromEntries(stubFields),
     };
   });
@@ -787,6 +807,14 @@ async function loadRoleData() {
     user_input: buildUserInputTree(schema),
   };
   SPINDLE_TYPES = buildSpindleTypes(schema);
+  // Strict-input pins only ever see a spindle type's input-capable pins
+  // (currently just PlasmaSpindle's arc_ok_pin) -- added only once
+  // SPINDLE_TYPES exists, and only if at least one type actually has one,
+  // so this doesn't add an always-empty "Spindle" category otherwise.
+  const inputSpindleChildren = spindleRoleChildren(def => def.inputPins);
+  if (Object.keys(inputSpindleChildren).length) {
+    INPUT_ROLE_TREE.spindle = { label: "Spindle", children: inputSpindleChildren };
+  }
   DIGITAL_OUTPUT_COUNT = countSlots(schema.$defs.userOutputsSection.properties, "digital");
   ANALOG_OUTPUT_COUNT = countSlots(schema.$defs.userOutputsSection.properties, "analog");
   // "either" generic_pins (a bare, uncommitted GPIO usable as EITHER a
@@ -978,17 +1006,31 @@ function allModuleSocketConnectors() {
  * "digital_output:<n>", "analog_output:<n>", "status_output:<which>" --
  * so generateDraft()'s role-dispatch switch needs no changes at all; both
  * UIs are just two different pickers writing into the same string space. */
-function buildOutputRoleBranches() {
-  const spindleChildren = {};
+// {typeId: {label, children}} for a spindle-role tree, from whichever of
+// each type's own pin lists pickPins selects out of SPINDLE_TYPES (see
+// buildSpindleTypes()'s pins/inputPins split) -- shared by the two tree
+// contexts that need a spindle branch: strict-input pins (inputPins alone)
+// and "either" pins (pins+inputPins together, below -- an either-capable
+// physical pin can supply BOTH directions, so it should see the full set,
+// unlike strict-output pins, which get output-only pins straight from
+// SPINDLE_TYPES[type].pins via cascadeOptionsFor(), no tree involved).
+// Types with no matching pins (e.g. arc_ok_pin-less types when only
+// inputPins is selected) are skipped entirely rather than left as an empty
+// branch.
+function spindleRoleChildren(pickPins) {
+  const children = {};
   Object.keys(SPINDLE_TYPES).forEach(t => {
     const def = SPINDLE_TYPES[t];
-    spindleChildren[t] = {
-      label: def.label,
-      children: Object.fromEntries(def.pins.map(([which, label]) => [which, { label }])),
-    };
+    const list = pickPins(def);
+    if (!list.length) return;
+    children[t] = { label: def.label, children: Object.fromEntries(list.map(([which, label]) => [which, { label }])) };
   });
+  return children;
+}
+
+function buildOutputRoleBranches() {
   return {
-    spindle: { label: "Spindle", children: spindleChildren },
+    spindle: { label: "Spindle", children: spindleRoleChildren(def => def.pins.concat(def.inputPins)) },
     coolant: { label: "Coolant", children: sectionRoleChildren(SCHEMA.$defs.coolantSection.properties, "coolant", "output", true) },
     digital_output: {
       label: "Digital Output",
@@ -4955,7 +4997,15 @@ function importConfig(doc, rawText) {
     const spindleDoc = doc[def.cfgKey];
     if (!spindleDoc || typeof spindleDoc !== "object") return;
     const pinFields = new Set();
-    def.pins.forEach(([which]) => {
+    // Union of output/pwm-capable (pins) and input-capable (inputPins) --
+    // import doesn't care which direction a Generic Pin the value could
+    // have come from, only that it needs to be claimed as a pin at all
+    // (see buildSpindleTypes()'s pins/inputPins split -- PlasmaSpindle's
+    // arc_ok_pin lives only in inputPins, so pins alone would both miss
+    // claiming it here AND let it fall through to copyScalarParams below,
+    // which would then wrongly treat its pin-string value as a plain
+    // scalar param since it's not in pinFields either).
+    def.pins.concat(def.inputPins).forEach(([which]) => {
       const field = `${which}_pin`;
       pinFields.add(field);
       if (spindleDoc[field] != null) claimPin(spindleDoc[field], `spindle:${typeId}:${which}`, `${def.cfgKey}.${field}`);
