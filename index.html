@@ -104,8 +104,17 @@
     font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
     color: var(--muted-strong); margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
   }
+  /* Label column capped (minmax(0, ...)), NOT 1fr -- controls column gets
+     the 1fr instead, so a wide left pane hands its extra room to the
+     selects (where long option text like "Sd Card — Card Detect" actually
+     needs it) rather than to the label (a short name/sub pair that never
+     needed more than ~200px). Was backwards before: label was 1fr and
+     controls a hard-fixed 200px/260px, so widening the pane just stretched
+     the label while .cascade-controls/.output-controls stayed pinned
+     narrow, truncating their <select> text no matter how much room was
+     actually available. */
   .row {
-    display: grid; grid-template-columns: 1fr 200px; gap: 10px; align-items: center;
+    display: grid; grid-template-columns: minmax(0, 200px) minmax(140px, 1fr); gap: 10px; align-items: center;
     padding: 6px 0;
   }
   .row .lbl { display: flex; flex-direction: column; }
@@ -113,7 +122,7 @@
   .row .lbl .sub { color: var(--muted-strong); font-size: 11.5px; margin-top: 1px; }
   .row.gpio-conflict select { opacity: 0.5; cursor: not-allowed; }
   .row select { width: 100%; }
-  .row.output-row, .row.cascade-row { grid-template-columns: 1fr 260px; }
+  .row.output-row, .row.cascade-row { grid-template-columns: minmax(0, 200px) minmax(240px, 1fr); }
   .output-controls, .cascade-controls { display: flex; gap: 4px; }
   .output-controls select, .cascade-controls select { flex: 1; min-width: 0; }
   /* Each row's selector(s) live inside a small positioned wrapper (.ctrl-wrap
@@ -3065,14 +3074,16 @@ function renderHotspotPane() {
     return;
   }
   // 420px, not the narrower 320px this used to be -- .row.output-row/
-  // .cascade-row reserve a fixed 260px + 10px gap for their controls, and
-  // .col's own padding (18px 24px) eats another 48px, so at 320px total
-  // there was only ~2px left over for the label column itself. That was
-  // narrow enough to force-wrap any label containing a space (e.g. btt
-  // rodent's "LED R"/"LED G"/"LED B") while single-word labels of similar
-  // length just silently overflowed instead -- not obviously "too narrow"
-  // unless a resource happened to have a space in its name. 420px leaves
-  // a comfortable ~100px for the label column on output/cascade rows.
+  // .cascade-row reserve at least 240px + 10px gap for their controls (see
+  // .row's own comment -- a floor, not a fixed width, but still a floor
+  // this narrow fixed-width hotspot column has to respect), and .col's own
+  // padding (18px 24px) eats another 48px, so at 320px total there was
+  // only ~2px left over for the label column itself. That was narrow
+  // enough to force-wrap any label containing a space (e.g. btt rodent's
+  // "LED R"/"LED G"/"LED B") while single-word labels of similar length
+  // just silently overflowed instead -- not obviously "too narrow" unless
+  // a resource happened to have a space in its name. 420px leaves a
+  // comfortable ~120px for the label column on output/cascade rows.
   mainEl.style.gridTemplateColumns = "420px 1fr max-content";
   col.style.display = "";
   col.innerHTML = `<div class="note note-instruct">Click a highlighted region to select its row on the left.</div>
