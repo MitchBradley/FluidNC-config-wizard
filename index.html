@@ -720,13 +720,17 @@ function sectionForRolePrefix(prefix) {
 // Role prefixes whose generateDraft()/importConfig() handling is nothing
 // more than "write a pin into cfg[<section>][<field>], stubbing any of
 // the section's own non-pin tuning fields via stubNonPinFields()" -- see
-// the single shared dispatch/import branch each uses. sdcard/ethernet/
-// user_output stay as their own separate branches -- each has one further
-// real behavior beyond this (sdcard's cs_pin is board-fixed and never
-// reaches this dispatch at all; ethernet's phy_type/phy_addr need seeding
-// when no board-fixed block exists; user_output's analogN_pin has a
-// per-channel _hz companion).
-const SIMPLE_PIN_SECTION_ROLES = ["control", "probe", "user_input", "coolant", "status_output"];
+// the single shared dispatch/import branch each uses. sdcard's cs_pin
+// being board-fixed (and ethernet's phy_type/phy_addr sometimes being so,
+// for a future board) doesn't need special-casing here -- that's a fact
+// about board data (computeBoardFixedRoles()) and the separate
+// fp.sdcard/fp.ethernet pre-fill blocks in generateDraft(), not about
+// this dispatch shape; stubNonPinFields() reproduces ethernet's old
+// hand-seeded {phy_type,phy_addr,frequency_hz: TBD} exactly, since
+// those are precisely its non-pin fields. Only user_output stays as its
+// own separate branch -- analogN_pin's per-CHANNEL _hz companion isn't a
+// section-wide field stubNonPinFields() can express.
+const SIMPLE_PIN_SECTION_ROLES = ["control", "probe", "user_input", "coolant", "status_output", "sdcard", "ethernet"];
 
 function isGenericRoleSection(sectionName) {
   if (GENERIC_ROLE_SECTIONS_EXCLUDED.has(sectionName)) return false;
@@ -4111,15 +4115,23 @@ function generateDraft() {
       annotate(axis[motorSlot], field, p.label);
       axis[motorSlot][field] = pin;
     } else if (SIMPLE_PIN_SECTION_ROLES.includes(role.split(":")[0])) {
-      // probe/control/user_input/coolant/status_output all reduce to the
-      // exact same shape: write a pin into cfg[<section>][<field>], then
-      // stub any of that section's own non-pin tuning fields (probe's
-      // check_mode_start/hard_stop/probe_hard_limit, coolant's delay_ms,
-      // status_outputs' report_interval_ms) via stubNonPinFields() the
-      // moment the section first exists. field is normally "<which>_pin",
-      // except probe's own bare "pin" field (pinFieldForWhich() handles
-      // that one exception -- see its own comment) -- so no per-section
-      // special-casing is needed here at all.
+      // probe/control/user_input/coolant/status_output/sdcard/ethernet
+      // all reduce to the exact same shape: write a pin into
+      // cfg[<section>][<field>], then stub any of that section's own
+      // non-pin tuning fields (probe's check_mode_start/hard_stop/
+      // probe_hard_limit, coolant's delay_ms, status_outputs'
+      // report_interval_ms, ethernet's phy_type/phy_addr/frequency_hz --
+      // reproducing its old hand-seeded stub exactly) via
+      // stubNonPinFields() the moment the section first exists. field is
+      // normally "<which>_pin", except probe's own bare "pin" field
+      // (pinFieldForWhich() handles that one exception -- see its own
+      // comment) -- so no per-section special-casing is needed here at
+      // all. sdcard's cs_pin/ethernet's phy_type/phy_addr sometimes being
+      // board-fixed facts is handled entirely upstream, by
+      // computeBoardFixedRoles() (blacklists an already-fixed role from
+      // ever reaching here) and the fp.sdcard/fp.ethernet pre-fill blocks
+      // above (write the known fact directly) -- this dispatch branch
+      // itself needs no awareness of that distinction.
       const [prefix, which] = role.split(":");
       const docSection = sectionForRolePrefix(prefix);
       const field = pinFieldForWhich(docSection, which);
@@ -4180,35 +4192,6 @@ function generateDraft() {
       axis[slot] = axis[slot] || {};
       axis[slot][block.key] = block.body;
       axis[slot].hard_limits = TBD;
-    } else if (role.startsWith("sdcard:")) {
-      // Only ever reachable for card_detect -- cs_pin is always written
-      // unconditionally above from board.fixed_peripherals.sdcard, and
-      // computeBoardFixedRoles() permanently blacklists it from role
-      // candidacy otherwise (see that function's own comment). which is
-      // "card_detect" (stripPinSuffix's own convention, same as every
-      // other section's dispatch).
-      const which = role.split(":")[1];
-      cfg.sdcard = cfg.sdcard || {};
-      annotate(cfg.sdcard, `${which}_pin`, p.label);
-      cfg.sdcard[`${which}_pin`] = pin;
-    } else if (role.startsWith("ethernet:")) {
-      // Unlike sdcard:cs, "ethernet:cs" is NOT permanently blacklisted --
-      // no current board has a fixed_peripherals.ethernet block at all,
-      // so computeBoardFixedRoles() never fixes cs_pin down, and all
-      // three of cs/int/rst stay reachable here. That lets a board with
-      // no onboard Ethernet PHY still record an externally-wired SPI
-      // Ethernet module (e.g. a W5500 breakout) via ordinary Generic
-      // Pins, the same way other bolt-on hardware already works in this
-      // file. cfg.ethernet may not exist yet in that case (the fp.ethernet
-      // block above never ran), so phy_type/phy_addr/frequency_hz -- not
-      // inferable from board data here -- are seeded TBD the first time
-      // any ethernet: role fires; a future board that DOES fix cs_pin
-      // onboard already has cfg.ethernet (and those fields) set by the
-      // fp.ethernet block above, so only int/rst ever reach this path for it.
-      const which = role.split(":")[1];
-      if (!cfg.ethernet) cfg.ethernet = { phy_type: TBD, phy_addr: TBD, frequency_hz: TBD };
-      annotate(cfg.ethernet, `${which}_pin`, p.label);
-      cfg.ethernet[`${which}_pin`] = pin;
     }
   });
   if (Object.keys(cfg.control).length === 0) delete cfg.control;
@@ -5099,14 +5082,20 @@ function importConfig(doc, rawText) {
     }
   });
 
-  // --- probe/control/user_inputs/coolant/status_outputs: same flat
-  // "claim every pin field via whichForField()'s which, then copy back
-  // whichever of the section's own non-pin tuning fields are set" shape
-  // generateDraft()'s matching SIMPLE_PIN_SECTION_ROLES branch produces
-  // on the way out (see stubNonPinFields()) -- e.g. probe's check_mode_
-  // start/hard_stop/probe_hard_limit, coolant's delay_ms, status_outputs'
-  // report_interval_ms are all picked up the same generic way, no field
-  // named individually.
+  // --- probe/control/user_inputs/coolant/status_outputs/sdcard/ethernet:
+  // same flat "claim every pin field via whichForField()'s which, then
+  // copy back whichever of the section's own non-pin tuning fields are
+  // set" shape generateDraft()'s matching SIMPLE_PIN_SECTION_ROLES branch
+  // produces on the way out (see stubNonPinFields()) -- e.g. probe's
+  // check_mode_start/hard_stop/probe_hard_limit, coolant's delay_ms,
+  // status_outputs' report_interval_ms, ethernet's phy_type/phy_addr/
+  // frequency_hz are all picked up the same generic way, no field named
+  // individually. sdcard's cs_pin/ethernet's phy_type/phy_addr sometimes
+  // being board-fixed facts needs no special-casing here either --
+  // claimPin() harmlessly no-ops when a value doesn't match any known
+  // board resource (e.g. it equals THIS board's own already-fixed value
+  // instead of a Generic Pin's), and copyScalarParams() only ever
+  // overwrites a field the loaded file actually set.
   SIMPLE_PIN_SECTION_ROLES.forEach(prefix => {
     const docSection = sectionForRolePrefix(prefix);
     const sectionDoc = doc[docSection] || {};
@@ -5117,39 +5106,6 @@ function importConfig(doc, rawText) {
     });
     copyScalarParams(sectionDoc, docSection, new Set(pinFields));
   });
-
-  // --- sdcard: cs_pin is always a fixed board fact, regenerated from
-  // board.fixed_peripherals regardless of what's in the loaded file, so
-  // there's no pin to "claim" for it -- see isFixedProtocolPath(). But
-  // card_detect_pin genuinely can be a user-assigned Generic Pin on a
-  // board that leaves it unwired (its own value is "NO_PIN" there --
-  // see computeBoardFixedRoles()), so it needs the same claimPin()
-  // treatment probe/coolant/control's pins get. claimPin() harmlessly
-  // no-ops if this value doesn't match any known board resource (e.g. it
-  // equals THIS board's own already-fixed card_detect_pin instead of a
-  // Generic Pin's value).
-  if (doc.sdcard && typeof doc.sdcard === "object") {
-    if (doc.sdcard.card_detect_pin != null) claimPin(doc.sdcard.card_detect_pin, "sdcard:card_detect", "sdcard.card_detect_pin");
-    copyScalarParams(doc.sdcard, "sdcard",
-      new Set(Object.keys(CONFIG_ITEM_DOCS.sdcard || {}).filter(k => isPinType("sdcard", k))));
-  }
-
-  // --- ethernet: unlike sdcard, no board currently fixes cs_pin onboard
-  // (see fixed_peripherals.ethernet's absence from every board.yaml
-  // today), so cs_pin isn't yet a guaranteed board fact the generateDraft()
-  // side always regenerates -- all three pin fields go through claimPin()
-  // the same way, which harmlessly no-ops for a future board that DOES
-  // fix cs_pin onboard (its re-imported value just matches that board's
-  // own fixed pin, nothing to claim).
-  if (doc.ethernet && typeof doc.ethernet === "object") {
-    const ethernetPinFields = Object.keys(CONFIG_ITEM_DOCS.ethernet || {}).filter(k => isPinType("ethernet", k));
-    ethernetPinFields.forEach(field => {
-      if (doc.ethernet[field] == null) return;
-      const which = field.slice(0, -4);
-      claimPin(doc.ethernet[field], `ethernet:${which}`, `ethernet.${field}`);
-    });
-    copyScalarParams(doc.ethernet, "ethernet", new Set(ethernetPinFields));
-  }
 
   // --- user_outputs (digital/analog outputs + status_outputs) ---
   const userOutputsDoc = doc.user_outputs || {};
