@@ -771,7 +771,21 @@ function buildGenericRoleBranches(attrs) {
 // GPIOs, say) writes their own board file describing it as a real fixed
 // fact instead. See computeBoardFixedRoles(), the one place this
 // distinction matters.
-const BOARD_FIXED_SECTIONS = new Set(["sdcard", "ethernet", "i2so"]);
+//
+// Populated at boot from board.schema.json's own fixed_peripherals def
+// (see loadRoleData()) -- this is a hard, mechanical, zero-judgment
+// structural fact (is this section's name literally a property of
+// fixed_peripherals in the ONE schema that defines board.yaml's own
+// shape), not something to separately guess or hand-list here. i2c is
+// correctly absent because board.schema.json itself keeps i2c_connectors
+// as its own top-level key, never nested under fixed_peripherals --
+// confirming this via the schema directly, rather than reasoning about
+// "which sections are buses," is what makes this derivation exact rather
+// than a judgment call. Empty (nothing blacklisted, same as before this
+// whole feature existed) until loadRoleData()'s fetch resolves; stays
+// empty if that fetch ever fails, same graceful-degradation contract
+// CONFIG_ITEM_DOCS/isPinType() already use elsewhere in this file.
+let BOARD_FIXED_SECTIONS = new Set();
 
 // Per-board Set of Generic-Pin ROLE PATHS (e.g. "sdcard:cs",
 // "sdcard:card_detect") that are NOT available for a user to assign via
@@ -904,6 +918,33 @@ async function loadRoleData() {
   const schemaText = await fetchYamlText("schema/fluidnc-config-schema.json");
   const schema = JSON.parse(schemaText);
   SCHEMA = schema;
+
+  // BOARD_FIXED_SECTIONS -- see its own declaration comment for why this
+  // is a hard structural fact (fixed_peripherals' own property names)
+  // rather than a judgment call. board.schema.json is otherwise never
+  // fetched at runtime (every other board.yaml-shape assumption in this
+  // file is ordinary hardcoded property access, see applyBoardDoc()) --
+  // this is the one place a specific structural fact about board.yaml's
+  // own shape needs to be read live rather than hand-copied, to keep it
+  // in lockstep with board.schema.json instead of silently drifting the
+  // next time a fixed_peripherals property is added or removed there.
+  // fetchYamlTextOptional() (not fetchYamlText()) so a fetch failure
+  // degrades gracefully -- BOARD_FIXED_SECTIONS just stays empty (no
+  // bolt-on guard applied, the same non-crashing behavior this file
+  // already had before that guard existed), same contract CONFIG_ITEM_
+  // DOCS/isPinType() use elsewhere in this file.
+  const boardSchemaText = await fetchYamlTextOptional("schema/board.schema.json");
+  if (boardSchemaText) {
+    try {
+      const boardSchema = JSON.parse(boardSchemaText);
+      const fpRef = boardSchema.properties.fixed_peripherals.$ref;
+      const fpDefName = fpRef.split("/").pop();
+      const fpProps = boardSchema.$defs[fpDefName].properties || {};
+      BOARD_FIXED_SECTIONS = new Set(Object.keys(fpProps));
+    } catch (e) {
+      console.warn("Failed to parse schema/board.schema.json -- BOARD_FIXED_SECTIONS left empty:", e);
+    }
+  }
 
   // Loaded here, before the tree-building calls below, specifically so
   // isPinType() (config_items.yaml's own @config type: pin -- the
