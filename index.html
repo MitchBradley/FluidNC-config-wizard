@@ -1418,6 +1418,27 @@ function isPinType(docSection, key) {
   return !!item && item.type === "pin";
 }
 
+// Stubs every one of docSection's own non-pin fields (its real "tuning"
+// settings -- booleans, intervals, delays, with no pin/resource of their
+// own to bind) as an open TBD in obj, the moment the section becomes
+// relevant (i.e. right after a first pin gets bound to it) -- matches the
+// schema's own "an all-default block is equivalent to omitting the
+// section" description, and only sets fields not already present, so
+// binding a second pin to the same section never resets a value the user
+// already typed in. configDocSpecFor() picks up each one's real @default/
+// @tuning from config_items.yaml once stubbed here, same as any other
+// field. Only safe for a FLAT section whose non-pin fields are single,
+// section-wide settings, not per-index companions of a specific pin (e.g.
+// user_outputs.analogN_hz, which must stay tied to whichever channel N
+// actually got a pin, so it keeps its own bespoke stub instead).
+function stubNonPinFields(obj, docSection) {
+  const items = CONFIG_ITEM_DOCS[docSection] || {};
+  Object.keys(items).forEach(k => {
+    if (isPinType(docSection, k)) return;
+    if (obj[k] === undefined) obj[k] = TBD;
+  });
+}
+
 // A pin-typed field's own @pin_attributes value (see FluidNC's ItemDocs.md)
 // -- input/output/io/pwm/isr/adc/dac for an ordinary GPIO-style field
 // matched against a board's generic-pin role selector, or spi/i2s/uart/i2c
@@ -4062,19 +4083,9 @@ function generateDraft() {
       cfg.probe[field] = pin;
       // check_mode_start/hard_stop/probe_hard_limit -- Probe::group()'s
       // three boolean settings, real config fields with no pin/resource of
-      // their own to bind (same "stub the moment the section becomes
-      // relevant" pattern as analogN_hz below). Only stubbed once probe:
-      // actually exists (i.e. once pin or toolsetter_pin is bound) --
-      // matches the schema's own description: "an all-default block is
-      // equivalent to omitting the section" -- and only if not already
-      // set, so binding BOTH pin and toolsetter_pin doesn't reset a value
-      // the user already typed in. All 3 are @tuning typical in source, so
-      // configDocSpecFor() pre-fills them from config_items.yaml once
-      // stubbed here -- still an ordinary editable field, just answered
-      // from the start rather than sitting open/amber.
-      if (cfg.probe.check_mode_start === undefined) cfg.probe.check_mode_start = TBD;
-      if (cfg.probe.hard_stop === undefined) cfg.probe.hard_stop = TBD;
-      if (cfg.probe.probe_hard_limit === undefined) cfg.probe.probe_hard_limit = TBD;
+      // their own to bind -- stubbed via stubNonPinFields() the moment
+      // probe: actually exists (i.e. once pin or toolsetter_pin is bound).
+      stubNonPinFields(cfg.probe, "probe");
     } else if (role.startsWith("control:")) {
       // Covers all real Control:: pins, including the 4 macro buttons
       // and fault/estop/homing_button, which are siblings of feed_hold
@@ -4109,9 +4120,8 @@ function generateDraft() {
       annotate(cfg.coolant, `${which}_pin`, p.label);
       cfg.coolant[`${which}_pin`] = pin;
       // delay_ms -- coolant-on delay (never delays M9/off, per the
-      // schema's own field description); @tuning typical in source, so
-      // configDocSpecFor() pre-fills it once stubbed here.
-      if (cfg.coolant.delay_ms === undefined) cfg.coolant.delay_ms = TBD;
+      // schema's own field description) -- stubbed via stubNonPinFields().
+      stubNonPinFields(cfg.coolant, "coolant");
     } else if (role.startsWith("user_output:")) {
       // "which" is "digital<n>" or "analog<n>" (stripPinSuffix's own
       // convention, same as every other section's dispatch) -- no
@@ -4133,10 +4143,11 @@ function generateDraft() {
     } else if (role.startsWith("status_output:")) {
       // Status_Outputs -- machine-state indicator pins (e.g. tower
       // lights), independent of Limit/Probe/Control/Spindle/Coolant/user
-      // I/O. report_interval_ms is stubbed once per board, same as
-      // uart_channel's.
+      // I/O. report_interval_ms is stubbed via stubNonPinFields() the
+      // moment the section first exists.
       const which = role.split(":")[1];
-      cfg.status_outputs = cfg.status_outputs || { report_interval_ms: TBD };
+      cfg.status_outputs = cfg.status_outputs || {};
+      stubNonPinFields(cfg.status_outputs, "status_outputs");
       annotate(cfg.status_outputs, `${which}_pin`, p.label);
       cfg.status_outputs[`${which}_pin`] = pin;
     } else if (role.startsWith("axis:")) {
