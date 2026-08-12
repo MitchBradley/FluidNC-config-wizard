@@ -9,7 +9,7 @@ stepping:
 fixed_peripherals:
   spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
   sdcard: { cs_pin: gpio.5, card_detect_pin: NO_PIN }
-  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 16 }
+  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 16, oe_pin: NO_PIN }
   dedicated_uarts:
     - { label: "TMC2209 UART", txd_pin: gpio.26, rxd_pin: gpio.2, baud: 115200, mode: "8N1" }
 motor_sockets:

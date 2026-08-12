@@ -40,6 +40,7 @@ fixed_peripherals:
     data_pin: gpio.21
     ws_pin: gpio.17
     pin_count: 24
+    oe_pin: NO_PIN
     notes: "Inferred from highest I2SO index used by the 6 motor sockets (I2SO.23), identical reasoning/value to the 6x controller (same motor wiring)."
 
 motor_sockets:

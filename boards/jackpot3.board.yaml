@@ -29,6 +29,7 @@ fixed_peripherals:
     data_pin: gpio.21
     ws_pin: gpio.17
     pin_count: 24
+    oe_pin: NO_PIN
     notes: "Inferred from the highest I2SO index used by the six motor sockets (I2SO.23)."
   dedicated_uarts:
     - label: "Onboard TMC UART"

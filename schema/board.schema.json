@@ -227,7 +227,8 @@
             "bck_pin",
             "data_pin",
             "ws_pin",
-            "pin_count"
+            "pin_count",
+            "oe_pin"
           ],
           "properties": {
             "bck_pin": {
@@ -243,6 +244,10 @@
               "type": "integer",
               "minimum": 1,
               "description": "How many i2so.N virtual pins this board's shift-register chain actually provides. Stated explicitly per-board rather than assumed -- real-world wiki documentation has been wrong about this before."
+            },
+            "oe_pin": {
+              "$ref": "#/$defs/mcu_pin_or_none",
+              "description": "Explicit NO_PIN if unused. Optional output-enable pin for the I2S shift-register chain."
             },
             "notes": {
               "type": "string"

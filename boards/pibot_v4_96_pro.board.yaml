@@ -42,6 +42,7 @@ fixed_peripherals:
     data_pin: gpio.21
     ws_pin: gpio.17
     pin_count: 24
+    oe_pin: NO_PIN
     notes: >
       Three cascaded shift registers provide i2so.0 through i2so.23 for six
       EN/STEP/DIR groups and six MS3/CS signals.

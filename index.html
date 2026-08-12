@@ -692,13 +692,14 @@ const GENERIC_ROLE_SECTIONS_EXCLUDED = new Set([
           // together at all), never something a Generic-Pin role
           // assignment could retroactively create -- see
           // board.schema.json's own shared_disable_pin description.
-  "i2so", // oe_pin is its one output-tagged field, but isn't even
-          // representable in board.schema.json's i2so def at all
-          // (additionalProperties: false, and oe_pin isn't among its
-          // listed properties) -- no schema/dispatch support to receive
-          // a role assignment, not "board-fixed" (bck_pin/data_pin/
+  "i2so", // oe_pin is its one output-tagged field (bck_pin/data_pin/
           // ws_pin are already excluded for free, being i2s-tagged, not
-          // output-tagged).
+          // output-tagged) -- now representable in board.schema.json's
+          // i2so def (required, mcu_pin_or_none, explicit NO_PIN on
+          // every current board), but generateDraft()/importConfig()
+          // still have no "i2so:" role dispatch case, so offering it
+          // here would be a silently-dropped dead option. Revisit once
+          // that dispatch exists.
 ]);
 
 // config_items.yaml section name -> role-prefix key, ONLY for the three

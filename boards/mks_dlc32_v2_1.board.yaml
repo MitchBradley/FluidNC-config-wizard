@@ -9,7 +9,7 @@ stepping:
 fixed_peripherals:
   spi: { miso_pin: gpio.12, mosi_pin: gpio.13, sck_pin: gpio.14 }
   sdcard: { cs_pin: gpio.15, card_detect_pin: gpio.39 }
-  i2so: { bck_pin: gpio.16, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 8 }
+  i2so: { bck_pin: gpio.16, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 8, oe_pin: NO_PIN }
 i2c_connectors:
   - { label: "I2C", generic_name: "I2C", sda_pin: gpio.0, scl_pin: gpio.4 }
 motor_sockets:

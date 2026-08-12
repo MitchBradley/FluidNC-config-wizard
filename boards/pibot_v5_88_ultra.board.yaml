@@ -46,6 +46,7 @@ fixed_peripherals:
     data_pin: gpio.17
     ws_pin: gpio.18
     pin_count: 24
+    oe_pin: NO_PIN
     notes: >
       Three cascaded 74AHCT595-class shift registers provide i2so.0 through
       i2so.23. All 24 outputs are assigned across six EN/STEP/DIR groups and
