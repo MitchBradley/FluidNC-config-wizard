@@ -249,6 +249,45 @@
             }
           }
         },
+        "ethernet": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cs_pin",
+            "int_pin",
+            "rst_pin",
+            "phy_type",
+            "phy_addr"
+          ],
+          "properties": {
+            "cs_pin": {
+              "$ref": "#/$defs/mcu_pin",
+              "description": "SPI chip-select pin for the Ethernet PHY controller."
+            },
+            "int_pin": {
+              "$ref": "#/$defs/mcu_pin_or_none",
+              "description": "Explicit NO_PIN if unused. Optional interrupt pin -- if absent, the PHY is polled instead."
+            },
+            "rst_pin": {
+              "$ref": "#/$defs/mcu_pin_or_none",
+              "description": "Explicit NO_PIN if unused. Optional hardware reset pin for the PHY."
+            },
+            "phy_type": {
+              "type": "string",
+              "enum": ["w5500", "ksz8851", "dm9051"],
+              "description": "Which Ethernet PHY chip this board has wired up."
+            },
+            "phy_addr": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 31,
+              "description": "SPI/management address of the PHY chip."
+            },
+            "notes": {
+              "type": "string"
+            }
+          }
+        },
         "dedicated_uarts": {
           "type": "array",
           "description": "UART buses whose physical pins are entirely hardwired to an onboard fixed driver chip (or other onboard peripheral) and are NOT available for reassignment -- e.g. a UART bus soldered directly to onboard TMC2209 chips. Distinct from a motor_socket's extra.bus field, which just names which logical uartN: a socket's config should reference; this records the actual fixed pin/baud/mode facts of that bus. A board with more than one such bus (rare) can list more than one entry.",
