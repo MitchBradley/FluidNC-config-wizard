@@ -553,8 +553,7 @@ async function fetchYamlTextOptional(path) {
  * Role vocabularies. Real FluidNC has a larger set; this prototype covers
  * enough of it to demonstrate the resource-first walk + TBD stubbing.
  * ------------------------------------------------------------------- */
-/* AXES / MOTOR_ROLE_TREE / INPUT_ROLE_TREE / SPINDLE_TYPES /
- * DIGITAL_OUTPUT_COUNT / ANALOG_OUTPUT_COUNT are derived at boot directly
+/* AXES / MOTOR_ROLE_TREE / INPUT_ROLE_TREE / SPINDLE_TYPES are derived at boot directly
  * from FluidNC's own authoritative fluidnc-config-schema.json (a versioned
  * copy lives at schema/fluidnc-config-schema.json in this repo, fetched
  * once -- see loadRoleData() below), rather than from a hand-generated
@@ -681,10 +680,6 @@ function sectionRoleChildren(docSection, attrs) {
   return children;
 }
 
-function countSlots(props, prefix) {
-  return Object.keys(props).filter(k => k.startsWith(prefix) && k.endsWith("_pin")).length;
-}
-
 // config_items.yaml top-level sections structurally excluded from the
 // generic role-category scan below, for reasons that hold regardless of
 // which board is loaded (a board-load-time, per-pin exclusion -- e.g.
@@ -700,29 +695,19 @@ const GENERIC_ROLE_SECTIONS_EXCLUDED = new Set([
   "i2so", // oe_pin is its one output-tagged field, but isn't even
           // representable in board.schema.json's i2so def at all
           // (additionalProperties: false, and oe_pin isn't among its
-          // listed properties) -- same "no schema/dispatch support yet"
-          // reasoning as ethernet, not "board-fixed" (bck_pin/data_pin/
+          // listed properties) -- no schema/dispatch support to receive
+          // a role assignment, not "board-fixed" (bck_pin/data_pin/
           // ws_pin are already excluded for free, being i2s-tagged, not
           // output-tagged).
-  "user_outputs", // digitalN_pin/analogN_pin already have their own
-                   // dedicated, index-based role mechanism (see
-                   // DIGITAL_OUTPUT_COUNT/ANALOG_OUTPUT_COUNT and the
-                   // "digital_output:N"/"analog_output:N" role-string
-                   // convention) predating this generic scan -- letting
-                   // this section ALSO appear generically (as
-                   // "user_outputs:digital0" etc., a role string
-                   // generateDraft() has no dispatch case for) would add
-                   // a second, conflicting, dead-end path to the exact
-                   // same underlying config.yaml fields.
 ]);
 
-// config_items.yaml section name -> role-prefix key, ONLY for the two
+// config_items.yaml section name -> role-prefix key, ONLY for the three
 // sections whose already-established role-string convention
 // (generateDraft()'s dispatch, importConfig()'s claimPin() calls,
 // cascadeOptionsFor()) is singular while the section name itself is
 // plural. Every other section's role-prefix is just its own section
 // name, no mapping needed.
-const ROLE_PREFIX_OVERRIDES = { status_outputs: "status_output", user_inputs: "user_input" };
+const ROLE_PREFIX_OVERRIDES = { status_outputs: "status_output", user_inputs: "user_input", user_outputs: "user_output" };
 
 function isGenericRoleSection(sectionName) {
   if (GENERIC_ROLE_SECTIONS_EXCLUDED.has(sectionName)) return false;
@@ -884,7 +869,7 @@ function schemaStub(defName, allowSet) {
 }
 let SCHEMA;
 
-let INPUT_ROLE_TREE, SPINDLE_TYPES, DIGITAL_OUTPUT_COUNT, ANALOG_OUTPUT_COUNT, EITHER_ROLE_TREE, GENERIC_ROLE_TREE_OUTPUT_KEYS;
+let INPUT_ROLE_TREE, SPINDLE_TYPES, EITHER_ROLE_TREE, GENERIC_ROLE_TREE_OUTPUT_KEYS;
 
 async function loadRoleData() {
   const schemaText = await fetchYamlText("schema/fluidnc-config-schema.json");
@@ -918,15 +903,17 @@ async function loadRoleData() {
   if (Object.keys(inputSpindleChildren).length) {
     INPUT_ROLE_TREE.spindle = { label: "Spindle", children: inputSpindleChildren };
   }
-  DIGITAL_OUTPUT_COUNT = countSlots(schema.$defs.userOutputsSection.properties, "digital");
-  ANALOG_OUTPUT_COUNT = countSlots(schema.$defs.userOutputsSection.properties, "analog");
   // Keys of every generically-scanned section reachable from the OUTPUT
-  // side (coolant/status_output/sdcard today) -- shared by
+  // side (coolant/status_output/sdcard/user_outputs today) -- shared by
   // outputCategoryOptions()/cascadeOptionsFor() (the flat picker strict-
   // output pins use) and buildOutputRoleBranches() (the tree "either"
   // pins use) below, so the two pickers can never disagree about which
-  // generic sections are output-reachable.
-  GENERIC_ROLE_TREE_OUTPUT_KEYS = Object.keys(buildGenericRoleBranches("output"));
+  // generic sections are output-reachable. "pwm", not just "output", so
+  // user_outputs.analogN_pin (pin_attributes: pwm) is picked up alongside
+  // digitalN_pin (pin_attributes: output) -- the only other non-excluded,
+  // non-dotted, non-spindle-type section with a pwm-tagged field is a
+  // spindle type itself, already handled separately above.
+  GENERIC_ROLE_TREE_OUTPUT_KEYS = Object.keys(buildGenericRoleBranches(["output", "pwm"]));
   // "either" generic_pins (a bare, uncommitted GPIO usable as EITHER a
   // plain input OR a plain output -- see board.schema.json's own
   // "direction" description) need BOTH role spaces in one picker, not just
@@ -1119,7 +1106,7 @@ function allModuleSocketConnectors() {
  * one shared tree-walking renderer. Leaf role strings this produces are
  * identical to the ones makeOutputRow already writes to bindings[] --
  * "spindle:<type>:<which>", "coolant:flood"/"coolant:mist",
- * "digital_output:<n>", "analog_output:<n>", "status_output:<which>" --
+ * "user_output:digital<n>", "user_output:analog<n>", "status_output:<which>" --
  * so generateDraft()'s role-dispatch switch needs no changes at all; both
  * UIs are just two different pickers writing into the same string space. */
 // {typeId: {label, children}} for a spindle-role tree, from whichever of
@@ -1147,24 +1134,20 @@ function spindleRoleChildren(pickPins) {
 function buildOutputRoleBranches() {
   return {
     spindle: { label: "Spindle", children: spindleRoleChildren(def => def.pins.concat(def.inputPins)) },
-    // ["input","output"], not "output" alone -- a section reachable from
-    // an input-capable pin too (sdcard: cs_pin is output-only, but
+    // ["input","output","pwm"], not "output" alone -- a section reachable
+    // from an input-capable pin too (sdcard: cs_pin is output-only, but
     // card_detect_pin is input-only, same mixed shape as PlasmaSpindle's
     // arc_ok_pin above) needs the UNION here, since this object's keys
     // OVERWRITE INPUT_ROLE_TREE's same-named keys entirely in the
     // Object.assign() that builds EITHER_ROLE_TREE (see loadRoleData()) --
     // a plain "output" scan here would silently lose card_detect_pin's
     // reachability for "either"-direction pins the way it did before this
-    // was fixed for spindle above.
-    ...buildGenericRoleBranches(["input", "output"]),
-    digital_output: {
-      label: "Digital Output",
-      children: Object.fromEntries(Array.from({ length: DIGITAL_OUTPUT_COUNT }, (_, i) => [String(i), { label: `Output ${i}` }])),
-    },
-    analog_output: {
-      label: "Analog Output",
-      children: Object.fromEntries(Array.from({ length: ANALOG_OUTPUT_COUNT }, (_, i) => [String(i), { label: `Output ${i}` }])),
-    },
+    // was fixed for spindle above. "pwm" picks up user_outputs.analogN_pin
+    // (pin_attributes: pwm) alongside digitalN_pin (output) -- no more
+    // special-cased digital_output/analog_output branches here; both fold
+    // into this generic scan's own "user_output" category (see
+    // ROLE_PREFIX_OVERRIDES) the same way coolant/status_output/sdcard do.
+    ...buildGenericRoleBranches(["input", "output", "pwm"]),
     // Reuses MOTOR_ROLE_TREE by reference for both branches (it's read-only
     // here, never mutated by the tree walker) -- keeps this in lockstep with
     // Motor sockets' own axis/motor-slot vocabulary automatically, same
@@ -1529,9 +1512,10 @@ function resolveFieldSpec(parentPath, key) {
 /* Generic two-step cascade lookup: given a step-1 category value, returns
  * the step-2 [value,label] options for it, or null if that category is
  * already a complete, non-cascading choice (coolant, unused). Spindle
- * types and digital outputs both go through this same mechanism -- it's
- * what keeps the primary dropdown from growing every time either set
- * grows (a new spindle type, or wanting more digital output slots). */
+ * types and user outputs (digital/analog) both go through this same
+ * mechanism -- it's what keeps the primary dropdown from growing every
+ * time either set grows (a new spindle type, or config_items.yaml adding
+ * more digital/analog output slots). */
 function cascadeOptionsFor(category) {
   if (category.startsWith("spindle:")) {
     const type = category.split(":")[1];
@@ -1539,12 +1523,6 @@ function cascadeOptionsFor(category) {
   }
   if (category.startsWith("axis:")) {
     return axisMotorSlotOptions();
-  }
-  if (category === "digital_output") {
-    return Array.from({ length: DIGITAL_OUTPUT_COUNT }, (_, i) => [String(i), `Output ${i}`]);
-  }
-  if (category === "analog_output") {
-    return Array.from({ length: ANALOG_OUTPUT_COUNT }, (_, i) => [String(i), `Output ${i}`]);
   }
   if (GENERIC_ROLE_TREE_OUTPUT_KEYS.includes(category)) {
     // Same children EITHER_ROLE_TREE[category] already computed via
@@ -1558,15 +1536,13 @@ function cascadeOptionsFor(category) {
 
 /* Top-level category options for an output-capable pin -- step 1 of the
  * two-step menu. Every category here cascades (picking one reveals step 2
- * via cascadeOptionsFor()) -- spindle types, "Digital Output"/"Analog
- * Output", and every generically-scanned output section (coolant/
- * status_output/sdcard today, see GENERIC_ROLE_TREE_OUTPUT_KEYS) alike. */
+ * via cascadeOptionsFor()) -- spindle types, and every generically-scanned
+ * output section (coolant/status_output/sdcard/user_outputs today, see
+ * GENERIC_ROLE_TREE_OUTPUT_KEYS) alike. */
 function outputCategoryOptions() {
   const opts = [{ value: "unused", label: "— Unused —" }];
   Object.keys(SPINDLE_TYPES).forEach(t => opts.push({ value: `spindle:${t}`, label: `Spindle — ${SPINDLE_TYPES[t].label}` }));
   GENERIC_ROLE_TREE_OUTPUT_KEYS.forEach(k => opts.push({ value: k, label: EITHER_ROLE_TREE[k].label }));
-  opts.push({ value: "digital_output", label: "Digital Output" });
-  opts.push({ value: "analog_output", label: "Analog Output" });
   // RC Servo/Solenoid are single-PWM-pin "motors" (see Motors/RcServo.h,
   // Motors/Solenoid.h) -- unlike every other axis driver, they need no
   // dedicated motor socket (STEP/DIR/UART/SPI), so any output-capable pin
@@ -1583,8 +1559,6 @@ function roleCategory(full) {
   if (!full || full === "unused") return "unused";
   const parts = full.split(":");
   if (parts[0] === "spindle") return `spindle:${parts[1]}`;
-  if (parts[0] === "digital_output") return "digital_output";
-  if (parts[0] === "analog_output") return "analog_output";
   if (GENERIC_ROLE_TREE_OUTPUT_KEYS.includes(parts[0])) return parts[0];
   if (parts[0] === "axis") return `axis:${parts[1]}`;
   return full;
@@ -1592,8 +1566,6 @@ function roleCategory(full) {
 function roleSubValue(full) {
   const parts = (full || "").split(":");
   if (parts[0] === "spindle") return parts[2];
-  if (parts[0] === "digital_output") return parts[1];
-  if (parts[0] === "analog_output") return parts[1];
   if (GENERIC_ROLE_TREE_OUTPUT_KEYS.includes(parts[0])) return parts[1];
   if (parts[0] === "axis") return `${parts[2]}:${parts[3]}`;
   return undefined;
@@ -2667,7 +2639,7 @@ function refreshGpioConflicts() {
  *   - makeRow: every option IS a complete role (its own value).
  *   - makeOutputRow: only options that DON'T cascade (no secondary select --
  *     today, only "unused") are complete on the primary select; every real
- *     category (spindle/coolant/digital_output/status_output/sdcard/axis/...)
+ *     category (spindle/coolant/user_output/status_output/sdcard/axis/...)
  *     cascades, so its completion happens on the secondary select's options
  *     instead ("<primary.value>:<secondary option value>").
  *   - makeInputRow: only the DEEPEST select's options are complete (their
@@ -2760,7 +2732,7 @@ function refreshRoleUniqueness() {
           if (opt.value === "unused") { opt.disabled = false; return; }
           const copts = cascadeOptionsFor(opt.value);
           if (copts) {
-            // A cascading category (spindle:*, digital_output, ...) has no
+            // A cascading category (spindle:*, user_output, ...) has no
             // single "complete" value of its own -- gray it out only if
             // EVERY one of its secondary options is already claimed by a
             // DIFFERENT resource (nothing left to pick under it), same
@@ -4140,22 +4112,24 @@ function generateDraft() {
       // schema's own field description); @tuning typical in source, so
       // configDocSpecFor() pre-fills it once stubbed here.
       if (cfg.coolant.delay_ms === undefined) cfg.coolant.delay_ms = TBD;
-    } else if (role.startsWith("digital_output:")) {
+    } else if (role.startsWith("user_output:")) {
+      // "which" is "digital<n>" or "analog<n>" (stripPinSuffix's own
+      // convention, same as every other section's dispatch) -- no
+      // separate digital_output:/analog_output: cases needed, since
+      // config_items.yaml's own field names already carry the
+      // digital-vs-analog distinction.
+      const which = role.split(":")[1];
       cfg.user_outputs = cfg.user_outputs || {};
-      const n = role.split(":")[1];
-      annotate(cfg.user_outputs, `digital${n}_pin`, p.label);
-      cfg.user_outputs[`digital${n}_pin`] = pin;
-    } else if (role.startsWith("analog_output:")) {
-      cfg.user_outputs = cfg.user_outputs || {};
-      const n = role.split(":")[1];
-      annotate(cfg.user_outputs, `analog${n}_pin`, p.label);
-      cfg.user_outputs[`analog${n}_pin`] = pin;
-      // analogN_hz (userOutputsSection) -- per-channel PWM frequency, a
-      // real config field with no resource/pin of its own to bind, so it's
-      // stubbed as an ordinary open TBD the moment this channel gets a pin,
-      // same as a spindle type's tuning fields. Only set once per channel
-      // (never overwrites a value the user already typed in).
-      if (cfg.user_outputs[`analog${n}_hz`] === undefined) cfg.user_outputs[`analog${n}_hz`] = TBD;
+      annotate(cfg.user_outputs, `${which}_pin`, p.label);
+      cfg.user_outputs[`${which}_pin`] = pin;
+      // <analogN>_hz -- per-channel PWM frequency, a real config field
+      // with no resource/pin of its own to bind, so it's stubbed as an
+      // ordinary open TBD the moment this channel gets a pin, same as a
+      // spindle type's tuning fields. Only set once per channel (never
+      // overwrites a value the user already typed in).
+      if (which.startsWith("analog") && cfg.user_outputs[`${which}_hz`] === undefined) {
+        cfg.user_outputs[`${which}_hz`] = TBD;
+      }
     } else if (role.startsWith("status_output:")) {
       // Status_Outputs -- machine-state indicator pins (e.g. tower
       // lights), independent of Limit/Probe/Control/Spindle/Coolant/user
@@ -5178,14 +5152,15 @@ function importConfig(doc, rawText) {
 
   // --- user_outputs (digital/analog outputs + status_outputs) ---
   const userOutputsDoc = doc.user_outputs || {};
-  Object.keys(userOutputsDoc).forEach(field => {
-    const m = field.match(/^(digital|analog)(\d+)_pin$/);
-    if (!m) return;
-    const [, kind, n] = m;
-    const role = kind === "digital" ? `digital_output:${n}` : `analog_output:${n}`;
-    const resourceKey = claimPin(userOutputsDoc[field], role, `user_outputs.${field}`);
-    if (resourceKey && kind === "analog") {
-      const hzField = `analog${n}_hz`;
+  const userOutputPinFields = Object.keys(CONFIG_ITEM_DOCS.user_outputs || {}).filter(k => isPinType("user_outputs", k));
+  userOutputPinFields.forEach(field => {
+    if (userOutputsDoc[field] == null) return;
+    // "digital<n>"/"analog<n>" -- config_items.yaml's own field name,
+    // "_pin" stripped, same convention as coolant/control/status_output.
+    const which = field.slice(0, -4);
+    const resourceKey = claimPin(userOutputsDoc[field], `user_output:${which}`, `user_outputs.${field}`);
+    if (resourceKey && which.startsWith("analog")) {
+      const hzField = `${which}_hz`;
       if (userOutputsDoc[hzField] != null && userOutputsDoc[hzField] !== TBD) {
         paramValues[`user_outputs.${hzField}`] = userOutputsDoc[hzField];
       }
