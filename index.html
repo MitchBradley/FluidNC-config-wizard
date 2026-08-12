@@ -717,20 +717,23 @@ function sectionForRolePrefix(prefix) {
   return entry ? entry[0] : prefix;
 }
 
-// Role prefixes whose generateDraft()/importConfig() handling is nothing
-// more than "write a pin into cfg[<section>][<field>], stubbing any of
-// the section's own non-pin tuning fields via stubNonPinFields()" -- see
-// the single shared dispatch/import branch each uses. sdcard's cs_pin
-// being board-fixed (and ethernet's phy_type/phy_addr sometimes being so,
-// for a future board) doesn't need special-casing here -- that's a fact
-// about board data (computeBoardFixedRoles()) and the separate
-// fp.sdcard/fp.ethernet pre-fill blocks in generateDraft(), not about
-// this dispatch shape; stubNonPinFields() reproduces ethernet's old
-// hand-seeded {phy_type,phy_addr,frequency_hz: TBD} exactly, since
-// those are precisely its non-pin fields. Only user_output stays as its
-// own separate branch -- analogN_pin's per-CHANNEL _hz companion isn't a
-// section-wide field stubNonPinFields() can express.
-const SIMPLE_PIN_SECTION_ROLES = ["control", "probe", "user_input", "coolant", "status_output", "sdcard", "ethernet"];
+// Top-level role prefixes (EITHER_ROLE_TREE's own keys, see loadRoleData())
+// that need dispatch/import logic beyond the generic "write a pin into
+// cfg[<section>][<field>], stub the section's own non-pin tuning fields"
+// shape -- limit (nested under axis/motor slot, not a flat section),
+// spindle (per-type field sets via SPINDLE_TYPES), user_output
+// (analogN_pin's per-CHANNEL _hz companion isn't a section-wide field
+// stubNonPinFields() can express), axis (writes into cfg.axes[letter]
+// [slot], not cfg[<section>]). generateDraft()'s dispatch handles each
+// of these in its own branch BEFORE the final generic else (see below);
+// importConfig() uses this same set to exclude them from its matching
+// generic import loop. Every other EITHER_ROLE_TREE key -- control/probe/
+// user_input/coolant/status_output/sdcard/ethernet today -- automatically
+// gets the generic treatment with no need to list them by name here; a
+// brand-new generically-scanned section (see buildGenericRoleBranches())
+// picks it up for free, the same "denylist the exceptions" pattern
+// GENERIC_ROLE_SECTIONS_EXCLUDED already uses one level up.
+const SPECIAL_CASE_ROLE_PREFIXES = new Set(["limit", "spindle", "user_output", "axis"]);
 
 function isGenericRoleSection(sectionName) {
   if (GENERIC_ROLE_SECTIONS_EXCLUDED.has(sectionName)) return false;
@@ -4114,31 +4117,6 @@ function generateDraft() {
       const field = which === "neg" ? "limit_neg_pin" : which === "pos" ? "limit_pos_pin" : "limit_all_pin";
       annotate(axis[motorSlot], field, p.label);
       axis[motorSlot][field] = pin;
-    } else if (SIMPLE_PIN_SECTION_ROLES.includes(role.split(":")[0])) {
-      // probe/control/user_input/coolant/status_output/sdcard/ethernet
-      // all reduce to the exact same shape: write a pin into
-      // cfg[<section>][<field>], then stub any of that section's own
-      // non-pin tuning fields (probe's check_mode_start/hard_stop/
-      // probe_hard_limit, coolant's delay_ms, status_outputs'
-      // report_interval_ms, ethernet's phy_type/phy_addr/frequency_hz --
-      // reproducing its old hand-seeded stub exactly) via
-      // stubNonPinFields() the moment the section first exists. field is
-      // normally "<which>_pin", except probe's own bare "pin" field
-      // (pinFieldForWhich() handles that one exception -- see its own
-      // comment) -- so no per-section special-casing is needed here at
-      // all. sdcard's cs_pin/ethernet's phy_type/phy_addr sometimes being
-      // board-fixed facts is handled entirely upstream, by
-      // computeBoardFixedRoles() (blacklists an already-fixed role from
-      // ever reaching here) and the fp.sdcard/fp.ethernet pre-fill blocks
-      // above (write the known fact directly) -- this dispatch branch
-      // itself needs no awareness of that distinction.
-      const [prefix, which] = role.split(":");
-      const docSection = sectionForRolePrefix(prefix);
-      const field = pinFieldForWhich(docSection, which);
-      cfg[docSection] = cfg[docSection] || {};
-      annotate(cfg[docSection], field, p.label);
-      cfg[docSection][field] = pin;
-      stubNonPinFields(cfg[docSection], docSection);
     } else if (role.startsWith("spindle:")) {
       // Spindle type picks both the top-level config key and the exact
       // TBD tuning stub via SPINDLE_TYPES -- same dispatch-by-chosen-
@@ -4192,6 +4170,36 @@ function generateDraft() {
       axis[slot] = axis[slot] || {};
       axis[slot][block.key] = block.body;
       axis[slot].hard_limits = TBD;
+    } else {
+      // Every role prefix NOT already handled above (control/probe/
+      // user_input/coolant/status_output/sdcard/ethernet today, per
+      // SPECIAL_CASE_ROLE_PREFIXES' own comment) reduces to the exact
+      // same shape: write a pin into cfg[<section>][<field>], then stub
+      // any of that section's own non-pin tuning fields (probe's
+      // check_mode_start/hard_stop/probe_hard_limit, coolant's delay_ms,
+      // status_outputs' report_interval_ms, ethernet's phy_type/phy_addr/
+      // frequency_hz -- reproducing its old hand-seeded stub exactly) via
+      // stubNonPinFields() the moment the section first exists. field is
+      // normally "<which>_pin", except probe's own bare "pin" field
+      // (pinFieldForWhich() handles that one exception -- see its own
+      // comment) -- so no per-section special-casing is needed here at
+      // all. sdcard's cs_pin/ethernet's phy_type/phy_addr sometimes being
+      // board-fixed facts is handled entirely upstream, by
+      // computeBoardFixedRoles() (blacklists an already-fixed role from
+      // ever reaching here) and the fp.sdcard/fp.ethernet pre-fill blocks
+      // above (write the known fact directly) -- this dispatch branch
+      // itself needs no awareness of that distinction. A future
+      // generically-scanned section (see buildGenericRoleBranches()) is
+      // handled here automatically -- no new branch needed unless it
+      // needs its own real behavior, in which case it earns a spot above
+      // AND an entry in SPECIAL_CASE_ROLE_PREFIXES, same as these four.
+      const [prefix, which] = role.split(":");
+      const docSection = sectionForRolePrefix(prefix);
+      const field = pinFieldForWhich(docSection, which);
+      cfg[docSection] = cfg[docSection] || {};
+      annotate(cfg[docSection], field, p.label);
+      cfg[docSection][field] = pin;
+      stubNonPinFields(cfg[docSection], docSection);
     }
   });
   if (Object.keys(cfg.control).length === 0) delete cfg.control;
@@ -5085,18 +5093,21 @@ function importConfig(doc, rawText) {
   // --- probe/control/user_inputs/coolant/status_outputs/sdcard/ethernet:
   // same flat "claim every pin field via whichForField()'s which, then
   // copy back whichever of the section's own non-pin tuning fields are
-  // set" shape generateDraft()'s matching SIMPLE_PIN_SECTION_ROLES branch
-  // produces on the way out (see stubNonPinFields()) -- e.g. probe's
-  // check_mode_start/hard_stop/probe_hard_limit, coolant's delay_ms,
-  // status_outputs' report_interval_ms, ethernet's phy_type/phy_addr/
-  // frequency_hz are all picked up the same generic way, no field named
-  // individually. sdcard's cs_pin/ethernet's phy_type/phy_addr sometimes
-  // being board-fixed facts needs no special-casing here either --
-  // claimPin() harmlessly no-ops when a value doesn't match any known
-  // board resource (e.g. it equals THIS board's own already-fixed value
-  // instead of a Generic Pin's), and copyScalarParams() only ever
-  // overwrites a field the loaded file actually set.
-  SIMPLE_PIN_SECTION_ROLES.forEach(prefix => {
+  // set" shape generateDraft()'s matching else branch produces on the way
+  // out (see stubNonPinFields()) -- e.g. probe's check_mode_start/
+  // hard_stop/probe_hard_limit, coolant's delay_ms, status_outputs'
+  // report_interval_ms, ethernet's phy_type/phy_addr/frequency_hz are all
+  // picked up the same generic way, no field named individually. sdcard's
+  // cs_pin/ethernet's phy_type/phy_addr sometimes being board-fixed facts
+  // needs no special-casing here either -- claimPin() harmlessly no-ops
+  // when a value doesn't match any known board resource (e.g. it equals
+  // THIS board's own already-fixed value instead of a Generic Pin's), and
+  // copyScalarParams() only ever overwrites a field the loaded file
+  // actually set. Every EITHER_ROLE_TREE key not in
+  // SPECIAL_CASE_ROLE_PREFIXES gets this treatment -- same set
+  // generateDraft()'s own else branch relies on, so the two can never
+  // disagree about which sections it covers.
+  Object.keys(EITHER_ROLE_TREE).filter(prefix => !SPECIAL_CASE_ROLE_PREFIXES.has(prefix)).forEach(prefix => {
     const docSection = sectionForRolePrefix(prefix);
     const sectionDoc = doc[docSection] || {};
     const pinFields = Object.keys(CONFIG_ITEM_DOCS[docSection] || {}).filter(k => isPinType(docSection, k));
