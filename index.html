@@ -476,14 +476,20 @@
      same as the hotspot photo's own refreshHotspotStates()). Declared
      BEFORE .row.hotspot-target below so the magenta "just clicked via a
      hotspot" state -- a momentary selection cue, not a data state --
-     still wins the outline/background when a row happens to be both
+     still wins the box-shadow/background when a row happens to be both
      assigned AND the current hotspot selection; reorder these two rules
-     together if that priority ever needs to change. */
+     together if that priority ever needs to change. box-shadow: inset
+     (not outline + outline-offset) -- an outline is drawn OUTSIDE the
+     row's own box, and consecutive .row elements sit directly adjacent
+     (only padding between them, no gap), so an outward-offset outline on
+     one row bled into its neighbor's space, making adjacent boxes look
+     oversized and overlapping. An inset shadow stays entirely within the
+     row's own box no matter how rows are spaced. */
   .row.assigned {
-    background: rgba(111,191,115,.10); outline: 2px solid #6fbf73; outline-offset: 2px; border-radius: 6px;
+    background: rgba(111,191,115,.10); box-shadow: inset 0 0 0 2px #6fbf73; border-radius: 6px;
   }
   .row.hotspot-target {
-    background: rgba(230,60,200,.16); outline: 2px solid #e63cc8; outline-offset: 2px; border-radius: 6px;
+    background: rgba(230,60,200,.16); box-shadow: inset 0 0 0 2px #e63cc8; border-radius: 6px;
   }
 </style>
 </head>
