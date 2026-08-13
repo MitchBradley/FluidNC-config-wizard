@@ -808,18 +808,29 @@ function buildGenericRoleBranches(attrs) {
 }
 
 // Generically-scanned sections that are a real board.fixed_peripherals
-// concept -- this board either has the block (with real facts, some
-// fields possibly left NO_PIN for the user to wire up themselves) or
-// doesn't have the hardware at all. No bolt-on support: a board that
-// doesn't have this peripheral has nothing for one of its accessory pins
-// (sdcard.card_detect_pin, ethernet's cs/int/rst, i2so.oe_pin) to attach
-// to -- unlike control/probe/user_inputs/coolant/status_outputs, which
-// are pure user-wiring sections with no fixed_peripherals counterpart on
-// ANY board, and so are always fully user-assignable. A user wanting a
-// genuine one-off lashup (an external SPI Ethernet module wired to spare
-// GPIOs, say) writes their own board file describing it as a real fixed
-// fact instead. See computeBoardFixedRoles(), the one place this
-// distinction matters.
+// concept -- every one of their pin-typed fields (sdcard's cs/
+// card_detect, ethernet's cs/int/rst, i2so's bck/data/ws/oe) is a PCB-
+// design-time fact, never a spare GPIO a Generic Pin picker could
+// retroactively wire up, whether this board's own data gives it a real
+// pin, states it as NO_PIN, or omits the whole block entirely -- unlike
+// control/probe/user_inputs/coolant/status_outputs, which are pure
+// user-wiring sections with no fixed_peripherals counterpart on ANY
+// board, and so are always fully user-assignable. Originally
+// card_detect_pin/int_pin/rst_pin/oe_pin were treated as an exception
+// (NO_PIN left them open, on the theory that an unpopulated accessory
+// pin was a spare trace waiting to be wired) -- corrected once that
+// turned out to be wrong even in the one case actually observed in
+// practice (sdcard.card_detect_pin): the card-detect switch lives
+// inside the SD SOCKET COMPONENT ITSELF, so a socket that doesn't have
+// one has no signal anywhere for any GPIO to pick up, same as
+// axes.shared_stepper_disable_pin/shared_reset_pin's own "never open"
+// treatment (which this now matches exactly) -- and the identical
+// reasoning applies to ethernet's/i2so's own chip-level accessory pins,
+// even though no current board populates them to have shown the same
+// bug yet. A user wanting a genuine one-off lashup (an external SPI
+// Ethernet module wired to spare GPIOs, say) writes their own board
+// file describing it as a real fixed fact instead. See
+// computeBoardFixedRoles(), the one place this distinction matters.
 //
 // Populated at boot from board.schema.json's own fixed_peripherals def
 // (see loadRoleData()) -- this is a hard, mechanical, zero-judgment
@@ -836,39 +847,29 @@ function buildGenericRoleBranches(attrs) {
 // CONFIG_ITEM_DOCS/isPinType() already use elsewhere in this file.
 let BOARD_FIXED_SECTIONS = new Set();
 
-// Per-board Set of Generic-Pin ROLE PATHS (e.g. "sdcard:cs",
-// "sdcard:card_detect") that are NOT available for a user to assign via
-// an ordinary Generic Pin on this board -- consulted by
-// isRoleClaimedByOther() so these are greyed out the same way an
-// already-user-assigned role is, with no separate UI code path needed.
-// Walks every section the generic role-tree scan covers (see
-// buildGenericRoleBranches() above). Within an EXISTING
-// board.fixed_peripherals block for that section, a field explicitly
-// "NO_PIN" is deliberately left OFF the blacklist -- it means this
-// board's hardware leaves that resource unwired, exactly the case a user
-// might want to wire up themselves (see sdcard.card_detect_pin); any
-// other value (a real pin, or a field an older board file hasn't been
-// updated to state explicitly) is treated as "already fixed," the
-// conservative default within a block that DOES exist, so an incomplete
-// board file fails safe. For a BOARD_FIXED_SECTIONS section with NO
-// matching block on this board at all (e.g. no i2so: block -- this board
-// has no I2S output hardware), EVERY one of its pin-typed fields is
-// blacklisted instead of left open -- no bolt-on (see
-// BOARD_FIXED_SECTIONS' own comment). A section that's never a
-// fixed_peripherals concept at all (control, ...) always has boardBlock
-// undefined too, but isn't in BOARD_FIXED_SECTIONS, so nothing is
-// blacklisted for it -- genuinely always user-assignable, same as before.
+// Set of Generic-Pin ROLE PATHS (e.g. "sdcard:cs", "sdcard:card_detect")
+// that are NEVER available for a user to assign via an ordinary Generic
+// Pin -- consulted by isRoleClaimedByOther() so these are greyed out the
+// same way an already-user-assigned role is, with no separate UI code
+// path needed. EVERY pin-typed field of a BOARD_FIXED_SECTIONS section
+// is blacklisted unconditionally (see that Set's own comment for why:
+// PCB-design-time facts, not spare GPIOs, regardless of whether this
+// board's own data gives a field a real pin, states NO_PIN, or omits the
+// whole block) -- so, unlike the rest of this file's per-board state,
+// this Set doesn't actually depend on which board is loaded; it's
+// recomputed on every applyBoardDoc() call purely for architectural
+// consistency with the rest of that function, not because the result
+// would ever differ. A section that's never a fixed_peripherals concept
+// at all (control, ...) isn't in BOARD_FIXED_SECTIONS, so nothing is ever
+// blacklisted for it -- genuinely always user-assignable.
 function computeBoardFixedRoles() {
   const fixed = new Set();
-  const fp = (board && board.fixed_peripherals) || {};
   Object.keys(CONFIG_ITEM_DOCS).forEach(sectionName => {
     if (!isGenericRoleSection(sectionName)) return;
-    const boardBlock = fp[sectionName];
-    if (!boardBlock && !BOARD_FIXED_SECTIONS.has(sectionName)) return;
+    if (!BOARD_FIXED_SECTIONS.has(sectionName)) return;
     const items = CONFIG_ITEM_DOCS[sectionName] || {};
     Object.keys(items).forEach(fullKey => {
       if (!isPinType(sectionName, fullKey)) return;
-      if (boardBlock && boardBlock[fullKey] === "NO_PIN") return;
       const key = ROLE_PREFIX_OVERRIDES[sectionName] || sectionName;
       fixed.add(`${key}:${stripPinSuffix(fullKey)}`);
     });
@@ -4099,11 +4100,12 @@ function generateDraft() {
     // card_detect_pin is only written here when THIS board's own data
     // already fixes it to a real pin -- an explicit "NO_PIN" (now
     // mandatory in every board file, see board.schema.json's own
-    // description) means this board's SD socket genuinely leaves it
-    // unwired, which is left open here for the "sdcard:card_detect" role
-    // dispatch below to fill in instead, if the user assigns a Generic
-    // Pin to it (computeBoardFixedRoles() is what makes that role
-    // selectable in the first place only when it's genuinely open).
+    // description) means this board's SD socket component genuinely has
+    // no card-detect switch at all, so the field is simply omitted here,
+    // same as FluidNC's own default when the key is absent. NOT filled
+    // in by a "sdcard:card_detect" Generic Pin role -- computeBoardFixedRoles()
+    // permanently blacklists it (see that function's own comment for
+    // why this isn't a spare-GPIO situation).
     if (fp.sdcard.card_detect_pin && fp.sdcard.card_detect_pin !== "NO_PIN") {
       cfg.sdcard.card_detect_pin = fp.sdcard.card_detect_pin;
     }
@@ -4117,10 +4119,9 @@ function generateDraft() {
     cfg.i2so = { bck_pin: fp.i2so.bck_pin, data_pin: fp.i2so.data_pin, ws_pin: fp.i2so.ws_pin };
     // min_pulse_us -- @tuning typical in source, pre-filled from
     // config_items.yaml via configDocSpecFor() once stubbed here, same
-    // as sdcard.frequency_hz above. Stubbed unconditionally (not via the
-    // oe_pin role dispatch below) since it's relevant whenever I2SO
-    // stepping is used at all, regardless of whether oe_pin ever gets a
-    // pin assigned.
+    // as sdcard.frequency_hz above. Stubbed unconditionally since it's
+    // relevant whenever I2SO stepping is used at all, regardless of
+    // oe_pin (never Generic-Pin-assignable -- see computeBoardFixedRoles()).
     cfg.i2so.min_pulse_us = TBD;
   }
   if (fp.ethernet) {
@@ -4129,9 +4130,11 @@ function generateDraft() {
     // is absent today), but the shape mirrors sdcard: cs_pin/phy_type/
     // phy_addr are this (hypothetical, future) board's own fixed facts,
     // written straight through; int_pin/rst_pin are only written here
-    // when already fixed to a real pin -- an explicit NO_PIN leaves them
-    // open for the "ethernet:int"/"ethernet:rst" role dispatch below
-    // instead, same convention as sdcard.card_detect_pin.
+    // when already fixed to a real pin -- an explicit NO_PIN means this
+    // (hypothetical) board's PHY chip genuinely has that pin unconnected,
+    // so it's simply omitted, same reasoning and same permanent
+    // computeBoardFixedRoles() blacklist as sdcard.card_detect_pin, not a
+    // spare GPIO a role could fill in later.
     cfg.ethernet = { cs_pin: fp.ethernet.cs_pin, phy_type: fp.ethernet.phy_type, phy_addr: fp.ethernet.phy_addr };
     if (fp.ethernet.int_pin && fp.ethernet.int_pin !== "NO_PIN") cfg.ethernet.int_pin = fp.ethernet.int_pin;
     if (fp.ethernet.rst_pin && fp.ethernet.rst_pin !== "NO_PIN") cfg.ethernet.rst_pin = fp.ethernet.rst_pin;
@@ -4299,12 +4302,15 @@ function generateDraft() {
       // normally "<which>_pin", except probe's own bare "pin" field
       // (pinFieldForWhich() handles that one exception -- see its own
       // comment) -- so no per-section special-casing is needed here at
-      // all. sdcard's cs_pin/ethernet's phy_type/phy_addr sometimes being
-      // board-fixed facts is handled entirely upstream, by
-      // computeBoardFixedRoles() (blacklists an already-fixed role from
-      // ever reaching here) and the fp.sdcard/fp.ethernet pre-fill blocks
-      // above (write the known fact directly) -- this dispatch branch
-      // itself needs no awareness of that distinction. A future
+      // all. sdcard/ethernet/i2so's own board-fixed pins (cs_pin,
+      // card_detect_pin, int_pin, rst_pin, oe_pin -- all PCB-design-time
+      // facts, never Generic-Pin-assignable, see BOARD_FIXED_SECTIONS'
+      // own comment) are handled entirely upstream, by
+      // computeBoardFixedRoles() (permanently blacklists these roles so
+      // they never reach here) and the fp.sdcard/fp.ethernet/fp.i2so
+      // pre-fill blocks above (write whichever of them this board's own
+      // data actually fixes to a real pin) -- this dispatch branch itself
+      // needs no awareness of that distinction. A future
       // generically-scanned section (see buildGenericRoleBranches()) is
       // handled here automatically -- no new branch needed unless it
       // needs its own real behavior, in which case it earns a spot above
@@ -5213,9 +5219,10 @@ function importConfig(doc, rawText) {
   // out (see stubNonPinFields()) -- e.g. probe's check_mode_start/
   // hard_stop/probe_hard_limit, coolant's delay_ms, status_outputs'
   // report_interval_ms, ethernet's phy_type/phy_addr/frequency_hz are all
-  // picked up the same generic way, no field named individually. sdcard's
-  // cs_pin/ethernet's phy_type/phy_addr sometimes being board-fixed facts
-  // needs no special-casing here either -- claimPin() harmlessly no-ops
+  // picked up the same generic way, no field named individually.
+  // sdcard/ethernet/i2so's own board-fixed pins (permanently blacklisted
+  // from Generic-Pin assignment, see BOARD_FIXED_SECTIONS' own comment)
+  // need no special-casing here either -- claimPin() harmlessly no-ops
   // when a value doesn't match any known board resource (e.g. it equals
   // THIS board's own already-fixed value instead of a Generic Pin's), and
   // copyScalarParams() only ever overwrites a field the loaded file
