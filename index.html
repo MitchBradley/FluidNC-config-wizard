@@ -841,10 +841,12 @@ function buildGenericRoleBranches(attrs) {
 // as its own top-level key, never nested under fixed_peripherals --
 // confirming this via the schema directly, rather than reasoning about
 // "which sections are buses," is what makes this derivation exact rather
-// than a judgment call. Empty (nothing blacklisted, same as before this
-// whole feature existed) until loadRoleData()'s fetch resolves; stays
-// empty if that fetch ever fails, same graceful-degradation contract
-// CONFIG_ITEM_DOCS/isPinType() already use elsewhere in this file.
+// than a judgment call. Empty only transiently (before loadRoleData()'s
+// fetch resolves) -- NOT a supported "fetch failed" state: that fetch
+// deliberately throws and halts boot() rather than leaving this empty
+// (see loadRoleData()'s own comment) -- a same-origin file that's part
+// of this app's own deployment failing to load means the installation
+// is broken, not that this one specific feature should quietly degrade.
 let BOARD_FIXED_SECTIONS = new Set();
 
 // Set of Generic-Pin ROLE PATHS (e.g. "sdcard:cs", "sdcard:card_detect")
@@ -978,23 +980,26 @@ async function loadRoleData() {
   // own shape needs to be read live rather than hand-copied, to keep it
   // in lockstep with board.schema.json instead of silently drifting the
   // next time a fixed_peripherals property is added or removed there.
-  // fetchYamlTextOptional() (not fetchYamlText()) so a fetch failure
-  // degrades gracefully -- BOARD_FIXED_SECTIONS just stays empty (no
-  // bolt-on guard applied, the same non-crashing behavior this file
-  // already had before that guard existed), same contract CONFIG_ITEM_
-  // DOCS/isPinType() use elsewhere in this file.
-  const boardSchemaText = await fetchYamlTextOptional("schema/board.schema.json");
-  if (boardSchemaText) {
-    try {
-      const boardSchema = JSON.parse(boardSchemaText);
-      const fpRef = boardSchema.properties.fixed_peripherals.$ref;
-      const fpDefName = fpRef.split("/").pop();
-      const fpProps = boardSchema.$defs[fpDefName].properties || {};
-      BOARD_FIXED_SECTIONS = new Set(Object.keys(fpProps));
-    } catch (e) {
-      console.warn("Failed to parse schema/board.schema.json -- BOARD_FIXED_SECTIONS left empty:", e);
-    }
-  }
+  // Deliberately NOT graceful-degradation here (unlike CONFIG_ITEM_DOCS/
+  // isPinType() elsewhere in this file, where absence is a genuinely
+  // expected, normal state -- a board with no hotspots file, say):
+  // board.schema.json is a same-origin static file that ships as part of
+  // this app's own deployment, so it failing to fetch or parse isn't
+  // "optional data happens to be missing," it's a sign the installation
+  // itself is broken -- which means there's no reason to trust any OTHER
+  // file loaded the same way either. fetchYamlText() (not the Optional
+  // variant) and no local try/catch, so a failure here throws and
+  // propagates to boot()'s existing catch (same one
+  // fluidnc-config-schema.json's own fetch above already relies on),
+  // which halts startup with a visible error instead of silently
+  // proceeding with an empty BOARD_FIXED_SECTIONS -- the real, observed
+  // failure mode of the old graceful-degrade version: cs_pin and every
+  // other board-fixed accessory pin would incorrectly become
+  // Generic-Pin-selectable rather than the page visibly refusing to load.
+  const boardSchemaText = await fetchYamlText("schema/board.schema.json");
+  const boardSchema = JSON.parse(boardSchemaText);
+  const fpDefName = boardSchema.properties.fixed_peripherals.$ref.split("/").pop();
+  BOARD_FIXED_SECTIONS = new Set(Object.keys(boardSchema.$defs[fpDefName].properties || {}));
 
   // Loaded here, before the tree-building calls below, specifically so
   // isPinType() (config_items.yaml's own @config type: pin -- the
@@ -5938,18 +5943,25 @@ function sendToCompanion() {
 }
 
 // The role-tree/vocabulary data derived from schema/fluidnc-config-schema.json
-// is global/board-independent, so it's loaded (and derived) once here before
-// the first board, rather than per-loadBoard() like boards/chips/hotspots.
-// Everything downstream (renderResources(), makeInputRow(), etc.) depends on
-// INPUT_ROLE_TREE/SPINDLE_TYPES/etc. being populated, so loadBoard() must not
-// run until this resolves.
+// and schema/board.schema.json is global/board-independent, so it's loaded
+// (and derived) once here before the first board, rather than per-loadBoard()
+// like boards/chips/hotspots. Everything downstream (renderResources(),
+// makeInputRow(), etc.) depends on INPUT_ROLE_TREE/SPINDLE_TYPES/
+// BOARD_FIXED_SECTIONS/etc. being populated, so loadBoard() must not run
+// until this resolves. Both of loadRoleData()'s schema fetches are required,
+// same-origin static files this app ships with -- either one failing throws
+// (see loadRoleData()'s own comments) and lands here, deliberately halting
+// startup entirely rather than letting the wizard limp along in a partially-
+// correct state: a missing/corrupt app file means the installation itself is
+// broken, not that this one specific fetch's data should be treated as
+// optional.
 async function boot() {
   initCompanionHandoff();
   try {
     await loadRoleData();
   } catch (e) {
     document.getElementById("resourceCol").innerHTML = `<div class="note note-error">` +
-      `Couldn't load schema/fluidnc-config-schema.json (${escapeAttr(e.message)}). If you opened this page ` +
+      `Couldn't load a required schema file (${escapeAttr(e.message)}). If you opened this page ` +
       `via a file:// URL, browsers block fetch() of local files -- serve this folder over HTTP instead ` +
       `(e.g. "python3 -m http.server" from a terminal here, then open http://localhost:8000/index.html).</div>`;
     return;
