@@ -123,8 +123,28 @@
   .row.gpio-conflict select { opacity: 0.5; cursor: not-allowed; }
   .row select { width: 100%; }
   .row.output-row, .row.cascade-row { grid-template-columns: minmax(0, 200px) minmax(240px, 1fr); }
-  .output-controls, .cascade-controls { display: flex; gap: 4px; }
-  .output-controls select, .cascade-controls select { flex: 1; min-width: 0; }
+  /* flex-wrap so a deep cascade (limit's 4 chained selects: category/
+     axis/motor/direction) wraps onto a second line rather than staying
+     forced onto one; flex: 0 1 auto + min-width: max-content so each
+     select sizes to its OWN selected text instead of being squeezed to
+     an equal 1/Nth share regardless of content -- with flex:1 + min-
+     width:0 (the old rule), 4 selects divided evenly no matter how wide
+     the row was, so short ("Ne" for "Negative") and long ("Fir" for
+     "First Motor") labels alike got truncated to a few characters each.
+     flex-grow:0 (not 1) deliberately leaves any leftover row width
+     unclaimed rather than stretching every select to fill it -- a row
+     with a wide left pane and short option text (e.g. "Limit"/"X axis")
+     would otherwise balloon each select to match the pane's own width
+     for no reason; a select only ever needs to be as wide as what it's
+     actually showing. */
+  .output-controls, .cascade-controls { display: flex; gap: 4px; flex-wrap: wrap; }
+  /* width: auto overrides .row select's own width:100% -- flex-basis:auto
+     defers to the width property when one is set (per spec), so without
+     this override here, flex-basis effectively resolved to "100% of the
+     flex container" instead of "the select's own content size," silently
+     defeating flex-grow:0 above (every select still stretched to fill
+     the row no matter how short its text). */
+  .output-controls select, .cascade-controls select { flex: 0 1 auto; min-width: max-content; width: auto; }
   /* Each row's selector(s) live inside a small positioned wrapper (.ctrl-wrap
      for a single-select row, or the existing .output-controls/.cascade-
      controls for the two multi-select row types) so .conflict-note --
