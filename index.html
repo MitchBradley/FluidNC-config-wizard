@@ -469,6 +469,19 @@
   .module-socket-rotated img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
   .module-hotspot-chip { position: absolute; pointer-events: auto; }
   .module-hotspot-chip .hotspot-role-label { position: absolute; }
+  /* Same green already used for the hotspot photo's own assigned state
+     (see .hotspot-rect.assigned above, #6fbf73) -- one persistent visual
+     vocabulary for "this resource has a role" across both panes, kept in
+     sync live by refreshGpioConflicts() (runs on every binding change,
+     same as the hotspot photo's own refreshHotspotStates()). Declared
+     BEFORE .row.hotspot-target below so the magenta "just clicked via a
+     hotspot" state -- a momentary selection cue, not a data state --
+     still wins the outline/background when a row happens to be both
+     assigned AND the current hotspot selection; reorder these two rules
+     together if that priority ever needs to change. */
+  .row.assigned {
+    background: rgba(111,191,115,.10); outline: 2px solid #6fbf73; outline-offset: 2px; border-radius: 6px;
+  }
   .row.hotspot-target {
     background: rgba(230,60,200,.16); outline: 2px solid #e63cc8; outline-offset: 2px; border-radius: 6px;
   }
@@ -2741,6 +2754,11 @@ function refreshGpioConflicts() {
     const allSelects = Array.from(row.querySelectorAll("select"));
     const visibleSelects = allSelects.filter(s => s.style.display !== "none" && s.options.length);
     const assigned = visibleSelects.length && visibleSelects[0].value !== "unused" && visibleSelects[0].value !== "";
+    // .row.assigned -- the green box, same "has a role" signal as the
+    // hotspot photo's own assigned coloring (see that class's own
+    // comment). Toggled here rather than a separate pass since this loop
+    // already computes `assigned` per row for the conflict logic below.
+    row.classList.toggle("assigned", !!assigned);
     const note = row.querySelector(".conflict-note");
     if (assigned) {
       // Never disable/relabel an already-assigned resource -- conflicts are
