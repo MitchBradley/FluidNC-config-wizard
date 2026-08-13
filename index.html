@@ -5225,24 +5225,39 @@ function importConfig(doc, rawText) {
   // hard_stop/probe_hard_limit, coolant's delay_ms, status_outputs'
   // report_interval_ms, ethernet's phy_type/phy_addr/frequency_hz are all
   // picked up the same generic way, no field named individually.
-  // sdcard/ethernet/i2so's own board-fixed pins (permanently blacklisted
-  // from Generic-Pin assignment, see BOARD_FIXED_SECTIONS' own comment)
-  // need no special-casing here either -- claimPin() harmlessly no-ops
-  // when a value doesn't match any known board resource (e.g. it equals
-  // THIS board's own already-fixed value instead of a Generic Pin's), and
-  // copyScalarParams() only ever overwrites a field the loaded file
-  // actually set. Every EITHER_ROLE_TREE key not in
-  // SPECIAL_CASE_ROLE_PREFIXES gets this treatment -- same set
-  // generateDraft()'s own else branch relies on, so the two can never
-  // disagree about which sections it covers.
+  // sdcard/ethernet/i2so's own pin fields (BOARD_FIXED_SECTIONS) are
+  // skipped entirely here, NOT passed to claimPin() at all -- they're
+  // never Generic-Pin claims (computeBoardFixedRoles() permanently
+  // blacklists every one of them, see that Set's own comment for why),
+  // and they're regenerated directly from board.fixed_peripherals by
+  // generateDraft()'s own fp.sdcard/fp.ethernet/fp.i2so pre-fill blocks
+  // regardless of any binding -- there's nothing for a claim to
+  // accomplish. Attempting it anyway is actively wrong, not merely
+  // redundant: claimPin()'s resolvePin() reports a real, user-visible
+  // "Failed to import" error whenever a pin doesn't match any known
+  // Generic Pin resource (see recordFailedImport()) -- which a board-
+  // internal wiring fact like i2so.bck_pin/sdcard.cs_pin never will,
+  // since resourcePins is built from generic_pins/motor_sockets/etc.,
+  // never from fixed_peripherals' own wiring. (A previous version of
+  // this comment claimed claimPin() "harmlessly no-ops" for a
+  // non-matching value -- confirmed wrong by reading resolvePin() itself:
+  // that's only true when suppressFailure is passed, which this call
+  // site never did.) copyScalarParams() still runs for every section,
+  // pin fields or not -- untouched by this, since it only ever writes
+  // back a field the loaded file actually set. Every EITHER_ROLE_TREE
+  // key not in SPECIAL_CASE_ROLE_PREFIXES gets this treatment -- same
+  // set generateDraft()'s own else branch relies on, so the two can
+  // never disagree about which sections it covers.
   Object.keys(EITHER_ROLE_TREE).filter(prefix => !SPECIAL_CASE_ROLE_PREFIXES.has(prefix)).forEach(prefix => {
     const docSection = sectionForRolePrefix(prefix);
     const sectionDoc = doc[docSection] || {};
     const pinFields = Object.keys(CONFIG_ITEM_DOCS[docSection] || {}).filter(k => isPinType(docSection, k));
-    pinFields.forEach(field => {
-      if (sectionDoc[field] == null) return;
-      claimPin(sectionDoc[field], `${prefix}:${whichForField(docSection, field)}`, `${docSection}.${field}`);
-    });
+    if (!BOARD_FIXED_SECTIONS.has(docSection)) {
+      pinFields.forEach(field => {
+        if (sectionDoc[field] == null) return;
+        claimPin(sectionDoc[field], `${prefix}:${whichForField(docSection, field)}`, `${docSection}.${field}`);
+      });
+    }
     copyScalarParams(sectionDoc, docSection, new Set(pinFields));
   });
 
