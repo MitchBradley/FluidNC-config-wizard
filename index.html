@@ -735,6 +735,8 @@ function sectionRoleChildren(docSection, attrs) {
 // separate concern, see computeBoardFixedRoles()):
 const GENERIC_ROLE_SECTIONS_EXCLUDED = new Set([
   "enum_types", // not a real section -- the enum-anchor preamble config_items.yaml's own YAML anchors/aliases live under
+  "spindle_sections", // not a real section either -- the flat name list SPINDLE_SECTIONS is built from (see its own declaration comment)
+  "vfd_protocol_fields", // not a real section either -- the flat name list vfdProtocolFields() reads (see its own declaration comment)
   "axes", // shared_stepper_disable_pin/reset_pin -- a hardware-topology fact
           // (does this board's PCB tie multiple drivers' disable lines
           // together at all), never something a Generic-Pin role
@@ -780,7 +782,7 @@ const SPECIAL_CASE_ROLE_PREFIXES = new Set(["limit", "spindle", "user_output", "
 function isGenericRoleSection(sectionName) {
   if (GENERIC_ROLE_SECTIONS_EXCLUDED.has(sectionName)) return false;
   if (sectionName.includes(".")) return false; // axes.<letter>.*, kinematics.*, extenders.* -- nested, not a flat top-level category
-  if (SCHEMA.$defs[`spindle_${sectionName}`]) return false; // spindle types -- own "Spindle" category via buildSpindleTypes(), not a flat one here
+  if (SPINDLE_SECTIONS.has(sectionName)) return false; // spindle types -- own "Spindle" category via buildSpindleTypes(), not a flat one here
   return true;
 }
 
@@ -894,14 +896,11 @@ function computeBoardFixedRoles() {
 const SPINDLE_PIN_INPUT_ATTRS = new Set(["input", "isr", "adc", "io"]);
 const SPINDLE_PIN_OUTPUT_ATTRS = new Set(["output", "pwm", "dac", "io"]);
 
-function buildSpindleTypes(schema) {
-  const defs = schema.$defs;
+function buildSpindleTypes() {
   const result = {};
-  Object.keys(defs).forEach(defName => {
-    if (!defName.startsWith("spindle_")) return;
-    const cfgKey = defName.slice("spindle_".length);
+  SPINDLE_SECTIONS.forEach(cfgKey => {
     const typeId = cfgKey.toLowerCase();
-    const props = defs[defName].properties || {};
+    const props = CONFIG_ITEM_DOCS[cfgKey] || {};
     const pins = [];
     const inputPins = [];
     const stubFields = [];
@@ -933,9 +932,9 @@ function buildSpindleTypes(schema) {
   // type; note it still has its own real config_items.yaml section, since
   // Relay/DAC's own group() calls OnOff::group(), so "has doc coverage"
   // alone can't distinguish it), NoSpindle (not currently offered as a
-  // dropdown choice), and ModbusVFD/VFD_named (dispatched separately via
-  // the RS485 role -- see generateDraft()'s allRs485Channels loop).
-  const SPINDLE_TYPES_EXCLUDED = new Set(["onoff", "nospindle", "modbusvfd", "vfd_named"]);
+  // dropdown choice), and ModbusVFD (dispatched separately via the RS485
+  // role -- see generateDraft()'s allRs485Channels loop).
+  const SPINDLE_TYPES_EXCLUDED = new Set(["onoff", "nospindle", "modbusvfd"]);
   // Deliberate display-order preference for the common types, most-likely
   // first -- NOT a filter (unlike an earlier version of this list, which
   // silently dropped any spindle_* type it didn't happen to name). Any
@@ -950,55 +949,51 @@ function buildSpindleTypes(schema) {
   return ordered;
 }
 
-// Builds an all-TBD stub object from a schema $def's own property list,
-// same idea as buildSpindleTypes()'s stubFields above -- lets OPTIONAL_SECTIONS
-// and the ModbusVFD dispatch (below) track the schema instead of hand-listing
-// their own field sets, which is exactly how the atc/m6_macro ModbusVFD bug
-// happened (see generateDraft()'s ModbusVFD block). Requires SCHEMA to be
-// loaded (set at the end of loadRoleData()) -- only called from stub()
-// closures invoked during/after generateDraft(), never at module-load time.
-function schemaStub(defName, allowSet) {
-  const props = (SCHEMA.$defs[defName] || {}).properties || {};
+// Builds an all-TBD stub object from a config_items.yaml section's own field
+// list, same idea as buildSpindleTypes()'s stubFields above -- lets
+// OPTIONAL_SECTIONS and the ModbusVFD dispatch (below) track config_items.yaml
+// instead of hand-listing their own field sets, which is exactly how the
+// atc/m6_macro ModbusVFD bug happened (see generateDraft()'s ModbusVFD
+// block). Requires CONFIG_ITEM_DOCS to be loaded (awaited in loadRoleData())
+// -- only called from stub() closures invoked during/after generateDraft(),
+// never at module-load time.
+function schemaStub(sectionName, allowSet) {
+  const props = CONFIG_ITEM_DOCS[sectionName] || {};
   const keys = allowSet ? Object.keys(props).filter(k => allowSet.has(k)) : Object.keys(props);
   return Object.fromEntries(keys.map(k => [k, TBD]));
 }
 
-// The fields spindle_ModbusVFD's own $def has that spindle_VFD_named lacks
-// -- exactly the 10 protocol-definition fields (model, min_RPM, max_RPM,
-// and the 7 Modbus command templates) a compiled-in named model (H2A,
-// Huanyang, ...; spindle_VFD_named's own description: "Fixed built-in
-// protocol for a specific VFD brand/model; no extra fields beyond the
-// common set") supplies correct, working values for via its own C++
-// constructor -- entirely independent of config.yaml (see rs485RoleOptions'
-// own comment). Schema-derived (the two $defs' own property sets), not
-// hand-listed, for the same reason schemaStub() itself is -- a hand-list
-// here could silently drift out of sync with either $def exactly the way
-// the original atc/m6_macro bug did.
+// The 10 protocol-definition fields (model, min_RPM, max_RPM, and the 7
+// Modbus command templates) a compiled-in named model (H2A, Huanyang, ...)
+// supplies correct, working values for via its own C++ constructor --
+// entirely independent of config.yaml (see rs485RoleOptions' own comment).
+// Read straight off config_items.yaml's own vfd_protocol_fields: list (see
+// build_config_docs.py's vfd_protocol_fields(), mechanically derived there
+// from which fields ModbusVFD's own group() contributes directly, as
+// opposed to the ones its Spindle/VFDSpindle base classes contribute) --
+// not hand-listed here, for the same reason schemaStub() itself isn't: a
+// hand-list could silently drift out of sync exactly the way the original
+// atc/m6_macro bug did.
 function vfdProtocolFields() {
-  const named = new Set(Object.keys(SCHEMA.$defs.spindle_VFD_named.properties));
-  return Object.keys(SCHEMA.$defs.spindle_ModbusVFD.properties).filter(k => !named.has(k));
+  return CONFIG_ITEM_DOCS.vfd_protocol_fields || [];
 }
-// Value-position sentinel (like PINSLOT/KINSELECT) for one of
-// vfdProtocolFields()'s 10 fields, under a known VFD model's own top-level
-// key -- see generateDraft()'s allRs485Channels.forEach and
-// vfdOverrideWidgetHtml() for the full mechanism.
-const VFD_OVERRIDE = "VFDOVERRIDE";
-// path ("H2A.min_RPM") -> bool. Purely a UI reveal/collapse flag -- does
-// NOT by itself cause a value to be written to config.yaml (only a real
-// paramValues[path] entry, same as any other field, does that; see the
-// resolve-step near lastPlainYaml). Lets a field stay showing as an
-// editable input across re-renders even before the user has actually typed
-// anything into it, which a derivation purely from paramValues couldn't do.
-let vfdFieldEnabled = {};
-let SCHEMA;
-
+// Key-position sentinel (like sectionSentinel()/homingSentinel()) for the
+// whole group of vfdProtocolFields()'s 10 fields, under a known VFD
+// model's own top-level key -- see generateDraft()'s allRs485Channels.forEach
+// and vfdOverrideGroupWidgetHtml() for the full mechanism. One selector for
+// the whole group, not one per field: collapsed, none of the 10 fields (or
+// their names) appear in the draft at all, only this single "Override VFD
+// Protocol" line; expanded, all 10 appear as ordinary open TBD fields --
+// any left unanswered are simply never written to config.yaml (same
+// "genuinely absent, not an empty placeholder" idea as OPTIONAL_SECTIONS),
+// so there's no need for a second, per-field layer of hiding on top.
+function vfdOverrideSentinel(topKey) { return `VFDOVERRIDE_${topKey}`; }
+// topKey (e.g. "H2A") -> bool, defaults to false (collapsed) if unset --
+// same convention as sectionEnabled/homingEnabled.
+let vfdOverrideEnabled = {};
 let INPUT_ROLE_TREE, SPINDLE_TYPES, EITHER_ROLE_TREE, GENERIC_ROLE_TREE_OUTPUT_KEYS;
 
 async function loadRoleData() {
-  const schemaText = await fetchYamlText("schema/fluidnc-config-schema.json");
-  const schema = JSON.parse(schemaText);
-  SCHEMA = schema;
-
   // BOARD_FIXED_SECTIONS -- see its own declaration comment for why this
   // is a hard structural fact (fixed_peripherals' own property names)
   // rather than a judgment call. board.schema.json is otherwise never
@@ -1042,12 +1037,13 @@ async function loadRoleData() {
   // one case where this genuinely is less complete than the schema's own
   // $ref-based pin typing was).
   await loadConfigItemDocs();
+  SPINDLE_SECTIONS = new Set(CONFIG_ITEM_DOCS.spindle_sections || []);
 
   INPUT_ROLE_TREE = {
     limit: buildLimitBranch(),
     ...buildGenericRoleBranches("input"),
   };
-  SPINDLE_TYPES = buildSpindleTypes(schema);
+  SPINDLE_TYPES = buildSpindleTypes();
   // Strict-input pins only ever see a spindle type's input-capable pins
   // (currently just PlasmaSpindle's arc_ok_pin) -- added only once
   // SPINDLE_TYPES exists, and only if at least one type actually has one,
@@ -1325,6 +1321,15 @@ function buildOutputRoleBranches() {
 // so the wizard's core function never depends on it.
 let CONFIG_ITEM_DOCS = {}; // sectionName -> { itemKey -> {description, default, type, tuning?, default_note?} }
 
+// Which of CONFIG_ITEM_DOCS' own top-level keys are spindle types -- read
+// straight off config_items.yaml's own spindle_sections: list (see
+// build_config_docs.py's SPINDLE_SECTIONS, mechanically derived there from
+// which SECTIONS entries' contributors live under Spindles/) rather than
+// fluidnc-config-schema.json's now-retired "spindle_" $def-name prefix
+// convention. Populated by loadConfigItemDocs(), same lifecycle as
+// CONFIG_ITEM_DOCS itself -- empty (never matches) until that resolves.
+let SPINDLE_SECTIONS = new Set();
+
 // True once CONFIG_ITEM_DOCS has been loaded from a source that actually
 // carries @tuning data (see FluidNC/src/Configuration/ItemDocs.md) --
 // i.e. NOT a pre-migration release's config_items.yaml. configDocSpecFor()
@@ -1444,7 +1449,14 @@ async function loadConfigItemDocs() {
 // same schema $defs the doc generator's own C++ source annotations target.
 function docSectionForPath(path) {
   if (!path) return "(top-level machine items)";
-  const segs = path.split(".");
+  // VFDOVERRIDE_<topKey> (see vfdOverrideSentinel()) is elided outright,
+  // not translated -- unlike HOMINGSELECT_/SECTIONSELECT_/KINSELECT below,
+  // it doesn't correspond to any real nesting level in config.yaml at all
+  // (a known model's protocol fields, once resolved, are direct siblings
+  // of tool_num/uart_num/etc., not nested under this group's own key --
+  // see generateDraft()'s resolve-step), so "H2A.VFDOVERRIDE_H2A.min_RPM"
+  // needs to resolve exactly like "H2A.min_RPM" would.
+  const segs = path.split(".").filter(seg => !/^VFDOVERRIDE_/.test(seg));
   segs.forEach((seg, i) => {
     // A known VFD model's own top-level key (H2A, Huanyang, ...) -- see
     // rs485RoleOptions' own comment -- carries the same config_items.yaml
@@ -1878,16 +1890,19 @@ function kinematicsOptions() {
  * (control/coolant/probe/user_outputs/user_inputs/spindle types/
  * status_outputs) IS resource-bound and already has its own left-pane
  * row(s) instead. */
-// Field sets are schema-derived (schemaStub(), above) rather than hand-listed
-// -- each stub() used to be its own literal object here, duplicating the
-// corresponding $def's property list byte-for-byte with no way to notice
-// drift if the schema ever gained/renamed a field (the same anti-pattern
-// that let ModbusVFD's atc/m6_macro go missing for a full release cycle;
-// see generateDraft()'s ModbusVFD block and schemaStub()'s own comment).
+// Field sets are config_items.yaml-derived (schemaStub(), above) rather than
+// hand-listed -- each stub() used to be its own literal object here,
+// duplicating the corresponding section's field list byte-for-byte with no
+// way to notice drift if that field list ever gained/renamed a field (the
+// same anti-pattern that let ModbusVFD's atc/m6_macro go missing for a full
+// release cycle; see generateDraft()'s ModbusVFD block and schemaStub()'s
+// own comment). Section names match config_items.yaml's own top-level keys
+// directly (parking/macros/oled/atc_manual) -- no separate schema-only
+// naming convention to bridge anymore.
 const OPTIONAL_SECTIONS = {
-  parking: { label: "Parking", stub: () => schemaStub("parkingSection") },
-  macros: { label: "Macros", stub: () => schemaStub("macrosSection") },
-  oled: { label: "OLED", stub: () => schemaStub("oledSection") },
+  parking: { label: "Parking", stub: () => schemaStub("parking") },
+  macros: { label: "Macros", stub: () => schemaStub("macros") },
+  oled: { label: "OLED", stub: () => schemaStub("oled") },
   atc_manual: { label: "ATC Manual", stub: () => schemaStub("atc_manual") },
 };
 function sectionSentinel(key) { return `SECTIONSELECT_${key}`; }
@@ -2139,7 +2154,7 @@ function specForKey(key) {
 // own widget-rendered lines, so this just extends that same bookkeeping to
 // the lines that stay plain text (config-item tooltips should cover ALL of
 // them, not just the ones that happen to still be open/editable).
-function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverrides, keySlots, vfdOverrideSlots) {
+function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverrides, keySlots) {
   if (!node || typeof node !== "object") return;
   Object.keys(node).forEach(k => {
     const v = node[k];
@@ -2198,20 +2213,11 @@ function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverride
         paramValues[p] = autofillValue;
       }
       paramSlots.push({ path: p, key: k, spec });
-    } else if (v === VFD_OVERRIDE) {
-      // Not-yet-overridden VFD protocol field (see vfdFieldEnabled's own
-      // comment) -- unlike TBD, this never becomes a paramSlot: there's
-      // nothing to edit while collapsed, only vfdOverrideWidgetHtml()'s
-      // "reveal" trigger. The key itself is already the field's own real
-      // name (e.g. "min_RPM"), not a sentinel -- only the VALUE differs
-      // from an ordinary open field -- so no path/key translation is
-      // needed here at all, unlike HOMINGSELECT_/SECTIONSELECT_.
-      if (vfdOverrideSlots) vfdOverrideSlots.push({ path: p, key: k });
     } else if (isPinLeaf(k, v) && !isFixedProtocolPath(p)) {
       pinSlots.push({ path: p, key: k, basePin: v });
       node[k] = "PINSLOT";
     } else if (v && typeof v === "object") {
-      collectAndInjectSlots(v, p, paramSlots, pinSlots, defaultOverrides, keySlots, vfdOverrideSlots);
+      collectAndInjectSlots(v, p, paramSlots, pinSlots, defaultOverrides, keySlots);
     }
   });
 }
@@ -2428,6 +2434,7 @@ function pinWidgetHtml(slot) {
  * again rather than hunting a separate list. */
 const HOMING_SENTINEL_RE = new RegExp(`^HOMINGSELECT_(${AXES.join("|")})$`);
 const SECTION_SENTINEL_RE = new RegExp(`^SECTIONSELECT_(${Object.keys(OPTIONAL_SECTIONS).join("|")})$`);
+const VFD_OVERRIDE_SENTINEL_RE = new RegExp(`^VFDOVERRIDE_(${VFD_MODELS.join("|")})$`);
 
 // Wraps every recognized "key:" at the start of a line (within an already-
 // HTML-escaped plain-text chunk -- called AFTER escapeHtml(), never before,
@@ -2452,10 +2459,10 @@ function wrapDocKeys(escapedText, keySlots, kiRef) {
   });
 }
 
-function buildInteractiveYaml(yamlText, paramSlots, pinSlots, keySlots, vfdOverrideSlots) {
-  const tokens = yamlText.split(new RegExp(`(${TBD}|PINSLOT|KINSELECT|HOMINGSELECT_[a-z]+|SECTIONSELECT_[a-z_]+|${VFD_OVERRIDE})`));
+function buildInteractiveYaml(yamlText, paramSlots, pinSlots, keySlots) {
+  const tokens = yamlText.split(new RegExp(`(${TBD}|PINSLOT|KINSELECT|HOMINGSELECT_[a-z]+|SECTIONSELECT_[a-z_]+|VFDOVERRIDE_[A-Za-z0-9]+)`));
   let html = "";
-  let pi = 0, si = 0, oi = 0;
+  let pi = 0, si = 0;
   // Plain object (not a bare let) so wrapDocKeys() can advance it by
   // reference -- a bare number param would just be copied, not mutated.
   const ki = { i: 0 };
@@ -2463,19 +2470,11 @@ function buildInteractiveYaml(yamlText, paramSlots, pinSlots, keySlots, vfdOverr
   tokens.forEach(tok => {
     const homingMatch = tok.match(HOMING_SENTINEL_RE);
     const sectionMatch = tok.match(SECTION_SENTINEL_RE);
+    const vfdMatch = tok.match(VFD_OVERRIDE_SENTINEL_RE);
     if (tok === TBD) {
       html += paramWidgetHtml(paramSlots[pi++]);
     } else if (tok === "PINSLOT") {
       html += pinWidgetHtml(pinSlots[si++]);
-    } else if (tok === VFD_OVERRIDE) {
-      // Value-position sentinel, like PINSLOT above -- the key text just
-      // emitted ahead of this token (e.g. "min_RPM:") is already the
-      // field's own real name and flows through the plain-text/
-      // wrapDocKeys() path completely normally, so no stripLeadingColon
-      // trick is needed here at all, unlike KINSELECT/homingMatch/
-      // sectionMatch below (all three of which sit in KEY position and so
-      // must swallow their own literal ": "/": null" text).
-      html += vfdOverrideWidgetHtml(vfdOverrideSlots[oi++]);
     } else if (tok === "KINSELECT") {
       // kinWidgetHtml() already appends its own trailing ":" as part of the
       // label -- the very next chunk of yamlText is js-yaml's own literal
@@ -2513,6 +2512,19 @@ function buildInteractiveYaml(yamlText, paramSlots, pinSlots, keySlots, vfdOverr
       // planted by generateDraft() regardless of enabled state -- see
       // OPTIONAL_SECTIONS' own declaration comment.
       html += sectionWidgetHtml(sectionMatch[1]);
+      stripLeadingColon = true;
+      ki.i++; // same keySlots-skip reasoning as KINSELECT above
+    } else if (vfdMatch) {
+      // Same idea again, one level deeper (inside a known VFD model's own
+      // block instead of at cfg's top level): VFDOVERRIDE_<topKey> is the
+      // sentinel KEY for that model's whole group of vfdProtocolFields(),
+      // planted by generateDraft() regardless of enabled state -- see
+      // vfdOverrideSentinel()'s own declaration comment. Enabled, its value
+      // is a nested stub object (the 10 protocol fields, each its own TBD)
+      // that recurses/renders exactly like any other nested section; the
+      // group selector itself only ever replaces this one KEY line, not
+      // the fields underneath it.
+      html += vfdOverrideGroupWidgetHtml(vfdMatch[1]);
       stripLeadingColon = true;
       ki.i++; // same keySlots-skip reasoning as KINSELECT above
     } else {
@@ -2592,25 +2604,23 @@ function sectionWidgetHtml(key) {
   return html;
 }
 
-/* Per-field "override this VFD's built-in default" trigger -- see
- * vfdFieldEnabled's own declaration comment and generateDraft()'s
- * allRs485Channels.forEach for the full mechanism. This function is only
- * ever invoked for the collapsed state (buildInteractiveYaml()'s
- * tok === VFD_OVERRIDE branch only fires when cfg's own value for this
- * field is still the VFD_OVERRIDE sentinel, i.e. vfdFieldEnabled[path] is
- * currently false) -- picking "override..." flips vfdFieldEnabled and
- * regenerates, which on the next pass changes this same path's cfg value
- * to a plain TBD, producing a normal type-aware paramWidgetHtml() input
- * (with its own def/clear buttons) in its own next render -- so, unlike
- * sectionWidgetHtml()/homingWidgetHtml(), there's no "enabled" branch here
- * to render at all. */
-function vfdOverrideWidgetHtml(slot) {
-  const doc = lookupItemDoc(parentPathOf(slot.path, slot.key), slot.key);
-  const titleAttr = doc ? ` title="${escapeAttr(doc)}"` : "";
-  return `<select class="vfd-override-select"${titleAttr} data-path="${escapeAttr(slot.path)}">` +
-    `<option value="false" selected>— not overridden (uses this model's built-in default) —</option>` +
-    `<option value="true">override this field...</option>` +
-    `</select>`;
+/* "Override VFD Protocol" group selector -- see vfdOverrideSentinel()'s own
+ * declaration comment. Same pattern as sectionWidgetHtml() one level
+ * deeper (inside a known VFD model's own block instead of at cfg's top
+ * level): vfdOverrideSentinel(topKey) sits exactly where the group's own
+ * fields would begin, so collapsing it leaves no trace of any of the 10
+ * protocol fields (or their names) at all -- one selector for the whole
+ * group, not 10, since there's no compiled default the group could be
+ * "partially" overriding anyway -- either the model's own built-in values
+ * are trusted, or the user is supplying their own for whichever fields
+ * they choose to answer. */
+function vfdOverrideGroupWidgetHtml(topKey) {
+  const enabled = !!vfdOverrideEnabled[topKey];
+  let html = `<select class="vfd-override-select" data-topkey="${escapeAttr(topKey)}">`;
+  html += `<option value="false"${enabled ? "" : " selected"}>— (uses model default) —</option>`;
+  html += `<option value="true"${enabled ? " selected" : ""}>Override VFD Protocol...</option>`;
+  html += `</select>`;
+  return html;
 }
 
 function resourceKeyMotor(i) { return `motor:${i}`; }
@@ -2679,7 +2689,7 @@ async function applyBoardDoc(doc, hotspotId) {
   kinematicsType = "Cartesian";
   homingEnabled = {};
   sectionEnabled = {};
-  vfdFieldEnabled = {};
+  vfdOverrideEnabled = {};
   // Build a per-GPIO-number capability lookup from this board's referenced
   // mcu_chip file (see pinWidgetHtml()'s use of chipGpioCaps) -- chip-level
   // facts (pullup/pulldown support etc.) belong here, not in the board file.
@@ -4481,34 +4491,36 @@ function generateDraft() {
       // No compiled model to fall back on -- every protocol field (model,
       // cw_cmd, min_RPM, ...) is a real, required fact about this VFD's own
       // Modbus wiring, sourced from its own register documentation, not an
-      // override of anything -- spindle_ModbusVFD's own field set already
-      // includes them, same schema-derived stub as every other spindle
+      // override of anything -- ModbusVFD's own field set already includes
+      // them, same config_items.yaml-derived stub as every other spindle
       // type (fixes the bug that let atc/m6_macro/off_on_alarm/
       // s0_with_disable/disable_with_s0/spinup_ms/spindown_ms silently
       // never appear here -- only tool_num/speed_map were hand-listed
       // before).
-      Object.assign(body, schemaStub("spindle_ModbusVFD", tuningFieldNames("ModbusVFD")));
+      Object.assign(body, schemaStub("ModbusVFD", tuningFieldNames("ModbusVFD")));
     } else {
-      // spindle_VFD_named has no protocol fields at all (see
-      // vfdProtocolFields()'s own comment) -- the model's own compiled-in
-      // constructor already supplies correct, working values for every one
-      // of them. modbus_id is NOT set explicitly here (unlike uart_num,
-      // a genuine per-instance fact this loop already knows) -- it's a
-      // real @tuning typical, default 1 config_items.yaml item like any
-      // other, so leaving it as a TBD stub lets the normal autofill path
-      // (see collectAndInjectSlots()) pre-fill it with a real, editable
-      // widget instead of a silent, unchangeable literal.
-      Object.assign(body, schemaStub("spindle_VFD_named", tuningFieldNames("ModbusVFD")));
-      // Protocol fields are hidden behind a per-field override selector by
-      // default (see vfdOverrideWidgetHtml()) -- only written to
-      // config.yaml if the user explicitly overrides one; vfdFieldEnabled
-      // just controls which widget renders (collapsed trigger vs. real
-      // input), never the exported value directly (see the resolve-step
-      // near lastPlainYaml, below).
-      vfdProtocolFields().forEach(f => {
-        const path = `${topKey}.${f}`;
-        body[f] = vfdFieldEnabled[path] ? TBD : VFD_OVERRIDE;
-      });
+      // A known model's non-protocol fields only (see vfdProtocolFields()'s
+      // own comment for why those 10 are excluded here) -- the model's own
+      // compiled-in constructor already supplies correct, working values
+      // for every one of them. modbus_id is NOT set explicitly here (unlike
+      // uart_num, a genuine per-instance fact this loop already knows) --
+      // it's a real @tuning typical, default 1 config_items.yaml item like
+      // any other, so leaving it as a TBD stub lets the normal autofill
+      // path (see collectAndInjectSlots()) pre-fill it with a real,
+      // editable widget instead of a silent, unchangeable literal.
+      const vfdProtocolFieldSet = new Set(vfdProtocolFields());
+      const nonProtocolFields = new Set([...tuningFieldNames("ModbusVFD")].filter(f => !vfdProtocolFieldSet.has(f)));
+      Object.assign(body, schemaStub("ModbusVFD", nonProtocolFields));
+      // The whole group of protocol fields is hidden behind one "Override
+      // VFD Protocol" selector by default (see vfdOverrideSentinel()'s own
+      // comment) -- vfdOverrideEnabled just controls which widget renders
+      // (collapsed trigger vs. the 10 real fields); a field left unanswered
+      // even once expanded is still never written to config.yaml (see the
+      // resolve-step near lastPlainYaml, below) -- only real, explicitly
+      // given values are.
+      body[vfdOverrideSentinel(topKey)] = vfdOverrideEnabled[topKey]
+        ? Object.fromEntries(vfdProtocolFields().map(f => [f, TBD]))
+        : null;
     }
     cfg[topKey] = body;
   });
@@ -4649,8 +4661,7 @@ function generateDraft() {
   const paramSlots = [];
   const pinSlots = [];
   const keySlots = [];
-  const vfdOverrideSlots = [];
-  collectAndInjectSlots(liveCfg, "", paramSlots, pinSlots, paramDefaultOverrides, keySlots, vfdOverrideSlots);
+  collectAndInjectSlots(liveCfg, "", paramSlots, pinSlots, paramDefaultOverrides, keySlots);
 
   let yamlText = dequoteAxisKeys(annotateYaml(jsyaml.dump(liveCfg, { lineWidth: -1, noRefs: true })));
   const failedImportText = importFailedItems.length ? formatFailedImports(importFailedItems) : "";
@@ -4706,7 +4717,7 @@ function generateDraft() {
     failedDiv.innerHTML = "";
   }
 
-  document.getElementById("draft").innerHTML = buildInteractiveYaml(yamlText, paramSlots, pinSlots, keySlots, vfdOverrideSlots);
+  document.getElementById("draft").innerHTML = buildInteractiveYaml(yamlText, paramSlots, pinSlots, keySlots);
   document.querySelectorAll("#draft .inline-field").forEach(el => {
     el.onchange = () => setParam(el.dataset.path, el.dataset.key, el.value);
   });
@@ -4729,7 +4740,7 @@ function generateDraft() {
     el.onchange = () => { sectionEnabled[el.dataset.section] = el.value === "true"; generateDraft(); };
   });
   document.querySelectorAll("#draft .vfd-override-select").forEach(el => {
-    el.onchange = () => { vfdFieldEnabled[el.dataset.path] = el.value === "true"; generateDraft(); };
+    el.onchange = () => { vfdOverrideEnabled[el.dataset.topkey] = el.value === "true"; generateDraft(); };
   });
 
   // Plain-text version (real values where answered, literal TBD where not,
@@ -4783,25 +4794,33 @@ function generateDraft() {
     if (sectionEnabled[key]) resolved[key] = resolved[sentinelKey];
     delete resolved[sentinelKey];
   });
-  // A known VFD model's protocol field (vfdProtocolFields()) is only ever
-  // written to config.yaml if the user actually gave it a real value --
-  // never merely because it was revealed (see vfdFieldEnabled's own
-  // comment). At this point its resolved value is either the answer
-  // paramSlots.forEach already applied above, the still-unanswered literal
-  // TBD (revealed but never actually typed into), or the never-revealed
-  // VFD_OVERRIDE sentinel -- delete the key outright for the latter two,
-  // same "genuinely absent, not an empty placeholder" idea as
-  // homing/OPTIONAL_SECTIONS above. Only VFD_MODELS' own top-level keys
-  // carry this override mechanism at all -- ModbusVFD: (the custom/
-  // unsupported case) has no compiled default to fall back on, so its
-  // protocol fields are plain required TBDs with no sentinel of this kind
-  // (see generateDraft()'s isCustom branch), untouched here.
+  // Same rename-or-delete idea once more, one level deeper still (inside a
+  // known VFD model's own block rather than at cfg's top level): hoist
+  // vfdOverrideSentinel(m)'s children up to be direct siblings of
+  // tool_num/uart_num/etc. (matching where they'd actually live in a real
+  // config.yaml -- see generateDraft()'s isCustom branch, which puts them
+  // there directly for a custom VFD), or drop the whole group if it was
+  // never enabled. Unlike homing/OPTIONAL_SECTIONS, a field is hoisted only
+  // if it was actually answered (paramSlots.forEach already applied any
+  // real answer above) -- one left as a still-unanswered literal TBD is
+  // simply never hoisted at all, so an expanded-but-partially-filled group
+  // still only ever writes the fields the user actually gave a value to.
+  // Only VFD_MODELS' own top-level keys carry this mechanism -- ModbusVFD:
+  // (the custom/unsupported case) has no compiled default to fall back on,
+  // so its protocol fields are plain required TBDs with no group sentinel
+  // of their own, untouched here.
   VFD_MODELS.forEach(m => {
     const block = resolved[m];
     if (!block || typeof block !== "object") return;
-    vfdProtocolFields().forEach(f => {
-      if (block[f] === VFD_OVERRIDE || block[f] === TBD) delete block[f];
-    });
+    const sentinelKey = vfdOverrideSentinel(m);
+    if (!Object.prototype.hasOwnProperty.call(block, sentinelKey)) return;
+    const group = block[sentinelKey];
+    delete block[sentinelKey];
+    if (group && typeof group === "object") {
+      Object.keys(group).forEach(f => {
+        if (group[f] !== TBD) block[f] = group[f];
+      });
+    }
   });
   lastPlainYaml = dequoteAxisKeys(annotateYaml(jsyaml.dump(resolved, { lineWidth: -1, noRefs: true })));
   // Keep the hotspot photo's assigned/unassigned colors and tooltips in
@@ -4963,7 +4982,7 @@ function importConfig(doc, rawText) {
   homingEnabled = {};
   kinematicsType = "Cartesian";
   sectionEnabled = {};
-  vfdFieldEnabled = {};
+  vfdOverrideEnabled = {};
   importFailedItems = [];
 
   const report = { matched: [], ambiguous: [], unrecognized: [], notes: [] };
@@ -5483,21 +5502,32 @@ function importConfig(doc, rawText) {
         // generateDraft()'s isCustom branch) -- a known model's own body
         // has no model field to populate at all, the top-level key itself
         // carries that fact.
-        const skipKeys = isCustom ? new Set(["uart_num", "modbus_id"]) : new Set(["model", "uart_num", "modbus_id"]);
+        const skipKeys = isCustom
+          ? new Set(["uart_num", "modbus_id"])
+          : new Set(["model", "uart_num", "modbus_id", ...vfdProtocolFields()]);
         copyScalarParams(vfdDoc, vfdTopKey, skipKeys);
         if (!isCustom) {
-          // A known model's protocol fields (vfdProtocolFields()) default
-          // to hidden behind an override selector (see vfdFieldEnabled's
-          // own comment) -- copyScalarParams() above already populated
-          // paramValues for any of them the imported file actually set,
-          // but the WIDGET still needs vfdFieldEnabled flipped on for
-          // those same fields, or generateDraft() would re-collapse them
-          // behind VFD_OVERRIDE and the resolve-step would then delete
-          // the very values just copied in.
+          // A known model's protocol fields default to hidden behind one
+          // group-level "Override VFD Protocol" selector (see
+          // vfdOverrideSentinel()'s own comment) -- excluded from the
+          // generic copyScalarParams() call above (which would otherwise
+          // populate paramValues at the wrong, flat "topKey.field" path)
+          // since once expanded, generateDraft()'s own body places these
+          // fields one level deeper, nested under the sentinel -- the exact
+          // path collectAndInjectSlots will look for paramValues at. If the
+          // imported file set any of them to a real value, the group must
+          // also be expanded (vfdOverrideEnabled), or generateDraft() would
+          // re-collapse it behind the sentinel and the resolve-step would
+          // then drop the very values just copied in.
+          const groupPath = `${vfdTopKey}.${vfdOverrideSentinel(vfdTopKey)}`;
+          let anyAnswered = false;
           vfdProtocolFields().forEach(f => {
             const v = vfdDoc[f];
-            if (v !== undefined && v !== null && v !== TBD) vfdFieldEnabled[`${vfdTopKey}.${f}`] = true;
+            if (v === undefined || v === null || v === TBD) return;
+            paramValues[`${groupPath}.${f}`] = v;
+            anyAnswered = true;
           });
+          if (anyAnswered) vfdOverrideEnabled[vfdTopKey] = true;
         }
       } else {
         const message = `uart${n}.txd_pin did not resolve to an RS485 channel`;
