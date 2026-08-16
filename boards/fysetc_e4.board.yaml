@@ -1,0 +1,102 @@
+board:
+  id: fysetc_e4
+  name: "FYSETC E4"
+  manufacturer: "FYSETC"
+  mcu_chip: esp32
+  revision: "V1.0"
+  status: community_documented
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/hardware/3rd-party/fysetc_e4"
+  vendor_docs_url: "https://github.com/FYSETC/FYSETC-E4"
+  schematic_url: "https://github.com/FYSETC/FYSETC-E4/blob/main/hardware/FYSETC%20E4_V1.0%20SCH.pdf"
+  notes: >
+    4-driver 3D-printer-style ESP32 board (WROOM-32E/32UE, classic, not S3).
+    Stock firmware is a Marlin+ESP3D-WebUI fork; FluidNC support is
+    community, not vendor-provided.
+
+    Primary source: vendor's own GitHub README Pin Definition table, cross-
+    checked against the wiki page's example config and a direct schematic
+    review. Discrepancy: the wiki example's X/Z limit pins are swapped
+    relative to the vendor table (wiki: X=gpio.15, "Z"=gpio.34; vendor:
+    X-MIN=gpio.34, Z-MIN=gpio.15). Resolved in favor of the vendor
+    table -- the wiki example also repurposes the physical Z and E0
+    connectors for a different axis layout, so its pin choices reflect
+    that config, not the board's own silkscreen. Schematic review
+    independently confirms X-MIN=gpio.34/Y-MIN=gpio.35.
+
+    UART addresses are NOT in silkscreen order: MOT X=addr1, Y=addr3,
+    Z=addr0, E0=addr2 (vendor's own warning).
+
+    Vendor describes a separate Z-probe connector powered at Vin
+    (12-24V, jumper-selected) rather than logic voltage, but it has no
+    distinct row in the pin table -- likely shares the Z-MIN signal pin
+    on a separately-powered connector, not confirmed; no probe pin
+    recorded here.
+
+stepping:
+  engines: [rmt, timed]
+  notes: "Wiki example uses RMT. All motor pins are plain gpio.N (no I2S shift register), so `timed` is also available."
+
+fixed_peripherals:
+  spi:
+    miso_pin: gpio.19
+    mosi_pin: gpio.23
+    sck_pin: gpio.18
+  sdcard:
+    cs_pin: gpio.5
+    card_detect_pin: NO_PIN
+    notes: "Wiki example sets card_detect_pin: NO_PIN explicitly -- no card-detect wire."
+  dedicated_uarts:
+    - label: "TMC2209 UART"
+      txd_pin: gpio.22
+      rxd_pin: gpio.21
+      baud: 115200
+      mode: "8N1"
+      notes: "Vendor's TX1/RX1. Fixed pins, but must still be written as uart1: in config.yaml for tmc_2209's uart_num to reference."
+
+motor_sockets:
+  shared_disable_pin: gpio.25
+  shared_reset_pin: NO_PIN
+  notes: "Vendor table shows gpio.25 as EN on all 4 motor connectors -- one shared disable line, matching the wiki example."
+  sockets:
+    - label: "MOT-X"
+      generic_name: "Motor1"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: gpio.27, direction_pin: gpio.26 }
+      extra: { bus: uart1, addr: 1, r_sense_ohms_hint: 0.22 }
+    - label: "MOT-Y"
+      generic_name: "Motor2"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: gpio.33, direction_pin: gpio.32 }
+      extra: { bus: uart1, addr: 3, r_sense_ohms_hint: 0.22 }
+    - label: "MOT-Z"
+      generic_name: "Motor3"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: gpio.14, direction_pin: gpio.12 }
+      extra: { bus: uart1, addr: 0, r_sense_ohms_hint: 0.22 }
+    - label: "MOT-E"
+      generic_name: "Motor4"
+      driver_class: onboard_fixed
+      fixed_motor_type: tmc_2209
+      pins: { step_pin: gpio.16, direction_pin: gpio.17 }
+      extra: { bus: uart1, addr: 2, r_sense_ohms_hint: 0.22 }
+
+generic_pins:
+  # Limit switches (X/Y/Z only -- vendor states 3 endstops). Each shares
+  # its pin with that driver's TMC2209 DIAG output, jumper-selectable.
+  - { label: "X-MIN", generic_name: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: rc_filtered }, notes: "Schematic: RC-filtered, 10K/100nF. Shares pin with X-DIAG." }
+  - { label: "Y-MIN", generic_name: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: rc_filtered }, notes: "Schematic: RC-filtered, 10K/100nF. Shares pin with Y-DIAG." }
+  - { label: "Z-MIN", generic_name: "In15", mcu_pin: gpio.15, direction: input, input_profile: { conditioning: opto_isolated }, notes: "Schematic: opto-isolated (unlike X/Y-MIN's RC filtering). Shares pin with Z-DIAG." }
+
+  # Thermistor inputs -- commonly repurposed as generic digital inputs.
+  - { label: "TE0 (THERM0)", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: rc_filtered }, notes: "4.7K pull-up (PT1000-compatible; PT100 needs an amplifier board). Schematic: RC-filtered, 4.7K/10uF." }
+  - { label: "TB (THERM_BED)", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: rc_filtered }, notes: "Schematic: RC-filtered, 4.7K/10uF, same as TE0." }
+
+  # Fan/heater MOSFET outputs.
+  - { label: "FAN0", generic_name: "FET13", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 0.5 }, notes: "MOSFET: MMBF170. Voltage jumper-selectable 12-24V/5V." }
+  - { label: "E0-Heater", generic_name: "FET2", mcu_pin: gpio.2, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 60.0 }, notes: "MOSFET: WSD4060." }
+  - { label: "Heated-Bed", generic_name: "FET4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 150.0 }, notes: "MOSFET: WSD40150" }

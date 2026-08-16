@@ -6,9 +6,12 @@
   "corgi",
   "doberman",
   "fluidnc_pen_laser_spi",
+  "fysetc_e4",
   "jackpot3",
+  "macrobase_6_axis_breakout",
   "mks_dlc32_max",
   "mks_dlc32_v2_1",
+  "mks_tinybee",
   "pibot_v4_96_pro",
   "pibot_v5_88_ultra",
   "tmc2209_pen_laser_v2"

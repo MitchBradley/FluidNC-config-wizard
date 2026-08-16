@@ -1,0 +1,53 @@
+board:
+  id: macrobase_6_axis_breakout
+  name: "Macrobase 6 axis Breakout"
+  manufacturer: "Macrobase"
+  mcu_chip: esp32
+  status: community_documented
+stepping:
+  engines: [i2s]
+fixed_peripherals:
+  spi: { miso_pin: gpio.19, mosi_pin: gpio.23, sck_pin: gpio.18 }
+  sdcard: { cs_pin: gpio.5, card_detect_pin: NO_PIN }
+  i2so: { bck_pin: gpio.22, data_pin: gpio.21, ws_pin: gpio.17, pin_count: 24 }
+motor_sockets:
+  shared_disable_pin: i2so.0
+  sockets:
+    - label: "X"
+      generic_name: "Driver1"
+      driver_class: external_connector
+      pins: { step_pin: i2so.2, direction_pin: i2so.1, enable_pin: i2s0.0 }
+    - label: "Y"
+      generic_name: "Driver2"
+      driver_class: external_connector
+      pins: { step_pin: i2so.5, direction_pin: i2so.4, enable_pin: i2s0.7 }
+    - label: "Z"
+      generic_name: "Driver3"
+      driver_class: external_connector
+      pins: { step_pin: i2so.10, direction_pin: i2so.9, enable_pin: i2s0.8 }
+    - label: "A"
+      generic_name: "Driver4"
+      driver_class: external_connector
+      pins: { step_pin: i2so.13, direction_pin: i2so.12, enable_pin: i2s0.15 }
+    - label: "B"
+      generic_name: "Driver5"
+      driver_class: external_connector
+      pins: { step_pin: i2so.18, direction_pin: i2so.17, enable_pin: i2s0.16 }
+    - label: "C"
+      generic_name: "Driver6"
+      driver_class: external_connector
+      pins: { step_pin: i2so.21, direction_pin: i2so.20, enable_pin: i2s0.23 }
+generic_pins:
+  - { label: "x-lim", generic_name: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "y-lim", generic_name: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "z-lim", generic_name: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "probe", generic_name: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "macro1", generic_name: "In16", mcu_pin: gpio.16, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "macro2", generic_name: "In14", mcu_pin: gpio.14, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "macro3", generic_name: "In25", mcu_pin: gpio.25, direction: input, input_profile: { conditioning: rc_filtered } }
+  - { label: "macro4", generic_name: "In26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: rc_filtered } }
+
+  - { label: "pwm out", generic_name: "PWM IO 27", mcu_pin: gpio.27, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }
+  - { label: "laser pwm", generic_name: "Laser Out27", mcu_pin: gpio.27, direction: output, output_profile: { drive_type: open_collector } }
+  - { label: "spindle", generic_name: "Spindle Out27", mcu_pin: gpio.27, direction: output, output_profile: { drive_type: mosfet_high_side } }
+  - { label: "mist", generic_name: "Out4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_high_side } }
