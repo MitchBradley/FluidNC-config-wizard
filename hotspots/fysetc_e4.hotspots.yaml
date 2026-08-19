@@ -1,0 +1,27 @@
+board_id: fysetc_e4
+image: images/fysetc_e4.jpg
+hotspots:
+  - generic_name: "Motor1"
+    rect: {x: 8.00, y: 88.00, w: 13.00, h: 9.00}
+  - generic_name: "Motor2"
+    rect: {x: 22.00, y: 88.00, w: 13.00, h: 9.00}
+  - generic_name: "Motor3"
+    rect: {x: 36.00, y: 88.00, w: 13.00, h: 9.00}
+  - generic_name: "Motor4"
+    rect: {x: 50.00, y: 88.00, w: 13.00, h: 9.00}
+  - generic_name: "In34"
+    rect: {x: 67.00, y: 8.00, w: 8.00, h: 9.00}
+  - generic_name: "In35"
+    rect: {x: 59.00, y: 8.00, w: 8.00, h: 9.00}
+  - generic_name: "In15"
+    rect: {x: 49.00, y: 8.00, w: 10.00, h: 9.00}
+  - generic_name: "In39"
+    rect: {x: 64.00, y: 89.00, w: 8.00, h: 8.00}
+  - generic_name: "In36"
+    rect: {x: 72.00, y: 89.00, w: 8.00, h: 8.00}
+  - generic_name: "FET13"
+    rect: {x: 41.00, y: 8.00, w: 8.00, h: 9.00}
+  - generic_name: "FET2"
+    rect: {x: 28.00, y: 11.00, w: 11.00, h: 9.00}
+  - generic_name: "FET4"
+    rect: {x: 18.00, y: 11.00, w: 10.00, h: 9.00}

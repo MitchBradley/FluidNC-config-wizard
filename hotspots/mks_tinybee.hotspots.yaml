@@ -1,0 +1,63 @@
+board_id: mks_tinybee
+image: images/mks_tinybee.jpg
+hotspots:
+  - generic_name: "Motor1"
+    rect: {x: 23.00, y: 1.00, w: 11.00, h: 7.00}
+  - generic_name: "Driver1"
+    rect: {x: 17.00, y: 28.00, w: 9.00, h: 5.00}
+  - generic_name: "Motor2"
+    rect: {x: 34.00, y: 1.00, w: 12.00, h: 7.00}
+  - generic_name: "Driver2"
+    rect: {x: 31.00, y: 28.00, w: 10.00, h: 5.00}
+  - generic_name: "Motor3"
+    rect: {x: 46.00, y: 1.00, w: 22.00, h: 7.00}
+  - generic_name: "Motor4"
+    rect: {x: 69.00, y: 1.00, w: 11.00, h: 7.00}
+  - generic_name: "Motor5"
+    rect: {x: 80.00, y: 1.00, w: 11.00, h: 7.00}
+  - generic_name: "Driver3"
+    rect: {x: 45.00, y: 28.00, w: 10.00, h: 5.00}
+  - generic_name: "Driver4"
+    rect: {x: 59.00, y: 28.00, w: 9.00, h: 5.00}
+  - generic_name: "Driver5"
+    rect: {x: 71.00, y: 27.00, w: 9.00, h: 6.00}
+  - generic_name: "In33"
+    rect: {x: 81.00, y: 33.00, w: 8.00, h: 7.00}
+  - generic_name: "In32"
+    rect: {x: 81.00, y: 40.00, w: 8.00, h: 6.00}
+  - generic_name: "In22"
+    rect: {x: 81.00, y: 47.00, w: 8.00, h: 6.00}
+  - generic_name: "In36"
+    rect: {x: 77.00, y: 88.00, w: 7.00, h: 7.00}
+  - generic_name: "In34"
+    rect: {x: 84.00, y: 88.00, w: 7.00, h: 7.00}
+  - generic_name: "In39"
+    rect: {x: 92.00, y: 79.00, w: 5.00, h: 9.00}
+  - generic_name: "5V Out2"
+    rect: {x: 81.00, y: 60.00, w: 8.00, h: 5.00}
+  - generic_name: "In35"
+    rect: {x: 81.00, y: 55.00, w: 8.00, h: 5.00}
+  - generic_name: "FET I2S16"
+    rect: {x: 2.00, y: 64.00, w: 6.00, h: 12.00}
+  - generic_name: "FET I2S17"
+    rect: {x: 3.00, y: 50.00, w: 4.00, h: 11.00}
+  - generic_name: "FET I2S18"
+    rect: {x: 3.00, y: 39.00, w: 4.00, h: 12.00}
+  - generic_name: "5VOut I2S19"
+    rect: {x: 3.00, y: 29.00, w: 5.00, h: 8.00}
+  - generic_name: "5VOut I2S20"
+    rect: {x: 10.00, y: 29.00, w: 5.00, h: 8.00}
+  - generic_name: "IO17"
+    rect: {x: 94.00, y: 45.00, w: 5.00, h: 3.00}
+  - generic_name: "5V Out0"
+    rect: {x: 90.00, y: 43.00, w: 4.00, h: 2.00}
+  - generic_name: "5V Out4"
+    rect: {x: 94.00, y: 39.00, w: 5.00, h: 3.00}
+  - generic_name: "5V Out15"
+    rect: {x: 90.00, y: 45.00, w: 4.00, h: 3.00}
+  - generic_name: "5V Out21"
+    rect: {x: 90.00, y: 39.00, w: 4.00, h: 3.00}
+  - generic_name: "IO16"
+    rect: {x: 94.00, y: 42.00, w: 5.00, h: 3.00}
+  - generic_name: "5VOut I2S21"
+    rect: {x: 90.00, y: 36.00, w: 4.00, h: 3.00}
