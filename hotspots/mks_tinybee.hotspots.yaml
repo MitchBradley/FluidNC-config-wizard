@@ -1,5 +1,5 @@
 board_id: mks_tinybee
-image: images/mks_tinybee.jpg
+image: images/mks-tinybee.jpg
 hotspots:
   - generic_name: "Motor1"
     rect: {x: 23.00, y: 1.00, w: 11.00, h: 7.00}
