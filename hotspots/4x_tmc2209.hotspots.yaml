@@ -20,11 +20,11 @@ hotspots:
     rect: {x: 17.00, y: 2.00, w: 5.00, h: 8.00}
     label_rect: {x: 17.00, y: -18.00, w: 4.00, h: 20.00}
   - generic_name: "In34"
-    rect: {x: 26.00, y: 2.00, w: 4.00, h: 8.00}
-    label_rect: {x: 26.00, y: -18.00, w: 4.00, h: 20.00}
-  - generic_name: "In35"
     rect: {x: 30.00, y: 2.00, w: 4.00, h: 8.00}
     label_rect: {x: 30.00, y: -18.00, w: 4.00, h: 20.00}
+  - generic_name: "In35"
+    rect: {x: 26.00, y: 2.00, w: 4.00, h: 8.00}
+    label_rect: {x: 26.00, y: -18.00, w: 4.00, h: 20.00}
   - generic_name: "In39"
     rect: {x: 34.00, y: 2.00, w: 4.00, h: 8.00}
     label_rect: {x: 34.00, y: -18.00, w: 4.00, h: 20.00}
@@ -56,11 +56,11 @@ hotspots:
     rect: {x: 47.00, y: 2.00, w: 4.00, h: 8.00}
     label_rect: {x: 47.00, y: -18.00, w: 4.00, h: 20.00}
   - generic_name: "5V Out14"
-    rect: {x: 51.00, y: 2.00, w: 4.00, h: 8.00}
-    label_rect: {x: 51.00, y: -18.00, w: 4.00, h: 20.00}
-  - generic_name: "5V Out13"
     rect: {x: 55.00, y: 2.00, w: 4.00, h: 8.00}
     label_rect: {x: 55.00, y: -18.00, w: 4.00, h: 20.00}
+  - generic_name: "5V Out13"
+    rect: {x: 51.00, y: 2.00, w: 4.00, h: 8.00}
+    label_rect: {x: 51.00, y: -18.00, w: 4.00, h: 20.00}
   - generic_name: "Module Socket"
     rect: {x: 67.00, y: 32.00, w: 31.00, h: 35.00}
     socket_orientation: 0

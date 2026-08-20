@@ -1,0 +1,64 @@
+board_id: macrobase_6_axis_breakout
+image: images/macrobase_6_axis_breakout.jpg
+hotspots:
+  - generic_name: "In33"
+    rect: {x: 93.00, y: 43.00, w: 7.00, h: 4.00}
+    label_rect: {x: 100.00, y: 43.00, w: 27.00, h: 4.00}
+  - generic_name: "Driver1"
+    rect: {x: 11.00, y: 1.00, w: 12.00, h: 7.00}
+    label_rect: {x: 11.00, y: -19.00, w: 12.00, h: 19.00}
+    label_orientation: horizontal
+  - generic_name: "Driver2"
+    rect: {x: 23.00, y: 1.00, w: 13.00, h: 7.00}
+    label_rect: {x: 23.00, y: -19.00, w: 13.00, h: 19.00}
+    label_orientation: horizontal
+  - generic_name: "Driver3"
+    rect: {x: 36.00, y: 1.00, w: 12.00, h: 6.00}
+    label_rect: {x: 36.00, y: -19.00, w: 12.00, h: 19.00}
+    label_orientation: horizontal
+  - generic_name: "Driver4"
+    rect: {x: 48.00, y: 1.00, w: 13.00, h: 6.00}
+    label_rect: {x: 48.00, y: -19.00, w: 13.00, h: 19.00}
+    label_orientation: horizontal
+  - generic_name: "Driver5"
+    rect: {x: 61.00, y: 1.00, w: 12.00, h: 6.00}
+    label_rect: {x: 61.00, y: -19.00, w: 12.00, h: 19.00}
+    label_orientation: horizontal
+  - generic_name: "Driver6"
+    rect: {x: 73.00, y: 1.00, w: 13.00, h: 6.00}
+    label_rect: {x: 73.00, y: -19.00, w: 13.00, h: 19.00}
+    label_orientation: horizontal
+  - generic_name: "Spindle Out27"
+    rect: {x: 95.00, y: 12.00, w: 5.00, h: 13.00}
+    label_rect: {x: 100.00, y: 12.00, w: 18.00, h: 13.00}
+  - generic_name: "PWM IO 27"
+    rect: {x: 3.00, y: 67.00, w: 5.00, h: 12.00}
+    label_rect: {x: -9.00, y: 66.00, w: 12.00, h: 13.00}
+    label_orientation: horizontal
+  - generic_name: "Out4"
+    rect: {x: 95.00, y: 25.00, w: 5.00, h: 12.00}
+    label_rect: {x: 100.00, y: 25.00, w: 18.00, h: 12.00}
+  - generic_name: "Laser Out27"
+    rect: {x: 83.00, y: 88.00, w: 10.00, h: 9.00}
+    label_rect: {x: 83.00, y: 97.00, w: 10.00, h: 22.00}
+  - generic_name: "In32"
+    rect: {x: 93.00, y: 47.00, w: 7.00, h: 3.00}
+    label_rect: {x: 100.00, y: 47.00, w: 27.00, h: 3.00}
+  - generic_name: "In35"
+    rect: {x: 93.00, y: 50.00, w: 7.00, h: 3.00}
+    label_rect: {x: 100.00, y: 50.00, w: 27.00, h: 3.00}
+  - generic_name: "In34"
+    rect: {x: 93.00, y: 40.00, w: 7.00, h: 3.00}
+    label_rect: {x: 100.00, y: 40.00, w: 27.00, h: 3.00}
+  - generic_name: "In16"
+    rect: {x: 93.00, y: 53.00, w: 7.00, h: 3.00}
+    label_rect: {x: 100.00, y: 53.00, w: 27.00, h: 3.00}
+  - generic_name: "In14"
+    rect: {x: 93.00, y: 56.00, w: 7.00, h: 3.00}
+    label_rect: {x: 100.00, y: 56.00, w: 27.00, h: 3.00}
+  - generic_name: "In25"
+    rect: {x: 93.00, y: 59.00, w: 7.00, h: 3.00}
+    label_rect: {x: 100.00, y: 59.00, w: 27.00, h: 3.00}
+  - generic_name: "In26"
+    rect: {x: 93.00, y: 62.00, w: 7.00, h: 3.00}
+    label_rect: {x: 100.00, y: 62.00, w: 27.00, h: 3.00}
