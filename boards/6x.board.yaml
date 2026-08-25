@@ -39,8 +39,8 @@ motor_sockets:
       driver_class: external_connector
       pins: { step_pin: i2so.21, direction_pin: i2so.20, disable_pin: i2so.23 }
 generic_pins:
-  - { label: "IO2",  generic_name: "In2", mcu_pin: gpio.2,  direction: input, input_profile: { conditioning: opto_isolated } }
-  - { label: "IO26", generic_name: "In26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: opto_isolated } }
+  - { label: "IO2",  generic_name: "In2", mcu_pin: gpio.2,  direction: input, input_profile: { conditioning: opto_isolated, internal_pullup_required: true } }
+  - { label: "IO26", generic_name: "In26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: opto_isolated, internal_pullup_required: true } }
   - { label: "IO33", generic_name: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated } }
   - { label: "IO32", generic_name: "In32", mcu_pin: gpio.32, direction: input, input_profile: { conditioning: opto_isolated } }
   - { label: "IO35", generic_name: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: opto_isolated } }

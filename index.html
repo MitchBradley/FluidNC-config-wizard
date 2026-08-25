@@ -2215,6 +2215,18 @@ function collectAndInjectSlots(node, path, paramSlots, pinSlots, defaultOverride
       paramSlots.push({ path: p, key: k, spec });
     } else if (isPinLeaf(k, v) && !isFixedProtocolPath(p)) {
       pinSlots.push({ path: p, key: k, basePin: v });
+      // Same autofill posture as paramSlots' typical-tuning default above:
+      // a board fact (this pin's own circuit has no pull resistor, so the
+      // MCU's internal one MUST be enabled -- see input_profile's
+      // internal_pullup_required in board.schema.json) is silently applied
+      // rather than left for the user to notice and pick via the :pu/:pd
+      // picker in pinWidgetHtml(). Only when this exact path has never been
+      // touched, so a user's own explicit choice (including deliberately
+      // clearing it) is never clobbered on a later re-render.
+      const profile = genericPinProfiles[v];
+      if (profile && profile.internal_pullup_required === true && !pinAttrs[p]) {
+        pinAttrs[p] = { level: "", pull: "pu" };
+      }
       node[k] = "PINSLOT";
     } else if (v && typeof v === "object") {
       collectAndInjectSlots(v, p, paramSlots, pinSlots, defaultOverrides, keySlots);
