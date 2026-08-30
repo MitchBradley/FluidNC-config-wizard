@@ -154,7 +154,7 @@ stepping:
     default: '4'
     tuning: typical
     description: |
-      Duration, in microseconds, of the "on" part of each step pulse; it typically needs an equal "off" duration, so this caps the max step rate at roughly 1000000/(2*pulse_us + dir_delay_us) steps/sec. Too short a pulse won't be registered by some stepper drivers -- check the driver's datasheet if unsure.
+      Duration, in microseconds, of the "on" part of each step pulse; it typically needs an equal "off" duration, at minimum, so this caps the max step rate at roughly 1000000/(2*pulse_us + dir_delay_us) steps/sec. Too short a pulse won't be registered by some stepper drivers -- check the driver's datasheet if unsure.
 
   dir_delay_us:
     type: integer
