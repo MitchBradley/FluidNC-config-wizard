@@ -52,6 +52,14 @@
        of these can be used" note) gets its own slightly more orange tone
        rather than overloading --tbd's. */
     --warn: #e0a53c;
+    /* Deliberately much more visible than plain --border (#2a343b, barely
+       distinguishable from --bg/--panel) -- reused as --muted rather than a
+       one-off color since it's already an established, legible gray-blue in
+       this palette. Only for the vertical dividers BETWEEN the main panes
+       (.col.left/.col.hotspot below), matching hotspot-editor.html's own
+       --pane-divider -- every other border (buttons, inputs, section
+       headers) stays on plain --border, which is fine at that small scale. */
+    --pane-divider: var(--muted);
   }
   * { box-sizing: border-box; }
   body {
@@ -98,7 +106,7 @@
      when the loaded board has a hotspots/<id>.hotspots.yaml file -- most
      boards don't yet, so this stays the default 2-column layout for those. */
   .col { overflow-y: auto; padding: 18px 24px; }
-  .col.left { border-right: 1px solid var(--border); }
+  .col.left { border-right: 2px solid var(--pane-divider); }
   section { margin-bottom: 22px; }
   section h2 {
     font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
@@ -313,7 +321,7 @@
     background: #1c262c; border: 1px solid var(--border); border-radius: 3px;
     padding: 0 2px; margin-left: -4px;
   }
-  .col.hotspot { border-right: 1px solid var(--border); }
+  .col.hotspot { border-right: 2px solid var(--pane-divider); }
   /* Always scale the board photo to fill the pane's width -- not just
      capping a large photo down, but also stretching a small one up. A photo
      scaled up at view time by the browser looks the same as one baked to a
@@ -501,6 +509,12 @@
     <select id="boardPicker"></select>
   </div>
   <div class="header-right">
+    <!-- See gotoHotspotEditor() -- named target so repeated clicks reuse
+         the same companion tab instead of piling up a new one each time,
+         and carries the currently-loaded board (if any) as a ?board=
+         param so the hotspot editor lands on the same board instead of
+         its own blank "pick one" state. -->
+    <button onclick="gotoHotspotEditor()">Go to Hotspot Editor</button>
     <input type="file" id="customBoardFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
   </div>
 </header>
@@ -3244,7 +3258,12 @@ function renderHotspotPane() {
   // just silently overflowed instead -- not obviously "too narrow" unless
   // a resource happened to have a space in its name. 420px leaves a
   // comfortable ~120px for the label column on output/cascade rows.
-  mainEl.style.gridTemplateColumns = "420px 1fr max-content";
+  // minmax(10vw, 1fr), not plain 1fr, on the hotspot photo column -- same
+  // reasoning and floor as hotspot-editor.html's own .layout: with a fixed
+  // 420px left column plus a max-content right column, a plain 1fr middle
+  // column shrinks to 0 and vanishes entirely on a narrow window, which is
+  // exactly how people missed the photo pane exists at all.
+  mainEl.style.gridTemplateColumns = "420px minmax(10vw, 1fr) max-content";
   col.style.display = "";
   col.innerHTML = `<div class="note note-instruct">Click a highlighted region to select its row on the left.</div>
     <div id="hotspotImgWrap">
@@ -3504,7 +3523,7 @@ function renderResources() {
 
   const note = document.createElement("div");
   note.className = "note note-instruct";
-  note.textContent = `For each physical board resource below, choose it's FluidNC role (or leave Unused).`;
+  note.textContent = `For each physical board resource below, choose its FluidNC role (or leave Unused).`;
   col.appendChild(note);
 
   const title = document.createElement("div");
@@ -5913,6 +5932,28 @@ function downloadDraft() {
 /* ---------------------------------------------------------------------
  * Boot
  * ------------------------------------------------------------------- */
+/* "Go to Hotspot Editor" header button. Carries the currently-loaded
+ * board's id as a ?board= param, mirroring index.html's own ?board=<id>
+ * link-in support (see boot() below) -- hotspot-editor.html reads the same
+ * param at its own boot to auto-select that board, so a fresh trip over
+ * there doesn't land on a blank "pick a board" state. Only when a real
+ * repo board (not a locally-picked custom file, which has no
+ * boards/<id>.board.yaml for the hotspot editor to fetch) is currently
+ * loaded -- board.board.id still exists for a custom file, but passing it
+ * would just make the hotspot editor's own fetch 404 pointlessly.
+ * Named window.open() target (not "_blank") so repeated clicks reuse the
+ * same companion tab rather than piling up a new one each time -- there's
+ * deliberately no equivalent "Back to Wizard" button on that side doing
+ * the same for the return trip: navigating a reused tab is a real reload,
+ * which would silently discard whatever hotspot-placement work was
+ * already in progress there. Switching back manually (click the tab,
+ * Cmd/Ctrl+Tab) costs nothing and loses nothing. */
+function gotoHotspotEditor() {
+  const id = board && board.board && BOARD_IDS.includes(board.board.id) ? board.board.id : null;
+  const url = id ? `hotspot-editor.html?board=${encodeURIComponent(id)}` : "hotspot-editor.html";
+  window.open(url, "fluidnc_hotspot_editor");
+}
+
 const picker = document.getElementById("boardPicker");
 // Placeholder option -- nothing is preselected/auto-loaded at boot (see
 // boot() below), so there needs to be a real "no board chosen yet" option

@@ -12,13 +12,23 @@
        worth-reading text (currently just .note-info) that needs more
        contrast than --muted alone gives. */
     --muted-strong: #aebcc4;
+    /* Deliberately much more visible than plain --border (#2c3a42, barely
+       distinguishable from --bg/--panel) -- reused as --muted rather than a
+       one-off color since it's already an established, legible gray-blue in
+       this palette. Only for the vertical dividers BETWEEN the three main
+       panes (see .col/.imgcol below); every other border (buttons, inputs,
+       the output box) stays on plain --border, which is fine at that small
+       scale -- it's specifically "which pane am I in" that people were
+       missing. */
+    --pane-divider: var(--muted);
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; font: 14px/1.4 -apple-system, "Segoe UI", sans-serif;
     background: var(--bg); color: var(--text);
   }
-  h1 { font-size: 15px; margin: 0; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  header { display: flex; align-items: baseline; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  h1 { font-size: 15px; margin: 0; }
   h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted-strong); margin: 14px 0 6px; }
   .toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
   .toolbar input[type=text] { flex: 1; min-width: 200px; }
@@ -35,6 +45,14 @@
   }
   button:hover { border-color: var(--accent); color: var(--accent); }
   button.primary { border-color: var(--accent); color: var(--accent); }
+  /* Same "dropdown list with Custom option" pattern as the main wizard's
+     own board picker (index.html's #boardPicker) -- see #boardFilePicker.
+     .primary mirrors button.primary's accent-until-loaded treatment. */
+  select {
+    font: inherit; cursor: pointer; background: #10161a; color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px; padding: 4px 6px;
+  }
+  select.primary { border-color: var(--accent); color: var(--accent); }
   .mode-radios { display: flex; gap: 14px; align-items: center; }
   .mode-radios label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px; }
   .mode-radios input[type=radio] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
@@ -62,8 +80,17 @@
      the hotspots-loaded success message) -- a finer-grained warning
      signal than wrapping the WHOLE note in .note-warn would allow. */
   .tag-warn { color: var(--tbd); font-weight: 600; }
-  .layout { display: grid; grid-template-columns: 260px 1fr 320px; gap: 0; height: calc(100vh - 45px); }
-  .col { overflow: auto; padding: 10px 14px; border-right: 1px solid var(--border); }
+  /* minmax(10vw, 1fr), not plain 1fr -- on a narrow window the two fixed
+     side columns (260px + 320px) can eat the whole available width, and a
+     plain 1fr middle column just shrinks to 0 and disappears, which is how
+     people have missed that the board-image pane exists at all. The 10vw
+     floor keeps it visibly present (roomy enough to notice, not enough to
+     matter which exact fraction) at the cost of the layout needing to
+     horizontal-scroll below ~600px wide -- an explicit tradeoff, since a
+     pane nobody knows is there is worse than one that takes a scroll to
+     reach in full. */
+  .layout { display: grid; grid-template-columns: 260px minmax(10vw, 1fr) 320px; gap: 0; height: calc(100vh - 45px); }
+  .col { overflow: auto; padding: 10px 14px; border-right: 2px solid var(--pane-divider); }
   .col:last-child { border-right: none; }
   /* The middle (board image) column needs its Load/zoom controls to stay
      put even when the image itself is scrolled around at high zoom -- a
@@ -194,7 +221,9 @@
 </head>
 <body>
 
-<h1>FluidNC Board Hotspot Editor</h1>
+<header>
+  <h1>FluidNC Board Hotspot Editor</h1>
+</header>
 
 <div class="layout">
   <div class="col">
@@ -204,15 +233,21 @@
       <label><input type="radio" name="editorMode" id="modeModuleBtn"> Module</label>
     </div>
     <div class="toolbar" style="padding:0 0 6px; border:none">
-      <!-- "primary" (accent-colored) until a board/module file's been loaded --
-           see loadLabelsFromText(), which removes it. -->
-      <button id="loadBoardFileBtn" class="primary">Load board.yaml file…</button>
+      <!-- Same "dropdown list with Custom option" pattern as the main
+           wizard's own board picker (index.html's #boardPicker) -- real
+           board.yaml/module.yaml ids from boards|modules/index.json, plus a
+           "Custom (choose a local file)..." option that falls through to
+           loadBoardFileInput. "primary" (accent-colored) until a board/
+           module file's been loaded -- see loadLabelsFromText(), which
+           removes it. Options are (re)populated by populateBoardFilePicker(),
+           called at boot and on every mode toggle (see setMode()). -->
+      <select id="boardFilePicker" class="primary"></select>
       <input type="file" id="loadBoardFileInput" accept=".yaml,.yml,.txt,text/yaml,text/plain" style="display:none">
     </div>
     <div class="note" id="loadBoardNote" style="padding:0 0 6px"></div>
     <!-- placeLabelHint only -- see renderLabels(), which reveals it once
          `labels` is populated. Its "how to load a board file" counterpart
-         is gone; see loadBoardFileBtn's accent styling above instead. -->
+         is gone; see boardFilePicker's accent styling above instead. -->
     <div class="note note-instruct" id="placeLabelHint" style="padding:0 0 8px; display:none">
       Select a resource then draw its hotspot over the image
     </div>
@@ -220,7 +255,7 @@
     <div id="labelList"></div>
   </div>
 
-  <div class="col imgcol" style="border-right:1px solid var(--border)">
+  <div class="col imgcol" style="border-right:2px solid var(--pane-divider)">
     <div class="imgcol-header">
       <h2 id="imageColHeading">Board image</h2>
       <div class="toolbar" style="padding:0 0 6px; border:none">
@@ -424,13 +459,22 @@ let rawBoardYamlText = "";
 let moduleMode = false;
 
 function setMode(isModule) {
+  // Only repopulate the picker (which resets its selection to the
+  // placeholder -- see populateBoardFilePicker()) when the mode is actually
+  // changing. loadBoardFileById() below always loads from the CURRENT
+  // mode's folder, so its own setMode() call (via loadLabelsFromText()'s
+  // filename-based auto-detect) never actually flips the mode -- without
+  // this guard, successfully picking a board.yaml from the dropdown would
+  // immediately wipe that very selection back to the placeholder.
+  const modeChanged = moduleMode !== isModule;
   moduleMode = isModule;
   document.getElementById("modeBoardBtn").checked = !isModule;
   document.getElementById("modeModuleBtn").checked = isModule;
   document.getElementById("resourceListHeading").textContent =
     isModule ? "Module connector list" : "Board resource list";
-  document.getElementById("loadBoardFileBtn").textContent =
-    isModule ? "Load module.yaml file\u2026" : "Load board.yaml file\u2026";
+  // Options list AND placeholder text both depend on mode (module ids from
+  // modules/index.json vs board ids from boards/index.json).
+  if (modeChanged) populateBoardFilePicker();
   document.getElementById("imageColHeading").textContent =
     isModule ? "Module image" : "Board image";
   document.getElementById("loadImgFileBtn").textContent =
@@ -462,13 +506,99 @@ function loadLabelsFromText(text, sourceName) {
   const note = document.getElementById("loadBoardNote");
   note.textContent = `${sourceName || "file"} - ${extracted.length} resources.`;
   note.className = "note note-info";
-  document.getElementById("loadBoardFileBtn").classList.remove("primary");
+  document.getElementById("boardFilePicker").classList.remove("primary");
 }
 
-document.getElementById("loadBoardFileBtn").onclick = () => document.getElementById("loadBoardFileInput").click();
+/* ---------------------------------------------------------------------
+ * "Load board.yaml/module.yaml file..." picker -- same "dropdown list with
+ * Custom option" pattern as the main wizard's own board picker (index.html's
+ * #boardPicker/BOARD_IDS/loadBoardManifest()): real ids come from
+ * boards/index.json or modules/index.json (see tools/gen_board_index.py and
+ * its module-mode counterpart), fetched once at boot, with a fixed
+ * "Custom (choose a local file)..." option that falls through to the
+ * existing hidden file input -- letting a contributor try out a board.yaml
+ * that isn't in the manifest yet (or isn't a repo file at all) exactly like
+ * before, while everyday use is now a two-click pick instead of a file-
+ * dialog round trip.
+ * ------------------------------------------------------------------- */
+let BOARD_FILE_IDS = [];
+let MODULE_FILE_IDS = [];
+const CUSTOM_FILE_OPT_VALUE = "__custom__";
+
+async function fetchJsonManifest(path) {
+  try {
+    const res = await fetch(path);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    // Degrades to an empty list (Custom... still works) rather than
+    // breaking boot -- same posture as index.html's loadBoardManifest(),
+    // e.g. when opened via file:// (fetch of a local path is blocked) or
+    // the manifest just hasn't been regenerated yet.
+    console.warn(`Couldn't load ${path} (${e.message}); dropdown will only offer Custom...`);
+    return [];
+  }
+}
+
+function populateBoardFilePicker() {
+  const picker = document.getElementById("boardFilePicker");
+  picker.innerHTML = "";
+  const placeholderOpt = document.createElement("option");
+  placeholderOpt.value = "";
+  placeholderOpt.textContent = moduleMode ? "— Select a module.yaml —" : "— Select a board.yaml —";
+  picker.appendChild(placeholderOpt);
+  (moduleMode ? MODULE_FILE_IDS : BOARD_FILE_IDS).forEach(id => {
+    const o = document.createElement("option");
+    o.value = id; o.textContent = id;
+    picker.appendChild(o);
+  });
+  // Indented with leading NBSPs (plain CSS padding on <option> is ignored
+  // by some browsers, e.g. Safari) so it visually reads as the odd one out
+  // tucked below the real list, not just one more entry among them --
+  // same treatment as index.html's own customOpt.
+  const customOpt = document.createElement("option");
+  customOpt.value = CUSTOM_FILE_OPT_VALUE;
+  customOpt.style.paddingLeft = "1.5em";
+  customOpt.textContent = "  Custom (choose a local file)...";
+  picker.appendChild(customOpt);
+  picker.value = "";
+}
+
+async function loadBoardFileById(id) {
+  const path = moduleMode ? `modules/${id}.module.yaml` : `boards/${id}.board.yaml`;
+  let text;
+  try {
+    const res = await fetch(path);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    text = await res.text();
+  } catch (e) {
+    const note = document.getElementById("loadBoardNote");
+    note.textContent = `Couldn't load ${path}: ${e.message}`;
+    note.className = "note note-error";
+    return;
+  }
+  loadLabelsFromText(text, path);
+  // Vice-versa: no image loaded yet -- try to auto-load the matching
+  // images/<id>.<ext>, guessed from the board.yaml's own "id:" line.
+  maybeAutoLoadImage();
+}
+
+document.getElementById("boardFilePicker").onchange = () => {
+  const picker = document.getElementById("boardFilePicker");
+  if (picker.value === CUSTOM_FILE_OPT_VALUE) {
+    document.getElementById("loadBoardFileInput").click();
+    return;
+  }
+  if (picker.value) loadBoardFileById(picker.value);
+};
 document.getElementById("loadBoardFileInput").onchange = (e) => {
   const file = e.target.files[0];
-  if (!file) return;
+  if (!file) {
+    // User cancelled the file dialog -- picker is still showing "Custom...",
+    // which has nothing loaded behind it, so fall back to the placeholder.
+    document.getElementById("boardFilePicker").value = "";
+    return;
+  }
   const reader = new FileReader();
   reader.onload = () => {
     loadLabelsFromText(reader.result, file.name);
@@ -1583,6 +1713,29 @@ document.getElementById("saveServerBtn").onclick = async () => {
 renderLabels();
 renderHotspots();
 renderOutput();
+
+(async () => {
+  [BOARD_FILE_IDS, MODULE_FILE_IDS] = await Promise.all([
+    fetchJsonManifest("boards/index.json"),
+    fetchJsonManifest("modules/index.json"),
+  ]);
+  populateBoardFilePicker();
+  // ?board=<id> -- mirrors index.html's own ?board=<id> boot-time link-in
+  // (see gotoHotspotEditor() there), so arriving via its "Go to Hotspot
+  // Editor" button lands on the same board instead of this page's own
+  // blank "pick one" state. Not gated on
+  // BOARD_FILE_IDS.includes(id) for the actual load -- same reasoning as
+  // index.html's own urlBoardId handling: loadBoardFileById() fetches
+  // boards/<id>.board.yaml directly and reports its own error if that
+  // fails, so a board that exists on disk but isn't in the manifest yet
+  // still loads; the select's value is only set when it IS a known option,
+  // same as index.html.
+  const urlBoardId = new URLSearchParams(window.location.search).get("board");
+  if (urlBoardId) {
+    if (BOARD_FILE_IDS.includes(urlBoardId)) document.getElementById("boardFilePicker").value = urlBoardId;
+    await loadBoardFileById(urlBoardId);
+  }
+})();
 </script>
 </body>
 </html>

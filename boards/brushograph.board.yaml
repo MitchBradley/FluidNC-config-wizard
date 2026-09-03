@@ -1,0 +1,39 @@
+board:
+  id: brushograph
+  name: "Brushograph PCB"
+  manufacturer: "openBrushograph (community, designed by dusjagr)"
+  mcu_chip: esp32
+  status: community_documented
+meta:
+  wiki_url: "https://wiki.sgmk-ssam.ch/wiki/Brushograph"
+  schematic_url: "https://github.com/openBrushograph/Brushograph_PCB"
+  notes: >
+    DIY/etchable single-layer PCB for a pen-plotting "mechatronic brush"
+    (miniPenzlograf). All three axes (X/Y/Z) are driven by 28BYJ-48 unipolar
+    stepper motors through three onboard ULN2003 Darlington-array driver
+    chips (U1/U2/U3 in the schematic) -- NOT by conventional step/dir
+    stepper drivers.
+stepping:
+  engines: [rmt, timed]
+fixed_peripherals:
+  spi: { miso_pin: gpio.23, mosi_pin: gpio.19, sck_pin: gpio.18 }
+  sdcard: { cs_pin: gpio.5, card_detect_pin: NO_PIN }
+motor_sockets:
+  shared_disable_pin: NO_PIN
+  shared_reset_pin: NO_PIN
+  sockets:
+    - label: "Z"
+      generic_name: "Motor3"
+      driver_class: onboard_fixed
+      fixed_motor_type: unipolar
+      pins: { phase0_pin: gpio.32, phase1_pin: gpio.33, phase2_pin: gpio.25, phase3_pin: gpio.26 }
+    - label: "X"
+      generic_name: "Motor1"
+      driver_class: onboard_fixed
+      fixed_motor_type: unipolar
+      pins: { phase0_pin: gpio.27, phase1_pin: gpio.14, phase2_pin: gpio.13, phase3_pin: gpio.4 }
+    - label: "Y"
+      generic_name: "Motor2"
+      driver_class: onboard_fixed
+      fixed_motor_type: unipolar
+      pins: { phase0_pin: gpio.22, phase1_pin: gpio.21, phase2_pin: gpio.17, phase3_pin: gpio.16 }
