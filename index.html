@@ -72,6 +72,11 @@
   }
   header h1 { font-size: 17px; margin: 0; font-weight: 600; }
   header p { margin: 0; color: var(--muted); font-size: 12.5px; }
+  /* Stands in for the "Open Hotspot Editor" button while that tab is open
+     (see updateHotspotEditorBtn()) -- --muted-strong, not plain --muted
+     like header p above, since this is an actionable instruction someone
+     needs to actually read and act on, not incidental subtext. */
+  .header-note { color: var(--muted-strong); font-size: 13px; }
   /* Board picker sits in a flex:1 middle region so it lands roughly
      centered in the header (between the title and the right-pinned
      load-config button) rather than jammed hard against the right edge --
@@ -513,8 +518,16 @@
          the same companion tab instead of piling up a new one each time,
          and carries the currently-loaded board (if any) as a ?board=
          param so the hotspot editor lands on the same board instead of
-         its own blank "pick one" state. -->
-    <button onclick="gotoHotspotEditor()">Go to Hotspot Editor</button>
+         its own blank "pick one" state. Replaced by hotspotEditorOpenNote
+         (see updateHotspotEditorBtn()) while that tab is known to still be
+         open, so a second click can't reload it out from under whatever
+         in-progress hotspot placement it has -- clicking here always
+         navigates a REUSED tab for real, unlike merely switching to it.
+         A disabled button alone said nothing about WHY or what to do
+         instead, easy to miss/misread as just broken -- swapping it for
+         an actual instruction is the point. -->
+    <button id="gotoHotspotEditorBtn" onclick="gotoHotspotEditor()">Open Hotspot Editor</button>
+    <span id="hotspotEditorOpenNote" class="header-note" style="display:none">Hotspot Editor is open in another tab — switch to it manually</span>
     <input type="file" id="customBoardFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
   </div>
 </header>
@@ -5932,7 +5945,7 @@ function downloadDraft() {
 /* ---------------------------------------------------------------------
  * Boot
  * ------------------------------------------------------------------- */
-/* "Go to Hotspot Editor" header button. Carries the currently-loaded
+/* "Open Hotspot Editor" header button. Carries the currently-loaded
  * board's id as a ?board= param, mirroring index.html's own ?board=<id>
  * link-in support (see boot() below) -- hotspot-editor.html reads the same
  * param at its own boot to auto-select that board, so a fresh trip over
@@ -5947,11 +5960,60 @@ function downloadDraft() {
  * the same for the return trip: navigating a reused tab is a real reload,
  * which would silently discard whatever hotspot-placement work was
  * already in progress there. Switching back manually (click the tab,
- * Cmd/Ctrl+Tab) costs nothing and loses nothing. */
+ * Cmd/Ctrl+Tab) costs nothing and loses nothing.
+ *
+ * Disabling the button while that tab is known open guards against the
+ * exact same reload-discards-work risk from THIS side: window.open()
+ * hands back a live reference to whatever tab it opened/reused
+ * (hotspotEditorWin), and .closed is one of the few properties readable on
+ * a cross-tab WindowProxy without restriction -- no "browser safety" wall
+ * here, just no API for "does a tab named X exist" independent of having
+ * opened it yourself. That's this mechanism's real limit: it only tracks a
+ * tab THIS wizard tab instance opened and has held an unbroken reference
+ * to. A reload of the wizard tab itself (manual refresh, or a fresh
+ * ?board= link-in) forgets any such handle, so the button would light
+ * back up even if that hotspot-editor tab is still genuinely open
+ * elsewhere -- accepted as a real but narrow gap, not fixable without an
+ * API browsers don't provide. */
+let hotspotEditorWin = null;
+
+function updateHotspotEditorBtn() {
+  const stillOpen = !!(hotspotEditorWin && !hotspotEditorWin.closed);
+  // Swapped for an actual instruction, not just grayed out -- a disabled
+  // button alone gives no clue WHY, or what to do instead, and is easy to
+  // read as "broken" rather than "already handled elsewhere." btn.disabled
+  // is still set too, purely as defense in depth (e.g. a stale rendered
+  // button somehow left visible) -- gotoHotspotEditor()'s own guard is the
+  // real backstop against firing while stillOpen.
+  document.getElementById("gotoHotspotEditorBtn").disabled = stillOpen;
+  document.getElementById("gotoHotspotEditorBtn").style.display = stillOpen ? "none" : "";
+  document.getElementById("hotspotEditorOpenNote").style.display = stillOpen ? "" : "none";
+}
+
+// No "this window closed" event exists to react to, so this polls .closed
+// on a plain interval -- cheap (one property read) and only running at all
+// while a handle is actually being tracked, stopping itself the moment
+// that tab closes rather than polling forever.
+function pollHotspotEditorWin() {
+  if (!hotspotEditorWin) return;
+  if (hotspotEditorWin.closed) {
+    hotspotEditorWin = null;
+    updateHotspotEditorBtn();
+    return;
+  }
+  setTimeout(pollHotspotEditorWin, 1000);
+}
+
 function gotoHotspotEditor() {
+  // Shouldn't normally be reachable (the button is disabled in this
+  // state), but kept as a non-throwing safety net rather than trusting the
+  // disabled attribute alone against every possible way this could fire.
+  if (hotspotEditorWin && !hotspotEditorWin.closed) return;
   const id = board && board.board && BOARD_IDS.includes(board.board.id) ? board.board.id : null;
   const url = id ? `hotspot-editor.html?board=${encodeURIComponent(id)}` : "hotspot-editor.html";
-  window.open(url, "fluidnc_hotspot_editor");
+  hotspotEditorWin = window.open(url, "fluidnc_hotspot_editor");
+  updateHotspotEditorBtn();
+  pollHotspotEditorWin();
 }
 
 const picker = document.getElementById("boardPicker");
