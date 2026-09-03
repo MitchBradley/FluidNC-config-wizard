@@ -271,6 +271,10 @@
           <span class="note" style="padding:0 0 0 8px">or Ctrl/⌘+scroll over the image</span>
         </span>
       </div>
+      <!-- Visible only until an image is actually loaded -- loadImageBlob()
+           hides it at that point, same moment imgLoadNote (below) takes
+           over the same visual slot with real status text. -->
+      <div class="note note-instruct" id="imgFormatHint" style="padding:0 0 6px">Board images should be in .jpg format, about 1000 pixels wide, with little skew.</div>
       <!-- Empty/hidden until an image loads -- the button's own label
            already says "Load board image…", so a separate "load an image
            file" instruction was redundant with it (replaced by the
@@ -479,6 +483,12 @@ function setMode(isModule) {
     isModule ? "Module image" : "Board image";
   document.getElementById("loadImgFileBtn").textContent =
     isModule ? "Load module image\u2026" : "Load board image\u2026";
+  // Only actually visible before an image is loaded (see loadImageBlob(),
+  // which hides it) -- kept up to date regardless, in case mode is
+  // switched before that point.
+  document.getElementById("imgFormatHint").textContent = isModule
+    ? "Module images should be in .jpg format, 420 pixels wide by 320 pixels high, with little skew."
+    : "Board images should be in .jpg format, about 1000 pixels wide, with little skew.";
   const img = document.getElementById("boardImg");
   img.alt = isModule ? img.dataset.altModule : img.dataset.altBoard;
   renderOutput();
@@ -732,6 +742,7 @@ function loadImageBlob(blob, label) {
           src = canvas.toDataURL("image/jpeg", 0.9);
         }
         document.getElementById("boardImg").src = src;
+        document.getElementById("imgFormatHint").style.display = "none";
         const note = document.getElementById("imgLoadNote");
         note.textContent = `${label} (${w}x${h}${longEdge > MAX_IMG_DIM ? ", downscaled for editing" : ""}).`;
         note.className = "note note-info";
