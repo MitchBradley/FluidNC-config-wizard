@@ -2089,6 +2089,7 @@ const OUTPUT_ONLY_PIN_KEYS = new Set([
   "ms1_pin", "ms2_pin", "ms3_pin", "cs_pin",
   "output_pin", "output_cw_pin", "output_ccw_pin",
   "forward_pin", "reverse_pin",
+  "phase0_pin", "phase1_pin", "phase2_pin", "phase3_pin",
   "mist_pin", "flood_pin",
   "sck_pin", "mosi_pin", "txd_pin",
   "bck_pin", "data_pin", "ws_pin",
@@ -4039,6 +4040,23 @@ function motorBlockFor(socket) {
     }
     if (t === "solenoid") {
       return axisMotorBlockFor("solenoid", socket.pins.output_pin);
+    }
+    if (t === "unipolar") {
+      // ULN2003-driven 28BYJ-48 motor (bdring/FluidNC#1797,
+      // Motors/UnipolarMotor.h) -- no step_pin/direction_pin at all, just
+      // four independent phase-drive outputs, already grouped as one
+      // socket's pins by board.schema.json (see its fixed_motor_type
+      // dispatch), unlike rc_servo/solenoid's single output_pin. half_step
+      // has a real firmware default (true) but is still left an open TBD
+      // like every other per-machine tuning field this wizard doesn't
+      // silently guess.
+      return { key: "unipolar", body: {
+        phase0_pin: socket.pins.phase0_pin,
+        phase1_pin: socket.pins.phase1_pin,
+        phase2_pin: socket.pins.phase2_pin,
+        phase3_pin: socket.pins.phase3_pin,
+        half_step: TBD,
+      }};
     }
     if (t === "tmc_2209") {
       return { key: "tmc_2209", body: {

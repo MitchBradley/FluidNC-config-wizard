@@ -431,7 +431,7 @@
           }
         },
         {
-          "description": "Non-stepper fixed actuators (currently just rc_servo) use a single output_pin instead of step/direction_pin. Extend this enum as more onboard_fixed non-stepper types are documented (e.g. solenoid, dynamixel2).",
+          "description": "Non-stepper fixed actuators use a different pin set than step/direction_pin: rc_servo (currently the only one) a single output_pin, unipolar (bdring/FluidNC#1797, Motors/UnipolarMotor.h -- a ULN2003-driven 28BYJ-48 motor with no step/dir inputs at all) four independent phase0-3_pin drive outputs instead. Chained if/then/else (not three independent allOf entries) since these three pin shapes are mutually exclusive -- exactly one applies per socket. Each branch's own \"not\" forbids the OTHER two shapes' fields via anyOf-of-single-field-required, not a single multi-field \"required\" (which would only reject having ALL of them at once, not any one of them -- a pre-existing latent bug in this same clause, fixed here rather than propagated into the new unipolar branch). Extend with another nested else as more onboard_fixed non-stepper types are documented (e.g. solenoid, dynamixel2).",
           "if": {
             "properties": {
               "fixed_motor_type": {
@@ -450,26 +450,60 @@
                   "output_pin"
                 ],
                 "not": {
-                  "required": [
-                    "step_pin",
-                    "direction_pin"
+                  "anyOf": [
+                    { "required": ["step_pin"] },
+                    { "required": ["direction_pin"] },
+                    { "required": ["phase0_pin"] }
                   ]
                 }
               }
             }
           },
           "else": {
-            "properties": {
-              "pins": {
-                "type": "object",
-                "required": [
-                  "step_pin",
-                  "direction_pin"
-                ],
-                "not": {
+            "if": {
+              "properties": {
+                "fixed_motor_type": {
+                  "const": "unipolar"
+                }
+              },
+              "required": [
+                "fixed_motor_type"
+              ]
+            },
+            "then": {
+              "properties": {
+                "pins": {
+                  "type": "object",
                   "required": [
-                    "output_pin"
-                  ]
+                    "phase0_pin",
+                    "phase1_pin",
+                    "phase2_pin",
+                    "phase3_pin"
+                  ],
+                  "not": {
+                    "anyOf": [
+                      { "required": ["step_pin"] },
+                      { "required": ["direction_pin"] },
+                      { "required": ["output_pin"] }
+                    ]
+                  }
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "pins": {
+                  "type": "object",
+                  "required": [
+                    "step_pin",
+                    "direction_pin"
+                  ],
+                  "not": {
+                    "anyOf": [
+                      { "required": ["output_pin"] },
+                      { "required": ["phase0_pin"] }
+                    ]
+                  }
                 }
               }
             }
@@ -480,7 +514,7 @@
     "motor_socket_pins": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Field-level requirements are NOT enforced here -- see motor_socket's allOf, which dispatches required fields based on driver_class/fixed_motor_type (a stepper-driven socket needs step_pin+direction_pin; a non-stepper fixed actuator like rc_servo needs output_pin instead).",
+      "description": "Field-level requirements are NOT enforced here -- see motor_socket's allOf, which dispatches required fields based on driver_class/fixed_motor_type (a stepper-driven socket needs step_pin+direction_pin; a non-stepper fixed actuator like rc_servo needs output_pin instead; a unipolar motor needs all four phase0-3_pin instead).",
       "properties": {
         "step_pin": {
           "$ref": "#/$defs/mcu_pin"
@@ -515,6 +549,22 @@
         "output_pin": {
           "$ref": "#/$defs/mcu_pin",
           "description": "onboard_fixed with a non-stepper fixed actuator only (fixed_motor_type: rc_servo/solenoid/etc.) -- a single PWM/signal pin instead of step/direction."
+        },
+        "phase0_pin": {
+          "$ref": "#/$defs/mcu_pin",
+          "description": "onboard_fixed, fixed_motor_type: unipolar only (bdring/FluidNC#1797, Motors/UnipolarMotor.h -- a ULN2003-driven 28BYJ-48 motor). Coil A drive output, e.g. IN1 on a ULN2003 board. All four phase0-3_pin fields are required together, in place of step_pin/direction_pin, which this motor type has no use for."
+        },
+        "phase1_pin": {
+          "$ref": "#/$defs/mcu_pin",
+          "description": "onboard_fixed, fixed_motor_type: unipolar only. Coil B drive output, e.g. IN2 on a ULN2003 board."
+        },
+        "phase2_pin": {
+          "$ref": "#/$defs/mcu_pin",
+          "description": "onboard_fixed, fixed_motor_type: unipolar only. Coil C drive output, e.g. IN3 on a ULN2003 board."
+        },
+        "phase3_pin": {
+          "$ref": "#/$defs/mcu_pin",
+          "description": "onboard_fixed, fixed_motor_type: unipolar only. Coil D drive output, e.g. IN4 on a ULN2003 board."
         }
       }
     },
