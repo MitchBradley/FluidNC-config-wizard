@@ -604,8 +604,14 @@
  * ------------------------------------------------------------------- */
 let BOARD_IDS = [];
 
+// no-store on both fetches below -- same caching gotcha as
+// loadBoardManifest()'s own fetch of boards/index.json: a locally-served
+// python3 -m http.server response has no Cache-Control header, just
+// Last-Modified, so a plain reload after editing a board.yaml (or its
+// hotspots.yaml/chip.yaml) can silently keep showing the OLD content with
+// no error (see bdring/FluidNC-config-wizard#14).
 async function fetchYamlText(path) {
-  const res = await fetch(path);
+  const res = await fetch(path, { cache: "no-store" });
   if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
   return res.text();
 }
@@ -615,7 +621,7 @@ async function fetchYamlText(path) {
 // should silently fall back to no hotspot pane, not break board loading.
 async function fetchYamlTextOptional(path) {
   try {
-    const res = await fetch(path);
+    const res = await fetch(path, { cache: "no-store" });
     if (!res.ok) return null;
     return await res.text();
   } catch (e) {
@@ -6068,7 +6074,15 @@ customBoardFileInput.addEventListener("change", (e) => {
  * itself just won't have anything to search until the manifest is fixed. */
 async function loadBoardManifest() {
   try {
-    const res = await fetch("boards/index.json");
+    // no-store -- python3 -m http.server (this repo's own documented way to
+    // serve it locally) sends no Cache-Control header at all, just
+    // Last-Modified, which is exactly the condition browsers use heuristic
+    // caching under: a plain reload after adding a new board.yaml can
+    // silently keep serving the OLD index.json from cache, showing a board
+    // list that's missing the just-added board with no error of any kind
+    // (confirmed as the actual cause of bdring/FluidNC-config-wizard#14's
+    // "greyhound not showing up" report -- the board file itself was fine).
+    const res = await fetch("boards/index.json", { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     BOARD_IDS = await res.json();
   } catch (e) {
