@@ -107,7 +107,7 @@ generic_pins:
   # wiki: "you cannot use all (6) output circuits completely
   # independently."
   - { label: "5V Outputs - GPIO.4", generic_name: "5V Out4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 }, notes: "Also activates MOSFET1 (gpio.4) simultaneously -- see generic_pins entry FET4." }
-  - { label: "5V Outputs - GPIO.2", generic_name: "5V Out5", mcu_pin: gpio.5, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 }, notes: "Also activates MOSFET2 (gpio.5) simultaneously -- see generic_pins entry FET5." }
+  - { label: "5V Outputs - GPIO.5", generic_name: "5V Out5", mcu_pin: gpio.5, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 }, notes: "Also activates MOSFET2 (gpio.5) simultaneously -- see generic_pins entry FET5." }
   - { label: "5V Outputs - GPIO.46", generic_name: "5V Out46", mcu_pin: gpio.46, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 } }
   - { label: "5V Outputs - GPIO.45", generic_name: "5V Out45", mcu_pin: gpio.45, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 } }
 
