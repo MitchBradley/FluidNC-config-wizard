@@ -1,0 +1,112 @@
+board_id: greyhound
+image: images/greyhound.jpg
+hotspots:
+  - generic_name: "Driver1"
+    rect: {x: 18.00, y: 90.00, w: 12.00, h: 9.00}
+    label_rect: {x: 18.00, y: 100.00, w: 12.00, h: 15.00}
+    label_orientation: horizontal
+  - generic_name: "Driver2"
+    rect: {x: 30.00, y: 90.00, w: 12.00, h: 9.00}
+    label_rect: {x: 30.00, y: 100.00, w: 12.00, h: 15.00}
+    label_orientation: horizontal
+  - generic_name: "Driver3"
+    rect: {x: 42.00, y: 90.00, w: 11.00, h: 9.00}
+    label_rect: {x: 42.00, y: 100.00, w: 12.00, h: 15.00}
+    label_orientation: horizontal
+  - generic_name: "Driver4"
+    rect: {x: 54.00, y: 90.00, w: 11.00, h: 9.00}
+    label_rect: {x: 54.00, y: 100.00, w: 11.00, h: 15.00}
+    label_orientation: horizontal
+  - generic_name: "Driver5"
+    rect: {x: 66.00, y: 90.00, w: 11.00, h: 9.00}
+    label_rect: {x: 66.00, y: 100.00, w: 11.00, h: 15.00}
+    label_orientation: horizontal
+  - generic_name: "Driver6"
+    rect: {x: 78.00, y: 90.00, w: 11.00, h: 9.00}
+    label_rect: {x: 78.00, y: 100.00, w: 11.00, h: 15.00}
+  - generic_name: "Pendant"
+    rect: {x: 36.00, y: 1.00, w: 10.00, h: 23.00}
+    label_rect: {x: 36.00, y: -17.00, w: 10.00, h: 17.00}
+  - generic_name: "Module Socket"
+    rect: {x: 1.00, y: 1.00, w: 33.00, h: 37.00}
+    socket_orientation: 2
+  - generic_name: "FET1"
+    rect: {x: 94.00, y: 59.00, w: 6.00, h: 8.00}
+    label_rect: {x: 100.00, y: 59.00, w: 14.00, h: 8.00}
+  - generic_name: "FET2"
+    rect: {x: 94.00, y: 67.00, w: 6.00, h: 8.00}
+    label_rect: {x: 100.00, y: 67.00, w: 14.00, h: 8.00}
+  - generic_name: "Spindle FWD"
+    rect: {x: 94.00, y: 47.00, w: 11.00, h: 3.00}
+    label_rect: {x: 105.00, y: 47.00, w: 14.00, h: 3.00}
+  - generic_name: "Spindle REV"
+    rect: {x: 94.00, y: 44.00, w: 11.00, h: 3.00}
+    label_rect: {x: 105.00, y: 44.00, w: 14.00, h: 3.00}
+  - generic_name: "Spindle 10V"
+    rect: {x: 94.00, y: 52.00, w: 10.00, h: 4.00}
+    label_rect: {x: 104.00, y: 52.00, w: 14.00, h: 4.00}
+  - generic_name: "RS485"
+    rect: {x: 94.00, y: 34.00, w: 7.00, h: 9.00}
+    rect_orientation: horizontal
+    label_rect: {x: 102.00, y: 35.00, w: 14.00, h: 7.00}
+  - generic_name: "5V Out45"
+    rect: {x: 94.00, y: 22.00, w: 8.00, h: 5.00}
+    label_rect: {x: 102.00, y: 22.00, w: 14.00, h: 5.00}
+  - generic_name: "5V Out46"
+    rect: {x: 94.00, y: 27.00, w: 8.00, h: 5.00}
+    label_rect: {x: 102.00, y: 28.00, w: 14.00, h: 5.00}
+  - generic_name: "5V Out4"
+    rect: {x: 94.00, y: 10.00, w: 8.00, h: 5.00}
+    label_rect: {x: 102.00, y: 10.00, w: 14.00, h: 5.00}
+  - generic_name: "5V Out5"
+    rect: {x: 94.00, y: 15.00, w: 8.00, h: 5.00}
+    label_rect: {x: 102.00, y: 15.00, w: 14.00, h: 5.00}
+  - generic_name: "In42"
+    rect: {x: 47.00, y: 1.00, w: 4.00, h: 7.00}
+    label_rect: {x: 47.00, y: -17.00, w: 4.00, h: 17.00}
+  - generic_name: "In41"
+    rect: {x: 51.00, y: 1.00, w: 4.00, h: 7.00}
+    label_rect: {x: 51.00, y: -17.00, w: 4.00, h: 17.00}
+  - generic_name: "In40"
+    rect: {x: 55.00, y: 1.00, w: 4.00, h: 7.00}
+    label_rect: {x: 55.00, y: -17.00, w: 4.00, h: 17.00}
+  - generic_name: "In39"
+    rect: {x: 59.00, y: 1.00, w: 4.00, h: 7.00}
+    label_rect: {x: 59.00, y: -17.00, w: 4.00, h: 17.00}
+  - generic_name: "In38"
+    rect: {x: 64.00, y: 1.00, w: 4.00, h: 7.00}
+    label_rect: {x: 64.00, y: -17.00, w: 4.00, h: 17.00}
+  - generic_name: "In37"
+    rect: {x: 68.00, y: 1.00, w: 4.00, h: 7.00}
+    label_rect: {x: 68.00, y: -17.00, w: 4.00, h: 17.00}
+  - generic_name: "In36"
+    rect: {x: 72.00, y: 1.00, w: 4.00, h: 7.00}
+    label_rect: {x: 72.00, y: -17.00, w: 4.00, h: 17.00}
+  - generic_name: "In48"
+    rect: {x: 76.00, y: 2.00, w: 4.00, h: 6.00}
+    label_rect: {x: 76.00, y: -17.00, w: 4.00, h: 17.00}
+  - generic_name: "In47"
+    rect: {x: 81.00, y: 1.00, w: 4.00, h: 7.00}
+    label_rect: {x: 81.00, y: -17.00, w: 4.00, h: 17.00}
+  - generic_name: "In3"
+    rect: {x: 85.00, y: 1.00, w: 4.00, h: 7.00}
+    label_rect: {x: 85.00, y: -17.00, w: 4.00, h: 17.00}
+  - generic_name: "is2o.25"
+    rect: {x: 72.00, y: 66.00, w: 2.00, h: 8.00}
+    label_rect: {x: 72.00, y: 75.00, w: 2.00, h: 19.00}
+  - generic_name: "is2o.26"
+    rect: {x: 70.00, y: 66.00, w: 2.00, h: 8.00}
+    label_rect: {x: 70.00, y: 75.00, w: 2.00, h: 19.00}
+  - generic_name: "is2o.27"
+    rect: {x: 68.00, y: 66.00, w: 2.00, h: 8.00}
+    label_rect: {x: 68.00, y: 75.00, w: 2.00, h: 19.00}
+  - generic_name: "is2o.28"
+    rect: {x: 68.00, y: 44.00, w: 2.00, h: 9.00}
+    label_rect: {x: 68.00, y: 18.00, w: 2.00, h: 25.00}
+  - generic_name: "is2o.29"
+    rect: {x: 70.00, y: 44.00, w: 2.00, h: 9.00}
+    label_rect: {x: 70.00, y: 18.00, w: 2.00, h: 25.00}
+  - generic_name: "is2o.30"
+    rect: {x: 72.00, y: 44.00, w: 2.00, h: 9.00}
+    label_rect: {x: 72.00, y: 18.00, w: 2.00, h: 25.00}
+    
