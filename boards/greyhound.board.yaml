@@ -40,7 +40,7 @@ fixed_peripherals:
     ws_pin: gpio.18
     pin_count: 32
     oe_pin: NO_PIN
-    notes: "Inferred from the highest I2SO index used across the 6 motor connectors (I2SO.24)."
+    notes: "Inferred from the highest I2SO index used on this board (I2SO.30); the 32-pin chain is indexed 0-31."
 
 motor_sockets:
   shared_disable_pin: NO_PIN
