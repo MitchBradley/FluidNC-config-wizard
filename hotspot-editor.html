@@ -537,7 +537,12 @@ const CUSTOM_FILE_OPT_VALUE = "__custom__";
 
 async function fetchJsonManifest(path) {
   try {
-    const res = await fetch(path);
+    // no-store -- same reasoning as index.html's loadBoardManifest(): a
+    // locally-served python3 -m http.server response has no Cache-Control
+    // header, just Last-Modified, which browsers may cache heuristically
+    // across a plain reload -- silently hiding a just-added board/module
+    // from this picker with no error (see bdring/FluidNC-config-wizard#14).
+    const res = await fetch(path, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (e) {
@@ -578,7 +583,11 @@ async function loadBoardFileById(id) {
   const path = moduleMode ? `modules/${id}.module.yaml` : `boards/${id}.board.yaml`;
   let text;
   try {
-    const res = await fetch(path);
+    // no-store -- same caching gotcha as fetchJsonManifest() above, just
+    // for the board/module file's own contents rather than the manifest
+    // listing it: re-picking a board you just edited on disk, without a
+    // full page reload, could otherwise silently show its old content.
+    const res = await fetch(path, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     text = await res.text();
   } catch (e) {
@@ -774,7 +783,10 @@ function loadImageBlob(blob, label) {
 async function fetchFirstOk(paths) {
   for (const p of paths) {
     try {
-      const r = await fetch(p);
+      // no-store -- same reasoning as fetchJsonManifest()/loadBoardFileById()
+      // above: a locally-replaced board photo could otherwise keep showing
+      // its old cached content after a plain reload.
+      const r = await fetch(p, { cache: "no-store" });
       if (r.ok) return { path: p, response: r };
     } catch (e) { /* fetch unsupported/blocked (file://, CORS, offline) -- ignore, just skip this candidate */ }
   }
