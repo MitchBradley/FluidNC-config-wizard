@@ -122,12 +122,12 @@ generic_pins:
   - { label: "FWD gpio.7", generic_name: "Spindle FWD", mcu_pin: gpio.7, direction: output, output_profile: { drive_type: open_collector }, notes: "Opto output to a common ground supplied by the VFD (per wiki, not the controller's own ground)." }
   - { label: "REV gpio.8", generic_name: "Spindle REV", mcu_pin: gpio.8, direction: output, output_profile: { drive_type: open_collector }, notes: "Opto output to a common ground supplied by the VFD (per wiki, not the controller's own ground)." }
 
-  - { label: "25 - i2so.25", generic_name: "is2o.25", mcu_pin: i2s0.25, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
-  - { label: "26 - i2so.26", generic_name: "is2o.26", mcu_pin: i2s0.26, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
-  - { label: "27 - i2so.27", generic_name: "is2o.27", mcu_pin: i2s0.27, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
-  - { label: "28 - i2so.28", generic_name: "is2o.28", mcu_pin: i2s0.28, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
-  - { label: "29 - i2so.29", generic_name: "is2o.29", mcu_pin: i2s0.29, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
-  - { label: "30 - i2so.30", generic_name: "is2o.30", mcu_pin: i2s0.30, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
+  - { label: "25 - i2so.25", generic_name: "i2so.25", mcu_pin: i2s0.25, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
+  - { label: "26 - i2so.26", generic_name: "i2so.26", mcu_pin: i2s0.26, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
+  - { label: "27 - i2so.27", generic_name: "i2so.27", mcu_pin: i2s0.27, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
+  - { label: "28 - i2so.28", generic_name: "i2so.28", mcu_pin: i2s0.28, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
+  - { label: "29 - i2so.29", generic_name: "i2so.29", mcu_pin: i2s0.29, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
+  - { label: "30 - i2so.30", generic_name: "i2so.30", mcu_pin: i2s0.30, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
 
 expansion_sockets:
   - label: "Module Socket"
