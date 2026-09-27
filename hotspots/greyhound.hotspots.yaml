@@ -50,17 +50,17 @@ hotspots:
     rect_orientation: horizontal
     label_rect: {x: 102.00, y: 35.00, w: 14.00, h: 7.00}
   - generic_name: "5V Out45"
-    rect: {x: 94.00, y: 22.00, w: 8.00, h: 5.00}
-    label_rect: {x: 102.00, y: 22.00, w: 14.00, h: 5.00}
+    rect: {x: 94.00, y: 22.00, w: 9.00, h: 5.00}
+    label_rect: {x: 103.00, y: 22.00, w: 14.00, h: 5.00}
   - generic_name: "5V Out46"
-    rect: {x: 94.00, y: 27.00, w: 8.00, h: 5.00}
-    label_rect: {x: 102.00, y: 28.00, w: 14.00, h: 5.00}
+    rect: {x: 94.00, y: 27.00, w: 9.00, h: 5.00}
+    label_rect: {x: 103.00, y: 28.00, w: 14.00, h: 5.00}
   - generic_name: "5V Out4"
-    rect: {x: 94.00, y: 10.00, w: 8.00, h: 5.00}
-    label_rect: {x: 102.00, y: 10.00, w: 14.00, h: 5.00}
+    rect: {x: 94.00, y: 10.00, w: 9.00, h: 5.00}
+    label_rect: {x: 103.00, y: 10.00, w: 14.00, h: 5.00}
   - generic_name: "5V Out5"
-    rect: {x: 94.00, y: 15.00, w: 8.00, h: 5.00}
-    label_rect: {x: 102.00, y: 15.00, w: 14.00, h: 5.00}
+    rect: {x: 94.00, y: 15.00, w: 9.00, h: 5.00}
+    label_rect: {x: 103.00, y: 15.00, w: 14.00, h: 5.00}
   - generic_name: "In42"
     rect: {x: 47.00, y: 1.00, w: 4.00, h: 7.00}
     label_rect: {x: 47.00, y: -17.00, w: 4.00, h: 17.00}
