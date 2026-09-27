@@ -20,7 +20,7 @@ meta:
     USB_D-/USB_D+ silicon pins -- see chips/esp32s3.chip.yaml
 
     The I/O module pins are listed as individual IO pins since we do
-    not have module abstration at this time.
+    not have module abstraction at this time.
 
 stepping:
   engines: [i2s]
