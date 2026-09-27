@@ -91,22 +91,22 @@ hotspots:
   - generic_name: "In3"
     rect: {x: 85.00, y: 1.00, w: 4.00, h: 7.00}
     label_rect: {x: 85.00, y: -17.00, w: 4.00, h: 17.00}
-  - generic_name: "is2o.25"
+  - generic_name: " i2so.25"
     rect: {x: 72.00, y: 66.00, w: 2.00, h: 8.00}
     label_rect: {x: 72.00, y: 75.00, w: 2.00, h: 19.00}
-  - generic_name: "is2o.26"
+  - generic_name: " i2so.26"
     rect: {x: 70.00, y: 66.00, w: 2.00, h: 8.00}
     label_rect: {x: 70.00, y: 75.00, w: 2.00, h: 19.00}
-  - generic_name: "is2o.27"
+  - generic_name: " i2so.27"
     rect: {x: 68.00, y: 66.00, w: 2.00, h: 8.00}
     label_rect: {x: 68.00, y: 75.00, w: 2.00, h: 19.00}
-  - generic_name: "is2o.28"
+  - generic_name: " i2so.28"
     rect: {x: 68.00, y: 44.00, w: 2.00, h: 9.00}
     label_rect: {x: 68.00, y: 18.00, w: 2.00, h: 25.00}
-  - generic_name: "is2o.29"
+  - generic_name: " i2so.29"
     rect: {x: 70.00, y: 44.00, w: 2.00, h: 9.00}
     label_rect: {x: 70.00, y: 18.00, w: 2.00, h: 25.00}
-  - generic_name: "is2o.30"
+  - generic_name: " i2so.30"
     rect: {x: 72.00, y: 44.00, w: 2.00, h: 9.00}
     label_rect: {x: 72.00, y: 18.00, w: 2.00, h: 25.00}
     
