@@ -25,7 +25,6 @@ meta:
 
 stepping:
   engines: [i2s]
-  notes: "Same reasoning as 6x/4x -- motor pins are I2SO-based, so RMT/Timed are not physically possible. Wiki's own example config uses I2S_static; functionally identical to I2S_STREAM per FluidNC (see stepping.engines' own general note in other board files)."
 
 fixed_peripherals:
   spi:
@@ -41,17 +40,17 @@ fixed_peripherals:
     ws_pin: gpio.17
     pin_count: 24
     oe_pin: NO_PIN
-    notes: "Inferred from highest I2SO index used by the 6 motor sockets (I2SO.23), identical reasoning/value to the 6x controller (same motor wiring)."
 
 motor_sockets:
   shared_disable_pin: NO_PIN
   shared_reset_pin: NO_PIN
+  # I2SO shift-register logic outputs to the driver connector.
+  output_profile: { drive_type: totem_pole }
   sockets:
     - label: "Motor Driver Signals - i2so.1,2,0"
       generic_name: "Driver1"
       driver_class: external_connector
       pins: { step_pin: i2so.2, direction_pin: i2so.1, disable_pin: i2so.0 }
-      notes: "Wiki: 'Any motor output can be used for any axis or motor number... labeled Motor1 through motor6, just for reference.' Identical I2SO wiring to the 6x controller's Motor1."
     - label: "Motor Driver Signals - i2so.4,5,7"
       generic_name: "Driver2"
       driver_class: external_connector
@@ -75,13 +74,7 @@ motor_sockets:
 
 generic_pins:
   # 8 inputs (3-pin JST XH: gnd, signal, switched Vcc selectable 5V/12V via
-  # a single board-wide jumper). Confirmed via wiki's own example config,
-  # which assigns exactly these 8 gpios across the 6 axes + probe +
-  # toolsetter -- the identical GPIO set used by the 6x controller's 8
-  # inputs. IMPORTANT DIFFERENCE FROM 6x: Corgi's own wiki text says "All of
-  # the inputs have external pullup resistors except for gpio.2" (singular)
-  # -- 6x's own wiki text calls out TWO exceptions (gpio.2 AND gpio.26).
-  # Recorded per this board's own stated fact, not copied from 6x.
+  # a single board-wide jumper).
   - { label: "Inputs - gpio.2",  generic_name: "In2", mcu_pin: gpio.2,  direction: input, input_profile: { conditioning: opto_isolated, internal_pullup_required: true } }
   - { label: "Inputs - gpio.26", generic_name: "In26", mcu_pin: gpio.26, direction: input, input_profile: { conditioning: opto_isolated } }
   - { label: "Inputs - gpio.33", generic_name: "In33", mcu_pin: gpio.33, direction: input, input_profile: { conditioning: opto_isolated } }
@@ -91,8 +84,8 @@ generic_pins:
   - { label: "Inputs - gpio.39", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: opto_isolated } }
   - { label: "Inputs - gpio.36", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: opto_isolated } }
 
-  # 4-channel 5V logic-level output bank (74AHCT125 buffer, same chip as
-  # 6x/4x: ~8-10mA typical/channel, 25mA/channel absolute max, 50mA total for
+  # 4-channel 5V logic-level output bank (74AHCT125 buffer
+  # ~8-10mA typical/channel, 25mA/channel absolute max, 50mA total for
   # all 4). gpio.4/gpio.12 double as the 2 onboard MOSFETs (second entry
   # each, same mcu_pin, per this schema's no-pin-uniqueness design).
   - label: "5V Outputs - gpio.4"
@@ -104,7 +97,7 @@ generic_pins:
     generic_name: "FET4"
     mcu_pin: gpio.4
     direction: output
-    output_profile: { drive_type: mosfet_low_side, voltage_max: 12.0, current_max_a: 3.0 }
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 12.0, current_max_a: 3.0, common: vmot }
     notes: "3A continuous, 5A peak. Switches VMot (12V only on this board) to ground. Built-in flyback diode."
   - label: "5V Outputs - gpio.12"
     generic_name: "5V Out12"
@@ -115,7 +108,7 @@ generic_pins:
     generic_name: "FET12"
     mcu_pin: gpio.12
     direction: output
-    output_profile: { drive_type: mosfet_low_side, voltage_max: 12.0, current_max_a: 3.0 }
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 12.0, current_max_a: 3.0, common: vmot }
     notes: "3A continuous, 5A peak. Switches VMot (12V only on this board) to ground. Built-in flyback diode."
   - label: "5V Outputs - gpio.13"
     generic_name: "5V Out13"
@@ -132,25 +125,20 @@ generic_pins:
     generic_name: "Spindle Out15"
     mcu_pin: gpio.15
     direction: output
-    output_profile: { drive_type: open_collector }
+    output_profile: { drive_type: open_collector, common: vfd_common }
     notes: >
       Optocoupled open-collector output for a digitally-controlled VFD's
       forward-run input. Shares gpio.15 with the RS485 channel's tx_pin
-      and the plain 5V-ish digital output role. Voltage/current rating
-      for this specific opto-isolated path not confirmed in available
-      documentation -- should be checked against schematic.
+      and the plain 5V-ish digital output role.
   - label: "0-10V - 1 gpio.14"
     generic_name: "Spindle Out14"
     mcu_pin: gpio.14
     direction: output
-    output_profile: { drive_type: open_collector }
+    output_profile: { drive_type: open_collector, common: vfd_common }
     notes: >
       Optocoupled open-collector output for a digitally-controlled VFD's
       reverse-run input. Shares gpio.14 with the RS485 channel's rts_pin
-      and "5V Out14". Voltage/current rating for this specific
-      opto-isolated path not confirmed in available documentation --
-      should be checked against schematic.
-
+      and "5V Out14".
   - label: "0-10V - 10v gpio.13"
     generic_name: "Spindle 10V"
     mcu_pin: gpio.13
@@ -165,19 +153,6 @@ rs485_channels:
     tx_pin: gpio.15
     rx_pin: gpio.16
     pins_reusable_as_generic_io: true
-    notes: >
-      Wiki, verbatim: "The RS485 circuit is fully isolated. It also has
-      automatic direction control, so only 2 I/O are required (TX and RX)"
-      and, in the RS485 section itself: "It also has automatic direction
-      control, so it does NOT use an rts_pin." This is a genuine hardware
-      difference from the 6x/4x controllers' MAX3485 circuits, which
-      require rts_pin -- deliberately no rts_pin field here, not an
-      oversight. tx_pin (gpio.15) is confirmed reusable as a plain 5V output
-      via the wiki's own 10V example (forward_pin: gpio.15); rx_pin
-      (gpio.16) has no confirmed alternate use in available documentation.
-      Suitable for a FluidNC VFD (Modbus) spindle. Wiki's own Huanyang
-      example uses uart1 for this bus (no onboard UART-addressed TMC drivers
-      on this board to conflict with).
 
 expansion_uarts:
   - label: "Pendant"
@@ -189,14 +164,3 @@ expansion_uarts:
     mode: "8N1"
     notes: >
       Wiki: "Built in RJ12 for pendants and expanders" (FluidDial, Airedale).
-      First board in this schema with a dedicated expansion UART connector
-      distinct from the generic bidirectional-pin expansion_sockets used by
-      6x/4x -- this connector's pins are fixed and always meant to be
-      written into config.yaml as a uartN:/uart_channelN: pair (per the
-      wiki's own example config), never consumed silently like a TMC UART
-      bus. No rts_pin/cts_pin -- confirmed via the wiki's own example, which
-      writes both as literal NO_PIN. This board has no onboard UART-
-      addressed TMC drivers, so the wizard's default uart_num for this
-      connector is 1 (see rs485_channels.notes for the resulting real,
-      accepted conflict on boards that DO have such drivers, e.g. the 4x
-      controller).

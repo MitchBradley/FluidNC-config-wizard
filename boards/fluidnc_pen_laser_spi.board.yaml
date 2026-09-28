@@ -20,17 +20,22 @@ motor_sockets:
       fixed_motor_type: tmc_2130
       pins: { step_pin: gpio.14, direction_pin: gpio.12, cs_pin: gpio.16 }
       extra: { bus: spi }
+      # Standard 4-wire bipolar stepper motor connection.
+      output_profile: { drive_type: bipolar_stepper }
     - label: "Y"
       generic_name: "Motor2"
       driver_class: onboard_fixed
       fixed_motor_type: tmc_2130
       pins: { step_pin: gpio.25, direction_pin: gpio.26, cs_pin: gpio.17 }
       extra: { bus: spi }
+      output_profile: { drive_type: bipolar_stepper }
     - label: "Z (pen lift)"
       generic_name: "Motor3"
       driver_class: onboard_fixed
       fixed_motor_type: rc_servo
       pins: { output_pin: gpio.22 }
+      # Standard RC servo 5V PWM signal.
+      output_profile: { drive_type: totem_pole, voltage_max: 5.0 }
 generic_pins:
   - { label: "X Limit", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: raw } }
   - { label: "Y Limit", generic_name: "In36", mcu_pin: gpio.36, direction: input, input_profile: { conditioning: raw } }

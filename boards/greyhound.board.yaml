@@ -10,8 +10,8 @@ meta:
   wiki_url: "http://wiki.fluidnc.com/en/hardware/official/greyhound"
   notes: >
     6-motor-connector controller for EXTERNAL stepper driver modules (no
-    onboard drivers) -- wiki: "very similar to the Corgi controller, except
-    it uses an ESP32-S3 CPU which has more I/O and a native USB connector."
+    onboard drivers) -- very similar to the Corgi controller, except
+    it uses an ESP32-S3 CPU which has more I/O and a native USB connector.
     12V main supply (reverse-polarity protected, unlike some other Dring
     boards), primary USB-C (CP2102) for programming/serial, secondary
     native USB-C ("USB CDC", experimental, direct to the ESP32-S3's fixed
@@ -38,6 +38,7 @@ fixed_peripherals:
 motor_sockets:
   shared_disable_pin: NO_PIN
   shared_reset_pin: NO_PIN
+  output_profile: { drive_type: constant_current_sink, current_max_a: 0.02, common: 5v }
   sockets:
     - label: "Motor Drivers - 1"
       generic_name: "Driver1"
@@ -83,23 +84,22 @@ generic_pins:
   - { label: "5V Outputs - GPIO.45", generic_name: "5V Out45", mcu_pin: gpio.45, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.020 } }
 
   # 2x MOSFETs, sharing gpio.4/gpio.5 with 5V outputs 1/2 above
-  - { label: "FET1 gpio.4", generic_name: "FET1", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 12.0, current_max_a: 3.0 }, notes: "3A continuous, 5A peak per wiki. Voltage_max reflects the board's stated 12V VMot supply convention, not an independently confirmed MOSFET standoff rating. Shares gpio.4 with 5V Output 1 -- not independent." }
-  - { label: "FET2 gpio.5", generic_name: "FET2", mcu_pin: gpio.5, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 12.0, current_max_a: 3.0 }, notes: "3A continuous, 5A peak per wiki. Voltage_max reflects the board's stated 12V VMot supply convention, not an independently confirmed MOSFET standoff rating. Shares gpio.5 with 5V Output 2 -- not independent." }
+  - { label: "FET1 gpio.4", generic_name: "FET4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 12.0, current_max_a: 3.0, common: vmot }, notes: "3A continuous, 5A peak per wiki. Voltage_max reflects the board's stated 12V VMot supply convention, not an independently confirmed MOSFET standoff rating. Shares gpio.4 with 5V Output 1 -- not independent." }
+  - { label: "FET2 gpio.5", generic_name: "FET5", mcu_pin: gpio.5, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 12.0, current_max_a: 3.0, common: vmot }, notes: "3A continuous, 5A peak per wiki. Voltage_max reflects the board's stated 12V VMot supply convention, not an independently confirmed MOSFET standoff rating. Shares gpio.5 with 5V Output 2 -- not independent." }
 
   # 0-10V analog spindle speed output (op-amp + low-pass filter, trim-pot
   # adjustable 5-10V max) plus its forward/reverse opto outputs.
   - { label: "0-10V - 10v gpio.6", generic_name: "Spindle 10V", mcu_pin: gpio.6, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 10.0 }, notes: "PWM + analog filter + trim pot; adjustable max 5-10V, must be measured/set before connecting to a VFD." }
-  - { label: "FWD gpio.7", generic_name: "Spindle FWD", mcu_pin: gpio.7, direction: output, output_profile: { drive_type: open_collector }, notes: "Opto output to a common ground supplied by the VFD (per wiki, not the controller's own ground)." }
-  - { label: "REV gpio.8", generic_name: "Spindle REV", mcu_pin: gpio.8, direction: output, output_profile: { drive_type: open_collector }, notes: "Opto output to a common ground supplied by the VFD (per wiki, not the controller's own ground)." }
+  - { label: "FWD gpio.7", generic_name: "Spindle FWD", mcu_pin: gpio.7, direction: output, output_profile: { drive_type: open_collector, common: vfd_common }, notes: "Opto output to a common ground supplied by the VFD (per wiki, not the controller's own ground)." }
+  - { label: "REV gpio.8", generic_name: "Spindle REV", mcu_pin: gpio.8, direction: output, output_profile: { drive_type: open_collector, common: vfd_common }, notes: "Opto output to a common ground supplied by the VFD (per wiki, not the controller's own ground)." }
 
-  # I2S outputs not associated with motor sockets, usable for general purposes
-  # The drive type is current controlled sink to ground, from a LED-driver chip
-  - { label: "25 - i2so.25", generic_name: "i2so.25", mcu_pin: i2so.25, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
-  - { label: "26 - i2so.26", generic_name: "i2so.26", mcu_pin: i2so.26, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
-  - { label: "27 - i2so.27", generic_name: "i2so.27", mcu_pin: i2so.27, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
-  - { label: "28 - i2so.28", generic_name: "i2so.28", mcu_pin: i2so.28, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
-  - { label: "29 - i2so.29", generic_name: "i2so.29", mcu_pin: i2so.29, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
-  - { label: "30 - i2so.30", generic_name: "i2so.30", mcu_pin: i2so.30, direction: output, output_profile: { drive_type: open_collector }, notes: "LED driver pin" }
+  # I2S outputs not associated with motor sockets, usable for general purposes.
+  - { label: "i2s0 - 25", generic_name: "CC Out I2S25", mcu_pin: i2so.25, direction: output, output_profile: { drive_type: constant_current_sink, current_max_a: 0.02, common: 5v }}
+  - { label: "i2so - 26", generic_name: "CC Out I2S26", mcu_pin: i2so.26, direction: output, output_profile: { drive_type: constant_current_sink, current_max_a: 0.02, common: 5v }}
+  - { label: "i2so - 27", generic_name: "CC Out I2S27", mcu_pin: i2so.27, direction: output, output_profile: { drive_type: constant_current_sink, current_max_a: 0.02, common: 5v }}
+  - { label: "i2so - 28", generic_name: "CC Out I2S28", mcu_pin: i2so.28, direction: output, output_profile: { drive_type: constant_current_sink, current_max_a: 0.02, common: 5v }}
+  - { label: "i2so - 29", generic_name: "CC Out I2S29", mcu_pin: i2so.29, direction: output, output_profile: { drive_type: constant_current_sink, current_max_a: 0.02, common: 5v }}
+  - { label: "i2so - 30", generic_name: "CC Out I2S30", mcu_pin: i2so.30, direction: output, output_profile: { drive_type: constant_current_sink, current_max_a: 0.02, common: 5v }}
 
 expansion_sockets:
   - label: "Module Socket"

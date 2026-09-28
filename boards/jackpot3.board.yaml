@@ -23,14 +23,12 @@ fixed_peripherals:
   sdcard:
     cs_pin: gpio.5
     card_detect_pin: NO_PIN
-    notes: "No physical card-detect pin is documented."
   i2so:
     bck_pin: gpio.22
     data_pin: gpio.21
     ws_pin: gpio.17
     pin_count: 24
     oe_pin: NO_PIN
-    notes: "Inferred from the highest I2SO index used by the six motor sockets (I2SO.23)."
   dedicated_uarts:
     - label: "Onboard TMC UART"
       txd_pin: gpio.16
@@ -41,6 +39,8 @@ fixed_peripherals:
 motor_sockets:
   shared_disable_pin: NO_PIN
   shared_reset_pin: NO_PIN
+  # Standard 4-wire bipolar stepper motor connection.
+  output_profile: { drive_type: bipolar_stepper }
   sockets:
     - label: "X"
       generic_name: "Motor1"
@@ -129,23 +129,23 @@ generic_pins:
     generic_name: "FET26"
     mcu_pin: gpio.26
     direction: output
-    output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 1.0 }
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 1.0, common: vmot }
     notes: "Selectable 5V/24V output; can pulse briefly during board startup."
   - label: "Output - gpio.27"
     generic_name: "FET27"
     mcu_pin: gpio.27
     direction: output
-    output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 1.0 }
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 1.0, common: vmot }
   - label: "Output - gpio.0"
     generic_name: "FET0"
     mcu_pin: gpio.0
     direction: output
-    output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 1.0 }
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 1.0, common: vmot }
   - label: "Output - gpio.2"
     generic_name: "FET2"
     mcu_pin: gpio.2
     direction: output
-    output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 1.0 }
+    output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 1.0, common: vmot }
 
 expansion_sockets:
   - label: "Module Socket"

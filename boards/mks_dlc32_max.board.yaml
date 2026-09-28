@@ -25,7 +25,6 @@ fixed_peripherals:
     miso_pin: gpio.12
     mosi_pin: gpio.14
     sck_pin: gpio.13
-    notes: "Per wiki's SD Card section and example config."
   sdcard:
     cs_pin: gpio.21
     card_detect_pin: gpio.10
@@ -35,12 +34,9 @@ motor_sockets:
   shared_reset_pin: NO_PIN
   notes: >
     Wiki: "Use The motors use a shared disable pin (gpio.8). Use motor type
-    'stepstick:' or 'standard_stepper:'" -- plain-GPIO stepstick sockets,
-    not I2SO-driven, unlike most other boards in this schema. Labeled X/Y/Z/A
-    to match the wiki's own example config's axis assignment (not a stated
-    silkscreen fact, since the wiki doesn't describe silkscreen labeling for
-    this board, but the example config is the best available source for
-    which connector maps to which axis).
+    'stepstick:' or 'standard_stepper:'" -- plain-GPIO stepstick sockets.
+  # Plain GPIO logic outputs to each stepstick module socket.
+  output_profile: { drive_type: totem_pole }
   sockets:
     - label: "X-Motor"
       generic_name: "Motor1"

@@ -21,6 +21,10 @@ fixed_peripherals:
 motor_sockets:
   shared_disable_pin: NO_PIN
   shared_reset_pin: NO_PIN
+  # Each ULN2003's motor-facing output: open-collector Darlington sink,
+  # motor common wired to +5V (confirmed against the upstream repo's KiCad
+  # PCB, J1/J2/J3 motor-connector footprints).
+  output_profile: { drive_type: open_collector, common: 5v }
   sockets:
     - label: "Z"
       generic_name: "Motor3"

@@ -23,7 +23,6 @@ meta:
 
 stepping:
   engines: [rmt, timed]
-  notes: "Motor pins are native GPIO (no I2SO shift register on this board), so RMT/Timed are both physically possible; wiki's own example config uses engine: RMT."
 
 fixed_peripherals:
   spi:
@@ -53,19 +52,22 @@ motor_sockets:
       fixed_motor_type: tmc_2209
       pins: { step_pin: gpio.14, direction_pin: gpio.12 }
       extra: { bus: uart1, addr: 0 }
-      notes: "Limit input gpio.36 is wired to this axis in the example config; see generic_pins."
+      # Standard 4-wire bipolar stepper motor connection.
+      output_profile: { drive_type: bipolar_stepper }
     - label: "Y Motor"
       generic_name: "Motor2"
       driver_class: onboard_fixed
       fixed_motor_type: tmc_2209
       pins: { step_pin: gpio.25, direction_pin: gpio.26 }
       extra: { bus: uart1, addr: 1 }
-      notes: "Limit input gpio.39 is wired to this axis in the example config; see generic_pins."
+      output_profile: { drive_type: bipolar_stepper }
     - label: "Z (pen lift)"
       generic_name: "Motor3"
       driver_class: onboard_fixed
       fixed_motor_type: rc_servo
       pins: { output_pin: gpio.21 }
+      # Standard RC servo 5V PWM signal.
+      output_profile: { drive_type: totem_pole, voltage_max: 5.0 }
       notes: >
         Standard RC servo connector, typically used for a pen-lift
         mechanism. If you don't use an RC Servo, you can

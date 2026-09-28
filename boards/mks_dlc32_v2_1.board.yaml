@@ -15,6 +15,8 @@ i2c_connectors:
 motor_sockets:
   shared_disable_pin: i2so.0
   shared_reset_pin: NO_PIN
+  # I2SO shift-register logic outputs to the driver connector.
+  output_profile: { drive_type: totem_pole }
   sockets:
     - label: "X"
       generic_name: "Motor1"
@@ -46,7 +48,7 @@ generic_pins:
   - { label: "Z-", generic_name: "In34", mcu_pin: gpio.34, direction: input, input_profile: { conditioning: rc_filtered } }
   - { label: "PROBE_PIN", generic_name: "In22", mcu_pin: gpio.22, direction: input, input_profile: { conditioning: rc_filtered } }
   - { label: "TTL (laser PWM)", generic_name: "5V Out32", mcu_pin: gpio.32, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "Spindle (RPM control)", generic_name: "Spindle Out32", mcu_pin: gpio.32, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "Spindle (RPM control)", generic_name: "Spindle Out32", mcu_pin: gpio.32, direction: output, output_profile: { drive_type: mosfet_low_side, common: vmot } }
   - { label: "LCD_CS", generic_name: "5V Out25", mcu_pin: gpio.25, direction: output, output_profile: { drive_type: totem_pole } }
   - { label: "TOUCH_CS", generic_name: "5V Out26", mcu_pin: gpio.26, direction: output, output_profile: { drive_type: totem_pole } }
   - { label: "LCD_EN", generic_name: "5V Out5", mcu_pin: gpio.5, direction: output, output_profile: { drive_type: totem_pole } }
@@ -55,7 +57,7 @@ generic_pins:
   - { label: "SCL", generic_name: "IO4", mcu_pin: gpio.4, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }
   - { label: "LCD_RS", generic_name: "IO33", mcu_pin: gpio.33, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }
   - { label: "BEEPER 5V", generic_name: "5V Out I2S7", mcu_pin: i2so.7, direction: output, output_profile: { drive_type: totem_pole } }
-  - { label: "BEEPER OC", generic_name: "OC Out I2S7", mcu_pin: i2so.7, direction: output, output_profile: { drive_type: open_collector } }
+  - { label: "BEEPER OC", generic_name: "OC Out I2S7", mcu_pin: i2so.7, direction: output, output_profile: { drive_type: open_collector, common: 12v } }
   - { label: "LCD_MOSI", generic_name: "IO23", mcu_pin: gpio.23, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }
   - { label: "LCD_MISO", generic_name: "IO19", mcu_pin: gpio.19, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }
   - { label: "LCD_SCK", generic_name: "IO18", mcu_pin: gpio.18, direction: either, input_profile: { conditioning: raw }, output_profile: { drive_type: totem_pole } }

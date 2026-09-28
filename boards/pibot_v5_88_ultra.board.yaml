@@ -55,6 +55,8 @@ fixed_peripherals:
 motor_sockets:
   shared_disable_pin: NO_PIN
   shared_reset_pin: NO_PIN
+  # I2SO shift-register logic outputs to the driver connector.
+  output_profile: { drive_type: totem_pole }
   notes: >
     Six onboard StepStick-compatible sockets (Motor1-Motor6) and six
     dedicated external-driver EN/STEP/DIR connectors (Driver1-Driver6),
@@ -206,13 +208,13 @@ generic_pins:
   - { label: "PWM 5V - GPIO.46", generic_name: "5V Out46", mcu_pin: gpio.46, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0 } }
 
   # Two VMot-referenced low-side outputs, shared with GPIO4/GPIO5 logic outs.
-  - { label: "MOSFET IO4", generic_name: "FET4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 0.5 }, notes: "VMot-main low-side output; maximum 500mA per PiBot documentation. Shares gpio.4 with the 5V output." }
-  - { label: "MOSFET IO5", generic_name: "FET5", mcu_pin: gpio.5, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 0.5 }, notes: "VMot-main low-side output; maximum 500mA per PiBot documentation. Shares gpio.5 with the 5V output." }
+  - { label: "MOSFET IO4", generic_name: "FET4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 0.5, common: vmot }, notes: "VMot-main low-side output; maximum 500mA per PiBot documentation. Shares gpio.4 with the 5V output." }
+  - { label: "MOSFET IO5", generic_name: "FET5", mcu_pin: gpio.5, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 0.5, common: vmot }, notes: "VMot-main low-side output; maximum 500mA per PiBot documentation. Shares gpio.5 with the 5V output." }
 
   # VFD/0-10V connector.
   - { label: "0-10V - GPIO.6", generic_name: "Spindle 10V", mcu_pin: gpio.6, direction: output, output_profile: { drive_type: totem_pole, voltage_max: 10.0 }, notes: "PWM followed by the onboard 0-10V conversion circuit; maximum voltage is adjustable with RES1." }
-  - { label: "0-10V CTRL1 - GPIO.7", generic_name: "Spindle Out7", mcu_pin: gpio.7, direction: output, output_profile: { drive_type: open_collector }, notes: "Opto-isolated spindle forward/control output in PiBot's example config." }
-  - { label: "0-10V CTRL2/Relay - GPIO.8", generic_name: "Spindle Out8", mcu_pin: gpio.8, direction: output, output_profile: { drive_type: open_collector }, notes: "Opto-isolated spindle reverse/control output in PiBot's example config." }
+  - { label: "0-10V CTRL1 - GPIO.7", generic_name: "Spindle Out7", mcu_pin: gpio.7, direction: output, output_profile: { drive_type: open_collector, common: vfd_common }, notes: "Opto-isolated spindle forward/control output in PiBot's example config." }
+  - { label: "0-10V CTRL2/Relay - GPIO.8", generic_name: "Spindle Out8", mcu_pin: gpio.8, direction: output, output_profile: { drive_type: open_collector, common: vfd_common }, notes: "Opto-isolated spindle reverse/control output in PiBot's example config." }
 
   # Raw 3.3V EXTRA IO header pins. GPIO3 is connected here only when its
   # function-selection jumper is installed on the left.

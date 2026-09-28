@@ -30,10 +30,10 @@ hotspots:
   - generic_name: "Module Socket"
     rect: {x: 1.00, y: 1.00, w: 33.00, h: 37.00}
     socket_orientation: 2
-  - generic_name: "FET1"
+  - generic_name: "FET4"
     rect: {x: 94.00, y: 59.00, w: 6.00, h: 8.00}
     label_rect: {x: 100.00, y: 59.00, w: 14.00, h: 8.00}
-  - generic_name: "FET2"
+  - generic_name: "FET5"
     rect: {x: 94.00, y: 67.00, w: 6.00, h: 8.00}
     label_rect: {x: 100.00, y: 67.00, w: 14.00, h: 8.00}
   - generic_name: "Spindle FWD"
@@ -91,22 +91,22 @@ hotspots:
   - generic_name: "In3"
     rect: {x: 85.00, y: 1.00, w: 4.00, h: 7.00}
     label_rect: {x: 85.00, y: -17.00, w: 4.00, h: 17.00}
-  - generic_name: "i2so.25"
+  - generic_name: "CC Out I2S25"
     rect: {x: 72.00, y: 66.00, w: 2.00, h: 8.00}
     label_rect: {x: 72.00, y: 75.00, w: 2.00, h: 19.00}
-  - generic_name: "i2so.26"
+  - generic_name: "CC Out I2S26"
     rect: {x: 70.00, y: 66.00, w: 2.00, h: 8.00}
     label_rect: {x: 70.00, y: 75.00, w: 2.00, h: 19.00}
-  - generic_name: "i2so.27"
+  - generic_name: "CC Out I2S27"
     rect: {x: 68.00, y: 66.00, w: 2.00, h: 8.00}
     label_rect: {x: 68.00, y: 75.00, w: 2.00, h: 19.00}
-  - generic_name: "i2so.28"
+  - generic_name: "CC Out I2S28"
     rect: {x: 68.00, y: 44.00, w: 2.00, h: 9.00}
     label_rect: {x: 68.00, y: 18.00, w: 2.00, h: 25.00}
-  - generic_name: "i2so.29"
+  - generic_name: "CC Out I2S29"
     rect: {x: 70.00, y: 44.00, w: 2.00, h: 9.00}
     label_rect: {x: 70.00, y: 18.00, w: 2.00, h: 25.00}
-  - generic_name: "i2so.30"
+  - generic_name: "CC Out I2S30"
     rect: {x: 72.00, y: 44.00, w: 2.00, h: 9.00}
     label_rect: {x: 72.00, y: 18.00, w: 2.00, h: 25.00}
     

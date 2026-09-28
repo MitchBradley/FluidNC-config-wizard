@@ -15,16 +15,6 @@ meta:
     Stock firmware is a Marlin+ESP3D-WebUI fork; FluidNC support is
     community, not vendor-provided.
 
-    Primary source: vendor's own GitHub README Pin Definition table, cross-
-    checked against the wiki page's example config and a direct schematic
-    review. Discrepancy: the wiki example's X/Z limit pins are swapped
-    relative to the vendor table (wiki: X=gpio.15, "Z"=gpio.34; vendor:
-    X-MIN=gpio.34, Z-MIN=gpio.15). Resolved in favor of the vendor
-    table -- the wiki example also repurposes the physical Z and E0
-    connectors for a different axis layout, so its pin choices reflect
-    that config, not the board's own silkscreen. Schematic review
-    independently confirms X-MIN=gpio.34/Y-MIN=gpio.35.
-
     UART addresses are NOT in silkscreen order: MOT X=addr1, Y=addr3,
     Z=addr0, E0=addr2 (vendor's own warning).
 
@@ -36,7 +26,6 @@ meta:
 
 stepping:
   engines: [rmt, timed]
-  notes: "Wiki example uses RMT. All motor pins are plain gpio.N (no I2S shift register), so `timed` is also available."
 
 fixed_peripherals:
   spi:
@@ -46,7 +35,6 @@ fixed_peripherals:
   sdcard:
     cs_pin: gpio.5
     card_detect_pin: NO_PIN
-    notes: "Wiki example sets card_detect_pin: NO_PIN explicitly -- no card-detect wire."
   dedicated_uarts:
     - label: "TMC2209 UART"
       txd_pin: gpio.22
@@ -58,7 +46,8 @@ fixed_peripherals:
 motor_sockets:
   shared_disable_pin: gpio.25
   shared_reset_pin: NO_PIN
-  notes: "Vendor table shows gpio.25 as EN on all 4 motor connectors -- one shared disable line, matching the wiki example."
+  # Standard 4-wire bipolar stepper motor connection.
+  output_profile: { drive_type: bipolar_stepper }
   sockets:
     - label: "MOT-X"
       generic_name: "Motor1"
@@ -97,6 +86,6 @@ generic_pins:
   - { label: "TB (THERM_BED)", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: rc_filtered }, notes: "Schematic: RC-filtered, 4.7K/10uF, same as TE0." }
 
   # Fan/heater MOSFET outputs.
-  - { label: "FAN0", generic_name: "FET13", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 0.5 }, notes: "MOSFET: MMBF170. Voltage jumper-selectable 12-24V/5V." }
-  - { label: "E0-Heater", generic_name: "FET2", mcu_pin: gpio.2, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 60.0 }, notes: "MOSFET: WSD4060." }
-  - { label: "Heated-Bed", generic_name: "FET4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 150.0 }, notes: "MOSFET: WSD40150" }
+  - { label: "FAN0", generic_name: "FET13", mcu_pin: gpio.13, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 0.5, common: vmot }, notes: "MOSFET: MMBF170. Voltage jumper-selectable 12-24V/5V; common is vmot, whichever the jumper selects." }
+  - { label: "E0-Heater", generic_name: "FET2", mcu_pin: gpio.2, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 60.0, common: vmot }, notes: "MOSFET: WSD4060." }
+  - { label: "Heated-Bed", generic_name: "FET4", mcu_pin: gpio.4, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 150.0, common: vmot }, notes: "MOSFET: WSD40150" }

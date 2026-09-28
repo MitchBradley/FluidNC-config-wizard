@@ -13,6 +13,8 @@ fixed_peripherals:
 motor_sockets:
   shared_disable_pin: NO_PIN
   shared_reset_pin: NO_PIN
+  # I2SO shift-register logic outputs to the driver connector.
+  output_profile: { drive_type: totem_pole }
   sockets:
     - label: "X"
       generic_name: "Motor1"
@@ -65,12 +67,12 @@ generic_pins:
   - { label: "TB", generic_name: "In39", mcu_pin: gpio.39, direction: input, input_profile: { conditioning: rc_filtered } }
   - { label: "MT_DET", generic_name: "In35", mcu_pin: gpio.35, direction: input, input_profile: { conditioning: rc_filtered } }
 
-  - { label: "H-BED", generic_name: "FET I2S16", mcu_pin: i2so.16, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 100.0 }, notes: "Mosfet is G024N03 - 30V/100A." }
-  - { label: "H-E0", generic_name: "FET I2S17", mcu_pin: i2so.17, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 42.0 }, notes: "Mosfet is HY1403D - 30V/42A." }
-  - { label: "H-E1", generic_name: "FET I2S18", mcu_pin: i2so.18, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 42.0 }, notes: "Mosfet is HY1403D - 30V/42A." }
+  - { label: "H-BED", generic_name: "FET I2S16", mcu_pin: i2so.16, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 100.0, common: vmot }, notes: "Mosfet is G024N03 - 30V/100A." }
+  - { label: "H-E0", generic_name: "FET I2S17", mcu_pin: i2so.17, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 42.0, common: vmot }, notes: "Mosfet is HY1403D - 30V/42A." }
+  - { label: "H-E1", generic_name: "FET I2S18", mcu_pin: i2so.18, direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 24.0, current_max_a: 42.0, common: vmot }, notes: "Mosfet is HY1403D - 30V/42A." }
 
-  - { label: "H-FAN1", generic_name: "5VOut I2S19", mcu_pin: i2so.19, direction: output, output_profile: { drive_type: mosfet_low_side } }
-  - { label: "FAN2", generic_name: "5VOut I2S20", mcu_pin: i2so.20, direction: output, output_profile: { drive_type: mosfet_low_side } }
+  - { label: "H-FAN1", generic_name: "5VOut I2S19", mcu_pin: i2so.19, direction: output, output_profile: { drive_type: mosfet_low_side, common: 12v } }
+  - { label: "FAN2", generic_name: "5VOut I2S20", mcu_pin: i2so.20, direction: output, output_profile: { drive_type: mosfet_low_side, common: 12v } }
   - { label: "BEEPER", generic_name: "5VOut I2S21", mcu_pin: i2so.21, direction: output, output_profile: { drive_type: totem_pole } }
 
   - { label: "LCD_D4", generic_name: "5V Out0", mcu_pin: gpio.0, direction: output, output_profile: { drive_type: totem_pole } }
