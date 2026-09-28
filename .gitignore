@@ -17,3 +17,8 @@ __pycache__/
 # defensively in case a cleanup step is ever skipped.
 node_modules/
 package-lock.json
+
+# Claude Code's own scratch space for isolated agent worktrees -- ephemeral,
+# never useful to commit. .claude/launch.json (the dev-server config) is
+# NOT ignored -- that's genuinely reusable project config, checked in.
+.claude/worktrees/
