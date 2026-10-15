@@ -4279,6 +4279,45 @@ function ensureAxis(cfg, letter) {
   return cfg.axes[letter];
 }
 
+/* Moves every i2cN:, uartN: and uart_channelN: section (and its "# label"
+ * annotation marker) up to just before axes:, i.e. next to spi:/sdcard:/
+ * i2so: -- the bus sections everything after them depends on -- instead of
+ * wherever the RS485/expansion-UART/I2C loops happened to create them
+ * (late, after motor sockets and generic pins). jsyaml.dump emits keys in
+ * insertion order, so reordering the keys IS reordering the output. i2cN
+ * first, then uarts sorted by number with each uart_channelN directly
+ * behind its own uartN. Mutates cfg in place (generateDraft() holds it as
+ * a const). */
+function hoistBusSections(cfg) {
+  const num = k => parseInt(k.match(/\d+/)[0], 10);
+  const rank = k => k.startsWith("i2c") ? 0 : k.startsWith("uart_channel") ? 2 : 1;
+  const busKeys = Object.keys(cfg).filter(k => /^(i2c|uart|uart_channel)\d+$/.test(k)).sort((a, b) => {
+    const ia = rank(a) === 0, ib = rank(b) === 0;
+    if (ia !== ib) return ia ? -1 : 1;
+    return num(a) - num(b) || rank(a) - rank(b);
+  });
+  if (!busKeys.length) return;
+  const marker = k => `__ANNOTATE_FOR_${k}__`;
+  const moved = new Set();
+  busKeys.forEach(k => { moved.add(k); moved.add(marker(k)); });
+  const orig = Object.assign({}, cfg);
+  Object.keys(cfg).forEach(k => delete cfg[k]);
+  let emitted = false;
+  const emitBus = () => {
+    busKeys.forEach(k => {
+      if (marker(k) in orig) cfg[marker(k)] = orig[marker(k)];
+      cfg[k] = orig[k];
+    });
+    emitted = true;
+  };
+  Object.keys(orig).forEach(k => {
+    if (moved.has(k)) return;
+    if (!emitted && (k === "axes" || k === marker("axes"))) emitBus();
+    cfg[k] = orig[k];
+  });
+  if (!emitted) emitBus();
+}
+
 function generateDraft() {
   const cfg = {};
   cfg.name = TBD;
@@ -4782,6 +4821,8 @@ function generateDraft() {
   cfg.enable_parking_override_control = TBD;
   cfg.use_line_numbers = TBD;
   cfg.planner_blocks = TBD;
+
+  hoistBusSections(cfg);
 
   // Optional top-level sections with no board-resource correlation
   // (Parking/Macros/OLED/ATC Manual) -- see OPTIONAL_SECTIONS' own
