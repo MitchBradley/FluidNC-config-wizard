@@ -481,6 +481,10 @@
   .module-socket-overlay { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
   .module-socket-rotated img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
   .module-hotspot-chip { position: absolute; pointer-events: auto; }
+  .expander-hotspot-block { margin-top: 18px; }
+  .expander-photo { position: relative; }
+  .expander-photo img { display: block; width: 100%; user-select: none; -webkit-user-drag: none; }
+  .expander-photo .hotspot-role-label { position: absolute; }
   .module-hotspot-chip .hotspot-role-label { position: absolute; }
   /* Same green already used for the hotspot photo's own assigned state
      (see .hotspot-rect.assigned above, #6fbf73) -- one persistent visual
@@ -1174,9 +1178,11 @@ async function loadModuleCatalog() {
 // Same graceful-degradation posture as loadModuleCatalog(): a missing catalog
 // just means no expander choices are offered on expansion-UART connectors.
 let EXPANDER_CATALOG = {};
+let EXPANDER_HOTSPOT_CATALOG = {}; // expanderId -> parsed hotspots YAML, or null
 
 async function loadExpanderCatalog() {
   EXPANDER_CATALOG = {};
+  EXPANDER_HOTSPOT_CATALOG = {};
   const indexText = await fetchYamlTextOptional("expanders/index.json");
   if (!indexText) return;
   let ids;
@@ -1196,6 +1202,9 @@ async function loadExpanderCatalog() {
     } catch (e) {
       console.warn(`Couldn't parse expanders/${id}.expander.yaml (${e.message}), skipping.`);
     }
+    const htext = await fetchYamlTextOptional(`hotspots/${id}_expander.hotspots.yaml`);
+    try { EXPANDER_HOTSPOT_CATALOG[id] = htext ? jsyaml.load(htext) : null; }
+    catch (e) { console.warn(`Couldn't parse hotspots/${id}_expander.hotspots.yaml (${e.message}).`); EXPANDER_HOTSPOT_CATALOG[id] = null; }
   }
 }
 
@@ -1338,10 +1347,10 @@ function allModuleSocketConnectors() {
  * resource model and assignUartNumbers() so they agree on the list/order. */
 function allExpansionUartConnectors() {
   return [
-    ...(board.expansion_uarts || []).map((ex, i) => ({ ex, key: resourceKeyExpUart(i) })),
+    ...(board.expansion_uarts || []).map((ex, i) => ({ ex, key: resourceKeyExpUart(i), genericName: gname(ex) })),
     ...allModuleSocketConnectors()
       .filter(x => x.connector.kind === "expansion_uart")
-      .map(x => ({ ex: { ...x.connector, commentLabel: `${x.socket.label}/${x.moduleName}/${x.connector.label}` }, key: x.key })),
+      .map(x => ({ ex: { ...x.connector, commentLabel: `${x.socket.label}/${x.moduleName}/${x.connector.label}` }, key: x.key, genericName: `${gname(x.socket)}/${gname(x.connector)}` })),
   ];
 }
 
@@ -3061,7 +3070,7 @@ function computeResourcePins() {
   expanderIoInfo = {};
   expanderPinDefs = {};
   const uartNums = assignUartNumbers();
-  allExpansionUartConnectors().forEach(({ ex, key }) => {
+  allExpansionUartConnectors().forEach(({ key, genericName }) => {
     const id = expanderIdOfRole(bindings[key]);
     if (!id) return;
     const exDoc = EXPANDER_CATALOG[id];
@@ -3069,8 +3078,8 @@ function computeResourcePins() {
       const ioKey = resourceKeyExpIo(key, p.io);
       const pin = `uart_channel${uartNums[key]}.${p.io}`;
       resourcePins[ioKey] = [pin];
-      record(ioKey, `${exDoc.expander.name}: ${p.label}`, `${gname(ex)}/${gname(p)}`);
-      expanderIoInfo[ioKey] = { connKey: key, pin, def: p, expanderId: id };
+      record(ioKey, `${exDoc.expander.name}: ${p.label}`, `${genericName}/${gname(p)}`);
+      expanderIoInfo[ioKey] = { connKey: key, pin, def: p, expanderId: id, genericName };
       expanderPinDefs[pin] = p;
       if (p.input_profile) genericPinProfiles[pin] = p.input_profile;
     });
@@ -3340,9 +3349,9 @@ function refreshRoleUniqueness() {
 const HOTSPOT_PAD_BUFFER_PCT = 3;
 let hotspotBounds = null; // {minX,maxX,minY,maxY} or null if no hotspotData
 
-function computeHotspotBounds() {
+function computeHotspotBounds(data = hotspotData) {
   let minX = 0, maxX = 100, minY = 0, maxY = 100;
-  (hotspotData.hotspots || []).forEach(h => {
+  (data.hotspots || []).forEach(h => {
     [h.rect, h.label_rect].forEach(box => {
       if (!box) return;
       minX = Math.min(minX, box.x); maxX = Math.max(maxX, box.x + box.w);
@@ -3469,6 +3478,17 @@ function boxOrientation(box, override) {
 function renderHotspotPane() {
   const mainEl = document.querySelector("main");
   const col = document.getElementById("hotspotCol");
+  const expanderBlocks = expanderHotspotBlocks();
+  if (!hotspotData && expanderBlocks.length) {
+    // No board photo, but an expander has one -- show just the expander(s).
+    hotspotBounds = null;
+    mainEl.style.gridTemplateColumns = "420px minmax(10vw, 1fr) max-content";
+    col.style.display = "";
+    col.innerHTML = "";
+    expanderBlocks.forEach(b => col.appendChild(b));
+    refreshHotspotStates();
+    return;
+  }
   if (!hotspotData) {
     col.style.display = "none";
     mainEl.style.gridTemplateColumns = "1fr max-content";
@@ -3607,8 +3627,79 @@ function renderHotspotPane() {
     // Module image fills the rect when has-module-overlay; skip the overlapping role chip.
     if (!el.classList.contains("has-module-overlay")) overlay.appendChild(roleSpan);
   });
+  expanderBlocks.forEach(b => col.appendChild(b));
   updateHotspotLayout(); // no-ops until the img's `load` fires if it hasn't already (e.g. cached image)
   refreshHotspotStates();
+}
+
+/* One photo block per expander currently bound to a connector AND having a
+ * hotspots/<id>_expander.hotspots.yaml. Unlike a module (physically plugged
+ * over its socket, so drawn over the board photo), an expander just sits
+ * below the board photo at column width -- no position, rotation or socket
+ * orientation. Chips/role labels are plain %-of-photo absolutes, same shape
+ * as a module's overlay, named "<connector generic name>/<pin generic name>"
+ * to match the resource rows (see computeResourcePins()). The column
+ * scrolls if the stack is taller than the window. */
+function expanderHotspotBlocks() {
+  const blocks = [];
+  allExpansionUartConnectors().forEach(({ key, genericName }) => {
+    const id = expanderIdOfRole(bindings[key]);
+    const data = id && EXPANDER_HOTSPOT_CATALOG[id];
+    if (!data || !data.image) return;
+    const b = computeHotspotBounds(data);
+    const spanX = b.maxX - b.minX;
+    const block = document.createElement("div");
+    block.className = "expander-hotspot-block";
+    const cap = document.createElement("div");
+    cap.className = "note expander-caption";
+    cap.textContent = `${EXPANDER_CATALOG[id].expander.name} on ${genericName}`;
+    block.appendChild(cap);
+    const photo = document.createElement("div");
+    photo.className = "expander-photo";
+    const img = document.createElement("img");
+    img.src = data.image;
+    img.alt = EXPANDER_CATALOG[id].expander.name;
+    photo.appendChild(img);
+    // Reserve room (as margins, in % of the block's width) for any chip or
+    // label that extends past the photo, then size the photo to fit.
+    const layout = () => {
+      if (!img.naturalWidth) return;
+      const ar = img.naturalHeight / img.naturalWidth;
+      const wi = 10000 / spanX; // photo width, % of block width
+      photo.style.width = wi + "%";
+      photo.style.marginLeft = (-b.minX * 100 / spanX) + "%";
+      photo.style.marginTop = (-b.minY / 100 * wi * ar) + "%";
+      photo.style.marginBottom = ((b.maxY - 100) / 100 * wi * ar) + "%";
+      block.style.setProperty("--hotspot-scale", (block.getBoundingClientRect().width * wi / 100) / HOTSPOT_FONT_REF_WIDTH);
+    };
+    img.addEventListener("load", layout);
+    if (typeof ResizeObserver !== "undefined") new ResizeObserver(layout).observe(block);
+    (data.hotspots || []).forEach(h => {
+      const name = `${genericName}/${h.generic_name}`;
+      const chip = document.createElement("div");
+      chip.className = "hotspot-rect module-hotspot-chip";
+      chip.dataset.genericName = name;
+      chip.style.cssText = `left:${h.rect.x}%;top:${h.rect.y}%;width:${h.rect.w}%;height:${h.rect.h}%;`;
+      chip.onclick = () => jumpToGenericName(name, chip);
+      const chipLabel = document.createElement("span");
+      chipLabel.className = "hotspot-label" + (boxOrientation(h.rect, h.rect_orientation) === "vertical" ? " vertical" : "");
+      const chipLabelText = document.createElement("span");
+      chipLabelText.className = "hotspot-label-text";
+      chipLabelText.textContent = h.generic_name;
+      chipLabel.appendChild(chipLabelText);
+      chip.appendChild(chipLabel);
+      photo.appendChild(chip);
+      const roleBox = h.label_rect || h.rect;
+      const roleSpan = document.createElement("span");
+      roleSpan.className = "hotspot-role-label" + (boxOrientation(roleBox, h.label_orientation) === "vertical" ? " vertical" : "");
+      roleSpan.dataset.genericName = name;
+      roleSpan.style.cssText = `left:${roleBox.x}%;top:${roleBox.y}%;width:${roleBox.w}%;height:${roleBox.h}%;`;
+      photo.appendChild(roleSpan);
+    });
+    block.appendChild(photo);
+    blocks.push(block);
+  });
+  return blocks;
 }
 
 /* Reads whichever left-pane row(s) a label maps to and reports its CURRENT
@@ -3647,8 +3738,7 @@ function getRowRoleInfo(genericName) {
  * photo always reflects reality live, not just a snapshot from when the
  * pane was first built. */
 function refreshHotspotStates() {
-  if (!hotspotData) return;
-  document.querySelectorAll("#hotspotOverlay .hotspot-rect").forEach(el => {
+  document.querySelectorAll("#hotspotCol .hotspot-rect").forEach(el => {
     const generic = el.dataset.genericName;
     const info = getRowRoleInfo(generic);
     el.classList.toggle("assigned", info.assigned);
@@ -3662,7 +3752,7 @@ function refreshHotspotStates() {
   // hotspots with an editor-authored label_rect -- see renderHotspotPane()).
   // Empty when nothing's assigned yet: :empty { display:none } in CSS hides
   // the box entirely rather than showing a blank chip over the photo.
-  document.querySelectorAll("#hotspotOverlay .hotspot-role-label").forEach(el => {
+  document.querySelectorAll("#hotspotCol .hotspot-role-label").forEach(el => {
     const info = getRowRoleInfo(el.dataset.genericName);
     el.textContent = info.assigned ? info.roleText : "";
   });
@@ -3713,8 +3803,7 @@ function selectFromRow(row, matches) {
  * connector" without requiring a click. Wired once per board load, right
  * after both #resourceCol and the hotspot pane are built. */
 function wireHotspotHoverLinks() {
-  if (!hotspotData) return;
-  const rects = Array.from(document.querySelectorAll("#hotspotOverlay .hotspot-rect"));
+  const rects = Array.from(document.querySelectorAll("#hotspotCol .hotspot-rect"));
   document.querySelectorAll("#resourceCol .row").forEach(row => {
     // See getRowRoleInfo()'s comment -- generic name via
     // resourceGenericNames, matching hotspots.yaml's own vocabulary (and,
@@ -3857,7 +3946,7 @@ function renderResources() {
         bindings[key] = sel.value;
         computeResourcePins();
         renderResources();
-        if (hotspotData) renderHotspotPane();
+        renderHotspotPane();
         wireHotspotHoverLinks();
         generateDraft();
       };
@@ -3989,7 +4078,7 @@ function makeExpansionUartRow(key, name, sub, vendorLabel) {
       Object.keys(bindings).forEach(k => { if (k.startsWith(prefix)) delete bindings[k]; });
       computeResourcePins();
       renderResources();
-      if (hotspotData) renderHotspotPane();
+      renderHotspotPane();
       wireHotspotHoverLinks();
     }
     generateDraft();

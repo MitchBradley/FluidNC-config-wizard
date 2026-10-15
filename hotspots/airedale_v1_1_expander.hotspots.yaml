@@ -1,0 +1,66 @@
+expander_id: airedale_v1_1
+image: images/airedale_v1_1_expander.jpg
+hotspots:
+  - generic_name: "In0"
+    rect: {x: 37.00, y: 87.00, w: 6.00, h: 12.00}
+    label_rect: {x: 37.00, y: 99.00, w: 6.00, h: 20.00}
+  - generic_name: "In1"
+    rect: {x: 43.00, y: 87.00, w: 6.00, h: 12.00}
+    label_rect: {x: 43.00, y: 99.00, w: 6.00, h: 20.00}
+  - generic_name: "In2"
+    rect: {x: 49.00, y: 87.00, w: 6.00, h: 12.00}
+    label_rect: {x: 49.00, y: 99.00, w: 6.00, h: 20.00}
+  - generic_name: "In3"
+    rect: {x: 55.00, y: 87.00, w: 6.00, h: 12.00}
+    label_rect: {x: 55.00, y: 99.00, w: 6.00, h: 20.00}
+  - generic_name: "In4"
+    rect: {x: 69.00, y: 87.00, w: 6.00, h: 12.00}
+    label_rect: {x: 69.00, y: 99.00, w: 6.00, h: 20.00}
+  - generic_name: "In5"
+    rect: {x: 75.00, y: 87.00, w: 6.00, h: 12.00}
+    label_rect: {x: 75.00, y: 99.00, w: 6.00, h: 20.00}
+  - generic_name: "In6"
+    rect: {x: 81.00, y: 87.00, w: 6.00, h: 12.00}
+    label_rect: {x: 81.00, y: 99.00, w: 6.00, h: 20.00}
+  - generic_name: "In7"
+    rect: {x: 87.00, y: 87.00, w: 6.00, h: 12.00}
+    label_rect: {x: 87.00, y: 99.00, w: 6.00, h: 20.00}
+  - generic_name: "5V Out8"
+    rect: {x: 50.00, y: 0.00, w: 6.00, h: 13.00}
+    label_rect: {x: 50.00, y: -20.00, w: 6.00, h: 20.00}
+  - generic_name: "5V Out9"
+    rect: {x: 56.00, y: 0.00, w: 6.00, h: 13.00}
+    label_rect: {x: 56.00, y: -20.00, w: 6.00, h: 20.00}
+  - generic_name: "5V Out10"
+    rect: {x: 62.00, y: 0.00, w: 6.00, h: 13.00}
+    label_rect: {x: 62.00, y: -20.00, w: 6.00, h: 20.00}
+  - generic_name: "5V Out11"
+    rect: {x: 68.00, y: 0.00, w: 7.00, h: 13.00}
+    label_rect: {x: 68.00, y: -20.00, w: 7.00, h: 20.00}
+  - generic_name: "5V Out12"
+    rect: {x: 75.00, y: 0.00, w: 7.00, h: 13.00}
+    label_rect: {x: 75.00, y: -20.00, w: 7.00, h: 20.00}
+  - generic_name: "5V Out13"
+    rect: {x: 82.00, y: 0.00, w: 6.00, h: 13.00}
+    label_rect: {x: 82.00, y: -20.00, w: 6.00, h: 20.00}
+  - generic_name: "5V Out14"
+    rect: {x: 88.00, y: 0.00, w: 6.00, h: 13.00}
+    label_rect: {x: 88.00, y: -20.00, w: 6.00, h: 20.00}
+  - generic_name: "5V Out15"
+    rect: {x: 94.00, y: 0.00, w: 6.00, h: 13.00}
+    label_rect: {x: 94.00, y: -20.00, w: 6.00, h: 20.00}
+  - generic_name: "FET16"
+    rect: {x: 30.00, y: 0.00, w: 9.00, h: 13.00}
+    label_rect: {x: 30.00, y: -20.00, w: 9.00, h: 20.00}
+  - generic_name: "FET17"
+    rect: {x: 39.00, y: 0.00, w: 10.00, h: 13.00}
+    label_rect: {x: 39.00, y: -20.00, w: 10.00, h: 20.00}
+  - generic_name: "LED R"
+    rect: {x: 0.00, y: 25.00, w: 11.00, h: 7.00}
+    label_rect: {x: 11.00, y: 25.00, w: 12.00, h: 7.00}
+  - generic_name: "LED G"
+    rect: {x: 0.00, y: 32.00, w: 11.00, h: 7.00}
+    label_rect: {x: 11.00, y: 32.00, w: 12.00, h: 7.00}
+  - generic_name: "LED B"
+    rect: {x: 0.00, y: 39.00, w: 11.00, h: 7.00}
+    label_rect: {x: 11.00, y: 39.00, w: 12.00, h: 7.00}

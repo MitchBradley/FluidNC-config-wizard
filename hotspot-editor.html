@@ -231,6 +231,7 @@
     <div class="mode-radios" style="padding:0 0 6px">
       <label><input type="radio" name="editorMode" id="modeBoardBtn" checked> Board</label>
       <label><input type="radio" name="editorMode" id="modeModuleBtn"> Module</label>
+      <label><input type="radio" name="editorMode" id="modeExpanderBtn"> Expander</label>
     </div>
     <div class="toolbar" style="padding:0 0 6px; border:none">
       <!-- Same "dropdown list with Custom option" pattern as the main
@@ -386,7 +387,8 @@ const BOARD_YAML_SECTION_TYPES = {
   rs485_channels: "rs485_channel",
   expansion_uarts: "expansion_uart",
   i2c_connectors: "i2c_connector",
-  expansion_sockets: "module_socket"
+  expansion_sockets: "module_socket",
+  pins: "expander_pin" // expander.yaml's top-level I/O list
 };
 const MODULE_ASPECT_NARROW = 32, MODULE_ASPECT_LONG = 42, MODULE_STRIPE_PCT = 6;
 
@@ -457,12 +459,21 @@ function extractLabelsFromBoardYaml(text) {
 // `loadLabelsFromText()`/`parseLabelLines()`, with no textarea round-trip.
 let rawBoardYamlText = "";
 
-// When true, the editor is working on a module photo/hotspot file rather than
-// a board photo. Affects id key (module_id vs board_id), image naming
-// (_module suffix), save/download paths, and auto-load folder (modules/ vs boards/).
-let moduleMode = false;
+// Which kind of photo/hotspot file the editor is working on: "board",
+// "module" or "expander". Affects the id key (board_id/module_id/expander_id),
+// image naming (_module/_expander suffix), save/download paths, and the
+// auto-load folder (boards/ modules/ expanders/).
+let editorMode = "board";
 
-function setMode(isModule) {
+const MODE_INFO = {
+  board:    { idKey: "board_id",    suffix: "",           dir: "boards",    ext: "board.yaml",    noun: "board",    listHeading: "Board resource list",       hint: "Board images should be in .jpg format, about 1000 pixels wide, with little skew." },
+  module:   { idKey: "module_id",   suffix: "_module",    dir: "modules",   ext: "module.yaml",   noun: "module",   listHeading: "Module connector list",     hint: "Module images should be in .jpg format, 420 pixels wide by 320 pixels high, with little skew." },
+  expander: { idKey: "expander_id", suffix: "_expander",  dir: "expanders", ext: "expander.yaml", noun: "expander", listHeading: "Expander I/O list",         hint: "Expander images should be in .jpg format, about 800 pixels wide, with little skew." },
+};
+
+function setMode(mode) {
+  if (mode === true) mode = "module";   // legacy boolean callers
+  if (mode === false) mode = "board";
   // Only repopulate the picker (which resets its selection to the
   // placeholder -- see populateBoardFilePicker()) when the mode is actually
   // changing. loadBoardFileById() below always loads from the CURRENT
@@ -470,32 +481,30 @@ function setMode(isModule) {
   // filename-based auto-detect) never actually flips the mode -- without
   // this guard, successfully picking a board.yaml from the dropdown would
   // immediately wipe that very selection back to the placeholder.
-  const modeChanged = moduleMode !== isModule;
-  moduleMode = isModule;
-  document.getElementById("modeBoardBtn").checked = !isModule;
-  document.getElementById("modeModuleBtn").checked = isModule;
-  document.getElementById("resourceListHeading").textContent =
-    isModule ? "Module connector list" : "Board resource list";
-  // Options list AND placeholder text both depend on mode (module ids from
-  // modules/index.json vs board ids from boards/index.json).
+  const modeChanged = editorMode !== mode;
+  editorMode = mode;
+  const info = MODE_INFO[mode];
+  document.getElementById("modeBoardBtn").checked = mode === "board";
+  document.getElementById("modeModuleBtn").checked = mode === "module";
+  document.getElementById("modeExpanderBtn").checked = mode === "expander";
+  document.getElementById("resourceListHeading").textContent = info.listHeading;
+  // Options list AND placeholder text both depend on mode (ids from
+  // boards|modules|expanders/index.json).
   if (modeChanged) populateBoardFilePicker();
-  document.getElementById("imageColHeading").textContent =
-    isModule ? "Module image" : "Board image";
-  document.getElementById("loadImgFileBtn").textContent =
-    isModule ? "Load module image\u2026" : "Load board image\u2026";
+  document.getElementById("imageColHeading").textContent = `${info.noun[0].toUpperCase()}${info.noun.slice(1)} image`;
+  document.getElementById("loadImgFileBtn").textContent = `Load ${info.noun} image\u2026`;
   // Only actually visible before an image is loaded (see loadImageBlob(),
   // which hides it) -- kept up to date regardless, in case mode is
   // switched before that point.
-  document.getElementById("imgFormatHint").textContent = isModule
-    ? "Module images should be in .jpg format, 420 pixels wide by 320 pixels high, with little skew."
-    : "Board images should be in .jpg format, about 1000 pixels wide, with little skew.";
+  document.getElementById("imgFormatHint").textContent = info.hint;
   const img = document.getElementById("boardImg");
-  img.alt = isModule ? img.dataset.altModule : img.dataset.altBoard;
+  img.alt = `${info.noun} photo`;
   renderOutput();
 }
 
-document.getElementById("modeBoardBtn").onchange = () => setMode(false);
-document.getElementById("modeModuleBtn").onchange = () => setMode(true);
+document.getElementById("modeBoardBtn").onchange = () => setMode("board");
+document.getElementById("modeModuleBtn").onchange = () => setMode("module");
+document.getElementById("modeExpanderBtn").onchange = () => setMode("expander");
 
 function parseLabelLines(text) {
   return text.split("\n").map(l => l.trim()).filter(Boolean).map(line => {
@@ -507,8 +516,9 @@ function parseLabelLines(text) {
 function loadLabelsFromText(text, sourceName) {
   rawBoardYamlText = text;
   // Auto-detect mode from filename (covers both direct picks and auto-loaded paths).
-  if (sourceName && /\.module\.yaml/i.test(sourceName)) setMode(true);
-  else if (sourceName && /\.board\.yaml/i.test(sourceName)) setMode(false);
+  if (sourceName && /\.module\.yaml/i.test(sourceName)) setMode("module");
+  else if (sourceName && /\.expander\.yaml/i.test(sourceName)) setMode("expander");
+  else if (sourceName && /\.board\.yaml/i.test(sourceName)) setMode("board");
   const extracted = extractLabelsFromBoardYaml(text);
   labels = extracted.length ? extracted : parseLabelLines(text); // not a resource-bearing board.yaml -- assume it's already a plain label list
   armedLabel = null;
@@ -533,6 +543,7 @@ function loadLabelsFromText(text, sourceName) {
  * ------------------------------------------------------------------- */
 let BOARD_FILE_IDS = [];
 let MODULE_FILE_IDS = [];
+let EXPANDER_FILE_IDS = [];
 const CUSTOM_FILE_OPT_VALUE = "__custom__";
 
 async function fetchJsonManifest(path) {
@@ -560,9 +571,9 @@ function populateBoardFilePicker() {
   picker.innerHTML = "";
   const placeholderOpt = document.createElement("option");
   placeholderOpt.value = "";
-  placeholderOpt.textContent = moduleMode ? "— Select a module.yaml —" : "— Select a board.yaml —";
+  placeholderOpt.textContent = `— Select a ${MODE_INFO[editorMode].ext} —`;
   picker.appendChild(placeholderOpt);
-  (moduleMode ? MODULE_FILE_IDS : BOARD_FILE_IDS).forEach(id => {
+  ({ board: BOARD_FILE_IDS, module: MODULE_FILE_IDS, expander: EXPANDER_FILE_IDS })[editorMode].forEach(id => {
     const o = document.createElement("option");
     o.value = id; o.textContent = id;
     picker.appendChild(o);
@@ -580,7 +591,7 @@ function populateBoardFilePicker() {
 }
 
 async function loadBoardFileById(id) {
-  const path = moduleMode ? `modules/${id}.module.yaml` : `boards/${id}.board.yaml`;
+  const path = `${MODE_INFO[editorMode].dir}/${id}.${MODE_INFO[editorMode].ext}`;
   let text;
   try {
     // no-store -- same caching gotcha as fetchJsonManifest() above, just
@@ -801,7 +812,7 @@ async function maybeAutoLoadImage() {
   if (document.getElementById("boardImg").getAttribute("src")) return; // already loaded
   const id = boardIdFromText();
   if (!id) return;
-  const imgSuffix = moduleMode ? "_module" : "";
+  const imgSuffix = MODE_INFO[editorMode].suffix;
   const found = await fetchFirstOk(["jpg", "jpeg", "png", "webp", "gif"].map(ext => `images/${id}${imgSuffix}.${ext}`));
   if (!found) return;
   const blob = await found.response.blob();
@@ -814,11 +825,10 @@ async function maybeAutoLoadImage() {
 // module id, and the file is sought in modules/ rather than boards/.
 async function maybeAutoLoadBoardFile(idGuess) {
   if (labels.length || !idGuess) return;
-  const isModuleImage = /_module$/i.test(idGuess);
-  const bareId = isModuleImage ? idGuess.replace(/_module$/i, "") : idGuess;
-  const found = await fetchFirstOk(
-    isModuleImage ? [`modules/${bareId}.module.yaml`] : [`boards/${idGuess}.board.yaml`]
-  );
+  const kind = /_module$/i.test(idGuess) ? "module" : /_expander$/i.test(idGuess) ? "expander" : "board";
+  const info = MODE_INFO[kind];
+  const bareId = idGuess.replace(/_(module|expander)$/i, "");
+  const found = await fetchFirstOk([`${info.dir}/${bareId}.${info.ext}`]);
   if (!found) return;
   const text = await found.response.text();
   loadLabelsFromText(text, `${found.path} (auto-loaded)`);
@@ -1512,8 +1522,8 @@ function boardIdGuess() {
  * ------------------------------------------------------------------- */
 function renderOutput() {
   const id = boardIdGuess();
-  const imgSuffix = moduleMode ? "_module" : "";
-  let y = `${moduleMode ? "module_id" : "board_id"}: ${id}\n`;
+  const imgSuffix = MODE_INFO[editorMode].suffix;
+  let y = `${MODE_INFO[editorMode].idKey}: ${id}\n`;
   y += `image: images/${id}${imgSuffix}.jpg\n`;
   y += `hotspots:\n`;
   if (hotspots.length === 0) y += `  []\n`;
@@ -1545,7 +1555,7 @@ function renderOutput() {
  * ------------------------------------------------------------------- */
 function parseHotspotsYaml(text) {
   const lines = text.split("\n");
-  let boardId = null, image = null, isModule = false;
+  let boardId = null, image = null, isModule = false, isExpander = false;
   const parsed = [];
   let current = null;
   lines.forEach(raw => {
@@ -1554,6 +1564,7 @@ function parseHotspotsYaml(text) {
     let m;
     if ((m = line.match(/^board_id:\s*(\S+)/))) { boardId = m[1]; return; }
     if ((m = line.match(/^module_id:\s*(\S+)/))) { boardId = m[1]; isModule = true; return; }
+    if ((m = line.match(/^expander_id:\s*(\S+)/))) { boardId = m[1]; isExpander = true; return; }
     if ((m = line.match(/^image:\s*(\S+)/))) { image = m[1]; return; }
     if (line === "hotspots:" || line === "[]") return;
     // "generic_name:" (singular scalar) is the current key -- one hotspot,
@@ -1601,7 +1612,7 @@ function parseHotspotsYaml(text) {
     if ((m = line.match(/^w:\s*([-\d.]+)/))) { current.rect.w = parseFloat(m[1]); return; }
     if ((m = line.match(/^h:\s*([-\d.]+)/))) { current.rect.h = parseFloat(m[1]); return; }
   });
-  return { boardId, image, isModule, hotspots: parsed };
+  return { boardId, image, isModule, isExpander, hotspots: parsed };
 }
 
 function loadHotspotsFromText(text, sourceName) {
@@ -1620,7 +1631,8 @@ function loadHotspotsFromText(text, sourceName) {
     return;
   }
   hotspots = result.hotspots;
-  if (result.isModule) setMode(true);
+  if (result.isModule) setMode("module");
+  else if (result.isExpander) setMode("expander");
   // Note: this doesn't touch the label textarea/board_id guess -- the
   // hotspots file only records which labels are USED, not the board's full
   // label list, so the left-pane label list stays whatever's already
@@ -1671,7 +1683,7 @@ function downloadImage() {
   canvas.toBlob((blob) => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${boardIdGuess()}${moduleMode ? "_module" : ""}.jpg`;
+    a.download = `${boardIdGuess()}${MODE_INFO[editorMode].suffix}.jpg`;
     a.click();
   }, "image/jpeg", 0.9);
 }
@@ -1692,7 +1704,7 @@ document.getElementById("downloadBtn").onclick = () => {
   const blob = new Blob([document.getElementById("output").textContent], { type: "text/yaml" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `${boardIdGuess()}${moduleMode ? "_module" : ""}.hotspots.yaml`;
+  a.download = `${boardIdGuess()}${MODE_INFO[editorMode].suffix}.hotspots.yaml`;
   a.click();
 };
 document.getElementById("clearBtn").onclick = () => {
@@ -1717,7 +1729,7 @@ document.getElementById("saveServerBtn").onclick = async () => {
     resetLater();
     return;
   }
-  const filename = `${id}${moduleMode ? "_module" : ""}.hotspots.yaml`;
+  const filename = `${id}${MODE_INFO[editorMode].suffix}.hotspots.yaml`;
   try {
     const resp = await fetch(`/__save_hotspots__/${encodeURIComponent(filename)}`, {
       method: "POST",
@@ -1738,9 +1750,10 @@ renderHotspots();
 renderOutput();
 
 (async () => {
-  [BOARD_FILE_IDS, MODULE_FILE_IDS] = await Promise.all([
+  [BOARD_FILE_IDS, MODULE_FILE_IDS, EXPANDER_FILE_IDS] = await Promise.all([
     fetchJsonManifest("boards/index.json"),
     fetchJsonManifest("modules/index.json"),
+    fetchJsonManifest("expanders/index.json"),
   ]);
   populateBoardFilePicker();
   // ?board=<id> -- mirrors index.html's own ?board=<id> boot-time link-in
