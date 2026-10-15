@@ -1130,6 +1130,7 @@ async function loadRoleData() {
   EITHER_ROLE_TREE = Object.assign({}, INPUT_ROLE_TREE, buildOutputRoleBranches());
 
   await loadModuleCatalog();
+  await loadExpanderCatalog();
 }
 
 // id -> parsed modules/<id>.module.yaml (see schema/module.schema.json).
@@ -1167,6 +1168,43 @@ async function loadModuleCatalog() {
     const htext = await fetchYamlTextOptional(`hotspots/${id}_module.hotspots.yaml`);
     MODULE_HOTSPOT_CATALOG[id] = htext ? jsyaml.load(htext) : null;
   }
+}
+
+// id -> parsed expanders/<id>.expander.yaml (see schema/expander.schema.json).
+// Same graceful-degradation posture as loadModuleCatalog(): a missing catalog
+// just means no expander choices are offered on expansion-UART connectors.
+let EXPANDER_CATALOG = {};
+
+async function loadExpanderCatalog() {
+  EXPANDER_CATALOG = {};
+  const indexText = await fetchYamlTextOptional("expanders/index.json");
+  if (!indexText) return;
+  let ids;
+  try {
+    ids = JSON.parse(indexText);
+  } catch (e) {
+    console.warn(`Couldn't parse expanders/index.json (${e.message}); no expanders will be offered.`);
+    return;
+  }
+  for (const id of ids) {
+    const text = await fetchYamlTextOptional(`expanders/${id}.expander.yaml`);
+    if (!text) { console.warn(`Couldn't fetch expanders/${id}.expander.yaml, skipping.`); continue; }
+    try {
+      const doc = jsyaml.load(text);
+      if (doc && doc.expander && doc.expander.id) EXPANDER_CATALOG[doc.expander.id] = doc;
+      else console.warn(`expanders/${id}.expander.yaml has no expander.id, skipping.`);
+    } catch (e) {
+      console.warn(`Couldn't parse expanders/${id}.expander.yaml (${e.message}), skipping.`);
+    }
+  }
+}
+
+// Binding value for an expansion-UART connector carrying an expander is
+// "expander:<id>"; returns the id (only for a loaded expander) or null.
+function expanderIdOfRole(role) {
+  if (!role || !role.startsWith("expander:")) return null;
+  const id = role.slice("expander:".length);
+  return EXPANDER_CATALOG[id] ? id : null;
 }
 
 /* Does every module_pin this module's own connectors reference actually
@@ -1293,6 +1331,51 @@ function allModuleSocketConnectors() {
     }));
   });
   return out;
+}
+
+/* Every expansion-UART connector -- the board's own plus those resolved from
+ * plugged-in modules -- as {ex, key}. Shared by generateDraft(), the
+ * resource model and assignUartNumbers() so they agree on the list/order. */
+function allExpansionUartConnectors() {
+  return [
+    ...(board.expansion_uarts || []).map((ex, i) => ({ ex, key: resourceKeyExpUart(i) })),
+    ...allModuleSocketConnectors()
+      .filter(x => x.connector.kind === "expansion_uart")
+      .map(x => ({ ex: { ...x.connector, commentLabel: `${x.socket.label}/${x.moduleName}/${x.connector.label}` }, key: x.key })),
+  ];
+}
+
+/* The same RS485 list generateDraft() walks (board-wired, then module). */
+function allRs485ChannelList() {
+  return [
+    ...(board.rs485_channels || []).map((ch, i) => ({ ch, key: resourceKeyRs485(i) })),
+    ...allModuleSocketConnectors()
+      .filter(x => x.connector.kind === "rs485_channel")
+      .map(x => ({ ch: { ...x.connector, commentLabel: `${x.socket.label}/${x.moduleName}/${x.connector.label}` }, key: x.key })),
+  ];
+}
+
+/* Hands out uart numbers (connector/channel resourceKey -> n) for everything
+ * that needs a uartN: block under the current bindings. Expanders go FIRST:
+ * their I/O pins are named uart_channel<N>.<io>, so N has to stay put while
+ * unrelated RS485/pendant bindings change (those don't re-render the
+ * resource pane). The rest keep their historical order. generateDraft() and
+ * computeResourcePins() both call this, so they can't disagree. */
+function assignUartNumbers() {
+  const used = new Set();
+  const nums = {};
+  const alloc = key => { nums[key] = nextSpareUartNum(board, used); };
+  const exps = allExpansionUartConnectors();
+  exps.forEach(({ key }) => { if (expanderIdOfRole(bindings[key])) alloc(key); });
+  allRs485ChannelList().forEach(({ key }) => {
+    const role = bindings[key];
+    if (role && role.startsWith("vfd:")) alloc(key);
+  });
+  exps.forEach(({ key }) => { if (bindings[key] === "uart_channel") alloc(key); });
+  (board.i2c_connectors || []).forEach((ic, i) => {
+    if (bindings[resourceKeyI2c(i)] === "expansion_uart") alloc(resourceKeyI2c(i));
+  });
+  return nums;
 }
 
 /* Reshapes outputCategoryOptions()/cascadeOptionsFor()'s primary/secondary
@@ -2045,6 +2128,17 @@ let BOARD_FIXED_ROLES = new Set(); // recomputed per board load, see computeBoar
 let bindings = {};         // resourceKey -> role value string
 let paramValues = {};      // JSON-pointer-ish path (e.g. "axes.x.steps_per_mm") -> user-entered value
 let pinAttrs = {};         // path -> { level: ""|"low"|"high", pull: ""|"pu"|"pd" }
+// Config paths (dotted, e.g. "user_outputs.digital0_pin") whose imported value
+// is a virtual pin no board resource owns -- currently just
+// uart_channelN.M, the pins an expander on a uart_channel exposes -- carried
+// through import to generateDraft() verbatim instead of failing as "pin not
+// found". path -> raw pin string, attributes (:low etc.) included.
+let passthroughPins = {};
+// Rebuilt by computeResourcePins(): expio resourceKey -> {connKey, pin, def,
+// expanderId}, and virtual pin string -> that I/O's expander_pin def (for
+// pinCapsFor()/pinSupportsPwm()).
+let expanderIoInfo = {};
+let expanderPinDefs = {};
 // Set of paramValues paths (always "<SpindleCfgKey>.tool_num") whose CURRENT
 // value collides with another spindle section's tool_num -- recomputed every
 // generateDraft() call (see there), read by paramWidgetHtml() to flag the
@@ -2091,6 +2185,10 @@ const I2SO_PIN_CAPS = { output: true };
 // accessor existed), never as "assume capable."
 function pinCapsFor(basePin) {
   if (basePin.startsWith("i2so.")) return I2SO_PIN_CAPS;
+  if (basePin.startsWith("uart_channel")) {
+    const def = expanderPinDefs[basePin];
+    return def ? { output: def.direction === "output" } : null;
+  }
   if (basePin.startsWith("gpio.")) return chipGpioCaps[parseInt(basePin.slice(5), 10)] || null;
   return null;
 }
@@ -2107,6 +2205,11 @@ function pinCapsFor(basePin) {
 const BUS_PWM_CAPABLE = { gpio: true, i2so: false };
 
 function pinSupportsPwm(basePin) {
+  // Expander PWM is per-pin (pwm_timer), not a property of the bus.
+  if (basePin.startsWith("uart_channel")) {
+    const def = expanderPinDefs[basePin];
+    return !!(def && def.direction === "output" && def.pwm_timer);
+  }
   const caps = pinCapsFor(basePin);
   return !!(caps && caps.output && BUS_PWM_CAPABLE[basePin.split(".")[0]]);
 }
@@ -2762,6 +2865,8 @@ function resourceKeyI2c(i) { return `i2c:${i}`; }
 // old per-pin dispatch was replaced).
 function resourceKeyModuleSocket(si) { return `modsock:${si}`; }
 function resourceKeyModConn(si, ci) { return `modconn:${si}:${ci}`; }
+// One I/O of an expander attached to expansion-UART connector `connKey`.
+function resourceKeyExpIo(connKey, io) { return `expio:${connKey}:${io}`; }
 
 /* ---------------------------------------------------------------------
  * Rendering
@@ -2809,6 +2914,7 @@ async function applyBoardDoc(doc, hotspotId) {
   bindings = {};
   paramValues = {};
   pinAttrs = {};
+  passthroughPins = {};
   kinematicsType = "Cartesian";
   homingEnabled = {};
   sectionEnabled = {};
@@ -2947,6 +3053,27 @@ function computeResourcePins() {
   (board.i2c_connectors || []).forEach((ic, i) => {
     resourcePins[resourceKeyI2c(i)] = [ic.sda_pin, ic.scl_pin].filter(Boolean);
     record(resourceKeyI2c(i), ic.label, gname(ic));
+  });
+  // Expander I/O -- one resource per I/O of each expander currently bound to
+  // an expansion-UART connector. The pin is uart_channel<N>.<io> with N from
+  // assignUartNumbers() (stable across non-expander binding changes).
+  Object.keys(genericPinProfiles).forEach(pin => { if (pin.startsWith("uart_channel")) delete genericPinProfiles[pin]; });
+  expanderIoInfo = {};
+  expanderPinDefs = {};
+  const uartNums = assignUartNumbers();
+  allExpansionUartConnectors().forEach(({ ex, key }) => {
+    const id = expanderIdOfRole(bindings[key]);
+    if (!id) return;
+    const exDoc = EXPANDER_CATALOG[id];
+    exDoc.pins.forEach(p => {
+      const ioKey = resourceKeyExpIo(key, p.io);
+      const pin = `uart_channel${uartNums[key]}.${p.io}`;
+      resourcePins[ioKey] = [pin];
+      record(ioKey, `${exDoc.expander.name}: ${p.label}`, `${gname(ex)}/${gname(p)}`);
+      expanderIoInfo[ioKey] = { connKey: key, pin, def: p, expanderId: id };
+      expanderPinDefs[pin] = p;
+      if (p.input_profile) genericPinProfiles[pin] = p.input_profile;
+    });
   });
 }
 
@@ -3749,10 +3876,8 @@ function renderResources() {
               : makeInputRow(ckey, c.generic_name, csub, c.direction === "either" ? EITHER_ROLE_TREE : INPUT_ROLE_TREE, c.label));
           } else if (c.kind === "expansion_uart") {
             const pins = `txd=${c.txd_pin} rxd=${c.rxd_pin}${c.connector_type ? " (" + c.connector_type + ")" : ""}`;
-            sub2.appendChild(makeRow(ckey, c.generic_name, pins, [
-              { value: "unused", label: "— Unused —" },
-              { value: "uart_channel", label: `I/O Expansion (uart_channel, uartN)` },
-            ], c.label));
+            sub2.appendChild(makeExpansionUartRow(ckey, c.generic_name, pins, c.label));
+            appendExpanderIoRows(sub2, ckey);
           } else if (c.kind === "rs485_channel") {
             const pins = `tx=${c.tx_pin} rx=${c.rx_pin}` + (c.rts_pin ? ` rts=${c.rts_pin}` : "");
             sub2.appendChild(makeRow(ckey, c.generic_name, pins, rs485RoleOptions(), c.label));
@@ -3784,10 +3909,8 @@ function renderResources() {
     board.expansion_uarts.forEach((ex, i) => {
       const key = resourceKeyExpUart(i);
       const pins = `txd=${ex.txd_pin} rxd=${ex.rxd_pin}${ex.connector_type ? " (" + ex.connector_type + ")" : ""}`;
-      sec.appendChild(makeRow(key, gname(ex), pins, [
-        { value: "unused", label: "— Unused —" },
-        { value: "uart_channel", label: `I/O Expansion (uart_channel, uartN)` },
-      ], ex.label));
+      sec.appendChild(makeExpansionUartRow(key, gname(ex), pins, ex.label));
+      appendExpanderIoRows(sec, key);
     });
     if (boardHasUartTmc(board) && board.rs485_channels && board.rs485_channels.length) {
       const warn = document.createElement("div");
@@ -3841,6 +3964,56 @@ function renderResources() {
     sec.appendChild(list);
     col.appendChild(sec);
   }
+}
+
+/* An expansion-UART connector's role row: unused / plain uart_channel / one
+ * of the catalogued expanders ("expander:<id>"). Choosing or leaving an
+ * expander changes which I/O rows exist below it, so -- like the module
+ * picker -- that rebuilds the whole pane instead of just regenerating. */
+function makeExpansionUartRow(key, name, sub, vendorLabel) {
+  const options = [
+    { value: "unused", label: "— Unused —" },
+    { value: "uart_channel", label: `I/O Expansion (uart_channel, uartN)` },
+  ];
+  Object.keys(EXPANDER_CATALOG)
+    .sort((a, b) => EXPANDER_CATALOG[a].expander.name.localeCompare(EXPANDER_CATALOG[b].expander.name))
+    .forEach(id => options.push({ value: `expander:${id}`, label: `Expander: ${EXPANDER_CATALOG[id].expander.name}` }));
+  const row = makeRow(key, name, sub, options, vendorLabel);
+  const sel = row.querySelector("select");
+  sel.onchange = () => {
+    const prev = bindings[key];
+    bindings[key] = sel.value;
+    if (prev === sel.value) { generateDraft(); return; }
+    if (expanderIdOfRole(prev) || expanderIdOfRole(sel.value)) {
+      const prefix = `expio:${key}:`;
+      Object.keys(bindings).forEach(k => { if (k.startsWith(prefix)) delete bindings[k]; });
+      computeResourcePins();
+      renderResources();
+      if (hotspotData) renderHotspotPane();
+      wireHotspotHoverLinks();
+    }
+    generateDraft();
+  };
+  return row;
+}
+
+/* The I/O rows of the expander (if any) bound to connector `connKey`,
+ * built with the same row builders as ordinary generic pins. */
+function appendExpanderIoRows(parent, connKey) {
+  const id = expanderIdOfRole(bindings[connKey]);
+  if (!id) return;
+  const wrap = document.createElement("div");
+  wrap.className = "module-connectors";
+  EXPANDER_CATALOG[id].pins.forEach(p => {
+    const ioKey = resourceKeyExpIo(connKey, p.io);
+    const info = expanderIoInfo[ioKey];
+    if (!info) return;
+    const sub = `${info.pin} — ${p.direction}` + (p.pwm_timer ? ` (PWM timer ${p.pwm_timer})` : "");
+    wrap.appendChild(p.direction === "output"
+      ? makeOutputRow(ioKey, gname(p), sub, p.label, info.pin)
+      : makeInputRow(ioKey, gname(p), sub, INPUT_ROLE_TREE, p.label));
+  });
+  parent.appendChild(wrap);
 }
 
 function makeRow(key, name, sub, options, vendorLabel) {
@@ -4511,6 +4684,12 @@ function generateDraft() {
     allPins.push({ p: { label: `${s.label}/${moduleName}/${c.label}`, mcu_pin: c.mcu_pin, direction: c.direction }, key });
   });
 
+  // Expander I/O (see computeResourcePins()).
+  Object.keys(expanderIoInfo).forEach(key => {
+    const info = expanderIoInfo[key];
+    allPins.push({ p: { label: resourceLabels[key], mcu_pin: info.pin, direction: info.def.direction }, key });
+  });
+
   let spindleBound = false;
   cfg.control = {};
   allPins.forEach(({ p, key }) => {
@@ -4631,7 +4810,6 @@ function generateDraft() {
   // usedUartNums -- confirmed against real per-board wiki examples
   // (6x/Corgi's own Huanyang examples use uart1; the 4x wiki's
   // commented-out RS485 example, on a TMC-UART board, uses uart2).
-  const usedUartNums = new Set(); // shared across RS485/expansion-UART/I2C-as-UART below
   // Module-resolved rs485_channel/expansion_uart connectors are merged in
   // alongside the board's own directly-wired entries so a module plugged
   // into an expansion socket (e.g. the RS485 Module or Simple Pendant
@@ -4640,24 +4818,15 @@ function generateDraft() {
   // txd_pin/rxd_pin/baud/mode) were deliberately matched between board
   // objects and resolveModuleSocketConnectors()'s output so the loop
   // bodies below need no branching on which kind of source they came from.
-  const allRs485Channels = [
-    ...(board.rs485_channels || []).map((ch, i) => ({ ch, key: resourceKeyRs485(i) })),
-    ...allModuleSocketConnectors()
-      .filter(x => x.connector.kind === "rs485_channel")
-      .map(x => ({ ch: { ...x.connector, commentLabel: `${x.socket.label}/${x.moduleName}/${x.connector.label}` }, key: x.key })),
-  ];
-  const allExpansionUarts = [
-    ...(board.expansion_uarts || []).map((ex, i) => ({ ex, key: resourceKeyExpUart(i) })),
-    ...allModuleSocketConnectors()
-      .filter(x => x.connector.kind === "expansion_uart")
-      .map(x => ({ ex: { ...x.connector, commentLabel: `${x.socket.label}/${x.moduleName}/${x.connector.label}` }, key: x.key })),
-  ];
+  const allRs485Channels = allRs485ChannelList();
+  const allExpansionUarts = allExpansionUartConnectors();
+  const uartNums = assignUartNumbers();
   allRs485Channels.forEach(({ ch, key }) => {
     const role = bindings[key];
     if (!role || role === "unused" || !role.startsWith("vfd:")) return;
     const model = role.split(":")[1];
     const isCustom = model === VFD_CUSTOM;
-    const n = nextSpareUartNum(board, usedUartNums);
+    const n = uartNums[key];
     // uartN: (the dependency) is set before the VFD block (the referencer)
     // -- object key insertion order drives jsyaml.dump's output order, and
     // conventionally a bus block is declared before the thing that uses it.
@@ -4754,17 +4923,23 @@ function generateDraft() {
   // UART is already spoken for.
   allExpansionUarts.forEach(({ ex, key }) => {
     const role = bindings[key];
-    if (!role || role === "unused" || role !== "uart_channel") return;
-    const n = nextSpareUartNum(board, usedUartNums);
-    // Same sibling-of-cfg annotation placement as RS485 above.
+    const expanderId = expanderIdOfRole(role);
+    if (role !== "uart_channel" && !expanderId) return;
+    const n = uartNums[key];
+    // Same sibling-of-cfg annotation placement as RS485 above. An expander's
+    // firmware protocol fixes the link's baud/mode, overriding the
+    // connector's own (pendant-oriented) values.
+    const link = expanderId ? EXPANDER_CATALOG[expanderId].uart : ex;
     const uartBlock = {
       txd_pin: ex.txd_pin,
       rxd_pin: ex.rxd_pin,
       rts_pin: "NO_PIN",
       cts_pin: "NO_PIN",
-      baud: ex.baud,
-      mode: ex.mode,
+      baud: link.baud,
+      mode: link.mode,
     };
+    if (link.passthrough_baud) uartBlock.passthrough_baud = link.passthrough_baud;
+    if (link.passthrough_mode) uartBlock.passthrough_mode = link.passthrough_mode;
     const annotateLabel = ex.commentLabel || ex.label;
     annotate(cfg, `uart${n}`, annotateLabel);
     cfg[`uart${n}`] = uartBlock;
@@ -4788,7 +4963,7 @@ function generateDraft() {
       annotate(cfg, "i2c0", ic.label);
       cfg.i2c0 = { sda_pin: ic.sda_pin, scl_pin: ic.scl_pin };
     } else if (role === "expansion_uart") {
-      const n = nextSpareUartNum(board, usedUartNums); // same shared pool as RS485/expansion-UART above
+      const n = uartNums[resourceKeyI2c(i)];
       const uartBlock = {
         txd_pin: ic.scl_pin,
         rxd_pin: ic.sda_pin,
@@ -4802,6 +4977,26 @@ function generateDraft() {
       annotate(cfg, `uart_channel${n}`, ic.label);
       cfg[`uart_channel${n}`] = { report_interval_ms: TBD, uart_num: n };
     }
+  });
+
+  // Imported virtual-pin values (see passthroughPins) -- written at their
+  // original config path. The pin string carries NO :low/:pu suffix here;
+  // those live in pinAttrs[path] like any other pin and are re-applied by
+  // the same resolve step, so they round-trip.
+  Object.keys(passthroughPins).forEach(path => {
+    const segs = path.split(".");
+    let node = cfg;
+    if (segs[0] === "axes" && AXES.includes(segs[1])) {
+      node = ensureAxis(cfg, segs[1]);
+      segs.splice(0, 2);
+    } else if (SPINDLE_TYPES[segs[0].toLowerCase()] && !cfg[segs[0]]) {
+      cfg[segs[0]] = SPINDLE_TYPES[segs[0].toLowerCase()].stub();
+    }
+    for (let i = 0; i < segs.length - 1; i++) {
+      node[segs[i]] = node[segs[i]] || {};
+      node = node[segs[i]];
+    }
+    node[segs[segs.length - 1]] = passthroughPins[path].split(":")[0];
   });
 
   // Uncategorized top-level items -- confirmed against the connected
@@ -5197,6 +5392,7 @@ function importConfig(doc, rawText) {
   bindings = {};
   paramValues = {};
   pinAttrs = {};
+  passthroughPins = {};
   homingEnabled = {};
   kinematicsType = "Cartesian";
   sectionEnabled = {};
@@ -5360,6 +5556,27 @@ function importConfig(doc, rawText) {
   // already IS that path for every call site except the motor-socket one
   // (see below), which passes its own more specific path explicitly.
   function claimPin(pinRaw, role, ctxLabel, attrPath, allowedPrefixes, suppressFailure) {
+    // Virtual pin (uart_channelN.M): no board resource can ever own it, so
+    // there's nothing to bind -- remember the value against its config path
+    // and let generateDraft() write it straight back out. Only for the
+    // ordinary function-pin call sites (default attrPath, no resource-type
+    // filter), where ctxLabel IS the dotted config path.
+    const vp = parsePinString(pinRaw);
+    // An expander the pre-pass below attached: map the file's
+    // uart_channel<N>.<io> back to that expander's I/O resource.
+    const em = vp && attrPath === undefined && !allowedPrefixes && vp.basePin.match(/^uart_channel(\d+)\.(\d+)$/);
+    if (em && fileExpanderConn[em[1]] && resourcePins[resourceKeyExpIo(fileExpanderConn[em[1]], em[2])]) {
+      const ioKey = resourceKeyExpIo(fileExpanderConn[em[1]], em[2]);
+      bind(ioKey, role, ctxLabel);
+      if (vp.level || vp.pull) pinAttrs[ctxLabel] = { level: vp.level, pull: vp.pull };
+      return ioKey;
+    }
+    if (vp && attrPath === undefined && !allowedPrefixes && /^uart_channel\d+\.\d+$/.test(vp.basePin)) {
+      passthroughPins[ctxLabel] = String(pinRaw).trim();
+      if (vp.level || vp.pull) pinAttrs[ctxLabel] = { level: vp.level, pull: vp.pull };
+      report.matched.push(`${ctxLabel} -> ${vp.basePin} (virtual pin, passed through)`);
+      return "virtual";
+    }
     const r = resolvePin(pinRaw, ctxLabel, allowedPrefixes, suppressFailure);
     if (!r) return null;
     bind(r.resourceKey, role, ctxLabel);
@@ -5369,6 +5586,42 @@ function importConfig(doc, rawText) {
     }
     return r.resourceKey;
   }
+
+  // --- expanders (pre-pass, must run before any function-pin claimPin()):
+  // a uart_channelN: whose uartN: baud matches a catalogued expander's fixed
+  // link baud, sitting on an expansion-UART connector, is that expander.
+  // Binding it first lets claimPin() resolve uart_channel<N>.<io> pins to the
+  // expander's I/O resources. The wizard re-allocates its own N (see
+  // assignUartNumbers()), so a renumbered file still round-trips. ---
+  const fileExpanderConn = {}; // uart_channel number in the FILE -> connector resourceKey
+  Object.keys(doc).forEach(key => {
+    const m = key.match(/^uart_channel(\d+)$/);
+    if (!m) return;
+    const ub = doc[`uart${m[1]}`];
+    if (!ub || ub.txd_pin == null) return;
+    const exId = Object.keys(EXPANDER_CATALOG).find(id => EXPANDER_CATALOG[id].uart.baud === Number(ub.baud));
+    if (!exId) return;
+    let connKey = null;
+    const r = resolvePin(ub.txd_pin, key, ["expuart", "modconn"], true);
+    if (r) {
+      connKey = r.resourceKey;
+    } else {
+      const inferred = inferPendantModuleSocket(ub.txd_pin, ub.rxd_pin);
+      if (inferred) {
+        bindings[resourceKeyModuleSocket(inferred.si)] = inferred.moduleId;
+        connKey = resourceKeyModConn(inferred.si, inferred.ci);
+      }
+    }
+    if (!connKey || !allExpansionUartConnectors().some(x => x.key === connKey)) return;
+    bind(connKey, `expander:${exId}`, key);
+    computeResourcePins();
+    pinOwnerIndex = buildPinOwnerIndex();
+    fileExpanderConn[m[1]] = connKey;
+    if (doc[key].report_interval_ms != null && doc[key].report_interval_ms !== TBD) {
+      paramValues[`uart_channel${assignUartNumbers()[connKey]}.report_interval_ms`] = doc[key].report_interval_ms;
+    }
+    report.notes.push(`${key}: recognized ${EXPANDER_CATALOG[exId].expander.name} (baud ${ub.baud})`);
+  });
 
   // blocks (motor driver bodies, spindle stubs, homing, kinematics, etc.)
   // where the field NAMES are already known to line up with what
@@ -5767,6 +6020,7 @@ function importConfig(doc, rawText) {
     const m = key.match(/^uart_channel(\d+)$/);
     if (!m) return;
     const n = m[1];
+    if (fileExpanderConn[n]) return; // handled by the expander pre-pass
     const uartBlock = doc[`uart${n}`];
     if (!uartBlock || uartBlock.txd_pin == null) {
       report.unrecognized.push(`${key}: no matching uart${n}: block with a txd_pin, skipped`);

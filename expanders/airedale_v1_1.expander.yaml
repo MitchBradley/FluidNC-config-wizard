@@ -20,6 +20,8 @@ meta:
 uart:
   baud: 1000000
   mode: "8N1"
+  passthrough_baud: 57600
+  passthrough_mode: "8E1"
 
 # io numbers are the expander firmware's own (STM32_Expander/src/boards/
 # airedale_v1_1/gpiomap.c), not MCU pin names. Inputs: opto-isolated,

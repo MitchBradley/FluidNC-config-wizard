@@ -98,6 +98,14 @@
         "mode": {
           "type": "string",
           "description": "UartData mode, e.g. '8N1'."
+        },
+        "passthrough_baud": {
+          "type": "integer",
+          "description": "Optional. Written to the uartN: block as passthrough_baud (host-serial-to-this-UART pass-through used for firmware upload)."
+        },
+        "passthrough_mode": {
+          "type": "string",
+          "description": "Optional. Written as passthrough_mode, e.g. '8E1'."
         }
       }
     },
