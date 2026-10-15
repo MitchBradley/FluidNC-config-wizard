@@ -92,60 +92,6 @@
         "notes": { "type": "string" }
       }
     },
-    "input_profile": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "conditioning"
-      ],
-      "properties": {
-        "conditioning": {
-          "type": "string",
-          "enum": [
-            "raw",
-            "opto_isolated",
-            "opto_isolated_high",
-            "rc_filtered",
-            "rc_filtered_low",
-            "level_shifted",
-            "comparator"
-          ],
-          "description": "Identical vocabulary/meaning to board.schema.json's input_profile.conditioning -- see that file for the full active-level derivation notes. A module's own conditioning circuitry is a fixed fact of the module (independent of whatever board/socket it's plugged into), exactly like a board's generic_pin conditioning is a fixed fact of the board."
-        },
-        "internal_pullup_required": {
-          "type": "boolean",
-          "default": false,
-          "description": "Identical meaning to board.schema.json's input_profile.internal_pullup_required."
-        },
-        "voltage_max": {
-          "type": "number",
-          "description": "Identical meaning to board.schema.json's input_profile.voltage_max."
-        }
-      }
-    },
-    "output_profile": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "drive_type"
-      ],
-      "properties": {
-        "drive_type": {
-          "type": "string",
-          "enum": [
-            "totem_pole",
-            "open_collector",
-            "mosfet_low_side",
-            "mosfet_high_side",
-            "relay",
-            "h_bridge"
-          ],
-          "description": "Identical vocabulary/meaning to board.schema.json's output_profile.drive_type."
-        },
-        "voltage_max": { "type": "number" },
-        "current_max_a": { "type": "number" }
-      }
-    },
     "module_generic_pin": {
       "type": "object",
       "additionalProperties": false,
@@ -177,8 +123,8 @@
           ],
           "description": "Same meaning as board.schema.json's generic_pin.direction."
         },
-        "input_profile": { "$ref": "#/$defs/input_profile" },
-        "output_profile": { "$ref": "#/$defs/output_profile" },
+        "input_profile": { "$ref": "fluidnc-board.schema.json#/$defs/input_profile" },
+        "output_profile": { "$ref": "fluidnc-board.schema.json#/$defs/output_profile" },
         "notes": { "type": "string" }
       },
       "allOf": [

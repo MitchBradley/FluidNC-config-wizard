@@ -1,0 +1,50 @@
+expander:
+  id: airedale_v1_1
+  name: "Airedale STM32 I/O Expander"
+  manufacturer: "Dring Engineering Services"
+  revision: "V1.1"
+  min_fluidnc_version: "3.9.6"
+  status: active
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/hardware/official/airedale"
+  purchase_url: "https://www.elecrow.com/airedale-io-expander-for-fluidnc.html"
+  source_files_url: "https://github.com/bdring/PendantsForFluidNC/tree/main/STM32_Expander"
+  notes: >
+    Connects via the standard pendant RJ12 ("To FluidNC"). A second RJ12
+    ("To Pendant") passes unrelated UART traffic through to a pendant or
+    display. The RGB status LED shows boot state, then is usable as outputs
+    18-20. Outputs 8-15 are in two groups of 4 with a 50mA total budget per
+    group. At most 4 distinct PWM frequencies, one per pwm_timer.
+
+uart:
+  baud: 1000000
+  mode: "8N1"
+
+# io numbers are the expander firmware's own (STM32_Expander/src/boards/
+# airedale_v1_1/gpiomap.c), not MCU pin names. Inputs: opto-isolated,
+# on-PCB pull-up, active low. Outputs 8-15: 74AHCT125-buffered 5V.
+# Outputs 16-17: MOSFETs, load supply on the dedicated terminals beside the
+# RJ12, ground common with the PCB.
+pins:
+  - { io: 0, label: "I0", generic_name: "In0", direction: input, input_profile: { conditioning: opto_isolated } }
+  - { io: 1, label: "I1", generic_name: "In1", direction: input, input_profile: { conditioning: opto_isolated } }
+  - { io: 2, label: "I2", generic_name: "In2", direction: input, input_profile: { conditioning: opto_isolated } }
+  - { io: 3, label: "I3", generic_name: "In3", direction: input, input_profile: { conditioning: opto_isolated } }
+  - { io: 4, label: "I4", generic_name: "In4", direction: input, input_profile: { conditioning: opto_isolated } }
+  - { io: 5, label: "I5", generic_name: "In5", direction: input, input_profile: { conditioning: opto_isolated } }
+  - { io: 6, label: "I6", generic_name: "In6", direction: input, input_profile: { conditioning: opto_isolated } }
+  - { io: 7, label: "I7", generic_name: "In7", direction: input, input_profile: { conditioning: opto_isolated } }
+  - { io: 8, label: "O0", generic_name: "5V Out8", direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.025 }, pwm_timer: 1 }
+  - { io: 9, label: "O1", generic_name: "5V Out9", direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.025 }, pwm_timer: 2 }
+  - { io: 10, label: "O2", generic_name: "5V Out10", direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.025 }, pwm_timer: 3 }
+  - { io: 11, label: "O3", generic_name: "5V Out11", direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.025 }, pwm_timer: 4 }
+  - { io: 12, label: "O4", generic_name: "5V Out12", direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.025 }, pwm_timer: 1 }
+  - { io: 13, label: "O5", generic_name: "5V Out13", direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.025 }, pwm_timer: 2 }
+  - { io: 14, label: "O6", generic_name: "5V Out14", direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.025 }, pwm_timer: 3 }
+  - { io: 15, label: "O7", generic_name: "5V Out15", direction: output, output_profile: { drive_type: totem_pole, voltage_max: 5.0, current_max_a: 0.025 }, pwm_timer: 4 }
+  - { io: 16, label: "FET0", generic_name: "FET16", direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 40.0, current_max_a: 8.0, common: vmos }, pwm_timer: 2 }
+  - { io: 17, label: "FET1", generic_name: "FET17", direction: output, output_profile: { drive_type: mosfet_low_side, voltage_max: 40.0, current_max_a: 8.0, common: vmos }, pwm_timer: 3 }
+  - { io: 18, label: "RGB Red", generic_name: "LED R", direction: output, output_profile: { drive_type: totem_pole }, notes: "Status LED, active low; no PWM." }
+  - { io: 19, label: "RGB Green", generic_name: "LED G", direction: output, output_profile: { drive_type: totem_pole }, notes: "Status LED, active low; no PWM." }
+  - { io: 20, label: "RGB Blue", generic_name: "LED B", direction: output, output_profile: { drive_type: totem_pole }, notes: "Status LED, active low; no PWM." }

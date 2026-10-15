@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schemas/fluidnc-expander.schema.json",
+  "title": "FluidNC UART I/O expander",
+  "description": "Describes a UART-attached I/O expander (e.g. Airedale, see wiki.fluidnc.com/en/hardware/official/airedale) in the same terms board.schema.json and module.schema.json use, so the wizard's role pickers, output_profile/common annotation, etc. work unchanged. Unlike a CNC I/O Module (plugs into a board's expansion socket; pins addressed by socket position and resolved to that board's mcu_pins), an expander connects over a UART link -- to a board's own expansion_uart connector, or to one provided by a module -- and each of its I/O is addressed by a fixed IO NUMBER (`io`) that FluidNC sees as the virtual pin uart_channel<N>.<io>. <N> is the uart number a config assigns to that link, a config-authoring fact decided at wizard runtime, never recorded here. One expander per uart channel; daisy-chaining is not modeled. Link parameters (baud/mode) are fixed by the expander's firmware protocol. The electrical vocabulary (input_profile, output_profile incl. drive_type and common) is board.schema.json's own, referenced rather than copied so it can't drift.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "expander",
+    "uart",
+    "pins"
+  ],
+  "properties": {
+    "expander": {
+      "$ref": "#/$defs/expander_identity"
+    },
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "uart": {
+      "$ref": "#/$defs/uart_link"
+    },
+    "pins": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/expander_pin"
+      }
+    }
+  },
+  "$defs": {
+    "expander_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$",
+          "description": "Lowercase snake_case identifier. Filename should be <id>.expander.yaml; a photo/hotspot file, if any, should be images/<id>_expander.jpg and hotspots/<id>_expander.hotspots.yaml -- the _expander suffix (like modules' _module) keeps ids from colliding with board/module ids in the shared images/ and hotspots/ directories."
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable name as commonly known."
+        },
+        "manufacturer": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string",
+          "description": "Optional hardware revision, e.g. 'V1.1'."
+        },
+        "min_fluidnc_version": {
+          "type": "string",
+          "description": "Optional. Oldest FluidNC firmware that supports this expander's protocol (e.g. \"3.9.6\" for Airedale)."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "discontinued",
+            "unverified",
+            "community_documented"
+          ],
+          "description": "Same meaning as board.schema.json's board.status."
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Same shape/purpose as board.schema.json's meta.",
+      "properties": {
+        "wiki_url": { "type": "string", "format": "uri" },
+        "vendor_docs_url": { "type": "string", "format": "uri" },
+        "purchase_url": { "type": "string", "format": "uri" },
+        "source_files_url": { "type": "string", "format": "uri" },
+        "schematic_url": { "type": "string", "format": "uri" },
+        "notes": { "type": "string" }
+      }
+    },
+    "uart_link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baud",
+        "mode"
+      ],
+      "description": "The fixed UART parameters this expander's firmware protocol requires -- the wizard writes these into the uartN: block it generates for the link, same as it does for an expansion_uart connector's own baud/mode.",
+      "properties": {
+        "baud": {
+          "type": "integer"
+        },
+        "mode": {
+          "type": "string",
+          "description": "UartData mode, e.g. '8N1'."
+        }
+      }
+    },
+    "expander_pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "io",
+        "label",
+        "direction"
+      ],
+      "properties": {
+        "io": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The expander firmware's own I/O number -- the <io> in uart_channel<N>.<io>. NOT an MCU pin number of whatever chip is inside the expander (the wiki is explicit that these are unrelated). Unique within a file."
+        },
+        "label": {
+          "type": "string",
+          "description": "The expander's OWN label for this I/O (silkscreen or vendor documentation term) -- purely positional/cosmetic."
+        },
+        "generic_name": {
+          "type": "string",
+          "description": "Normalized name, same convention as board.schema.json's generic_pin.generic_name (\"In<io>\", \"5V Out<io>\", \"FET<io>\", ...) with <io> in place of <pin>. Needs to be unique only within this expander (hotspot files for an expander are keyed against this file alone). Optional -- tools fall back to label."
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "input",
+            "output"
+          ],
+          "description": "Fixed per I/O by the expander firmware's own capability table -- unlike a board's generic_pin there is no 'either' or 'bidirectional' here (an I/O that is genuinely switchable can be listed once per use, as boards do, if one ever exists)."
+        },
+        "input_profile": {
+          "$ref": "fluidnc-board.schema.json#/$defs/input_profile"
+        },
+        "output_profile": {
+          "$ref": "fluidnc-board.schema.json#/$defs/output_profile"
+        },
+        "pwm_timer": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Present only on an output that can do PWM, and names the expander's hardware timer that generates it. Per-pin, NOT a bus-level fact (contrast board.schema.json's BUS_PWM_CAPABLE for gpio/i2so): the same expander has PWM-capable and plain outputs. Pins sharing a pwm_timer must be configured for the same PWM frequency -- the firmware alarms otherwise -- and the expander has a limited number of distinct timers (Airedale: 4), so this is what lets a tool warn about conflicts. Omit on inputs and on non-PWM outputs."
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "direction": { "const": "input" } } },
+          "then": {
+            "required": ["input_profile"],
+            "not": { "anyOf": [ { "required": ["output_profile"] }, { "required": ["pwm_timer"] } ] }
+          },
+          "else": {
+            "required": ["output_profile"],
+            "not": { "required": ["input_profile"] }
+          }
+        }
+      ]
+    }
+  }
+}
