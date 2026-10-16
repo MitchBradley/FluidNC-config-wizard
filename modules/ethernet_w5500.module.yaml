@@ -1,0 +1,25 @@
+module:
+  id: ethernet_w5500
+  name: "Wired Ethernet Module (W5500)"
+  form_factor: cnc_io_module_12pin
+  status: active
+
+meta:
+  wiki_url: "http://wiki.fluidnc.com/en/features/wifi_bt#wired-ethernet"
+  notes: >
+    W5500 SPI Ethernet. Uses the board's SPI bus (shared with the SD card)
+    from the socket's shared-bus pins, so it needs a socket that brings
+    them out (e.g. Greyhound). Requires the WiFi firmware and
+    $network/type=Ethernet.
+
+ethernet_interfaces:
+  - label: "Ethernet"
+    generic_name: "Ethernet"
+    connector_type: "RJ45"
+    cs_pin: "1"
+    int_pin: "2"
+    rst_pin: "3"
+    phy_type: w5500
+    phy_addr: 1
+    frequency_hz: 1000000
+    requires_spi_pins: true

@@ -259,10 +259,7 @@
           "additionalProperties": false,
           "required": [
             "cs_pin",
-            "int_pin",
-            "rst_pin",
-            "phy_type",
-            "phy_addr"
+            "phy_type"
           ],
           "properties": {
             "cs_pin": {
@@ -271,11 +268,11 @@
             },
             "int_pin": {
               "$ref": "#/$defs/mcu_pin_or_none",
-              "description": "Explicit NO_PIN if unused. Optional interrupt pin -- if absent, the PHY is polled instead."
+              "description": "Optional; omit or NO_PIN if unused. Interrupt pin -- if absent, the PHY is polled instead."
             },
             "rst_pin": {
               "$ref": "#/$defs/mcu_pin_or_none",
-              "description": "Explicit NO_PIN if unused. Optional hardware reset pin for the PHY."
+              "description": "Optional; omit or NO_PIN if unused. Hardware reset pin for the PHY."
             },
             "phy_type": {
               "type": "string",
@@ -286,7 +283,13 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 31,
-              "description": "SPI/management address of the PHY chip."
+              "description": "Optional. SPI/management address of the PHY chip; omit for FluidNC's default (1)."
+            },
+            "frequency_hz": {
+              "type": "integer",
+              "minimum": 1000000,
+              "maximum": 80000000,
+              "description": "Optional. SPI clock suggested for this board's wiring; offered as a pre-filled, editable default. Omit to leave it an open parameter."
             },
             "notes": {
               "type": "string"
@@ -748,6 +751,10 @@
         "pinout_class": {
           "type": "string",
           "description": "Optional shared identifier for a common connector pinout used across multiple boards/modules (e.g. a subset-compatible family of module headers), purely informational."
+        },
+        "spi_pins": {
+          "type": "boolean",
+          "description": "Optional. True if this socket also carries the board's own SPI bus lines (the shared-bus pins; e.g. Greyhound's 3 extra pins, wired to the same SPI bus as the SD card). A module whose connector needs the SPI bus (requires_spi_pins) only fits a socket with this set."
         },
         "pins": {
           "type": "array",

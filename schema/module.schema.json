@@ -28,6 +28,13 @@
         "$ref": "#/$defs/module_expansion_uart"
       }
     },
+    "ethernet_interfaces": {
+      "type": "array",
+      "description": "A module carrying its own SPI Ethernet controller (e.g. a W5500). Becomes FluidNC's ethernet: section. SPI itself (sck/mosi/miso) is the board's spi: section, shared with the SD card -- only cs/int/rst are module pins.",
+      "items": {
+        "$ref": "#/$defs/module_ethernet_interface"
+      }
+    },
     "rs485_channels": {
       "type": "array",
       "description": "Same shape/purpose as board.schema.json's rs485_channels -- a module that exposes a coupled tx_pin/rx_pin(/rts_pin) RS485 bus, most commonly bound to a Modbus VFD spindle, except here the pins are module_pin references, not mcu_pin. No pins_reusable_as_generic_io field (unlike board.schema.json's rs485_channel) -- that fact is about a board's own fixed circuit sharing a physical terminal between two onboard uses, which doesn't apply to a module's own dedicated, single-purpose connector.",
@@ -159,6 +166,34 @@
         "rxd_pin": { "$ref": "#/$defs/module_pin_ref" },
         "baud": { "type": "integer" },
         "mode": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "module_ethernet_interface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "cs_pin",
+        "phy_type"
+      ],
+      "properties": {
+        "label": { "type": "string" },
+        "generic_name": { "type": "string" },
+        "connector_type": { "type": "string", "description": "e.g. RJ45." },
+        "cs_pin": { "$ref": "#/$defs/module_pin_ref", "description": "Module pin wired to the controller's SPI chip select." },
+        "int_pin": { "$ref": "#/$defs/module_pin_ref", "description": "Optional. Module pin wired to the interrupt line; omit if not wired (the PHY is then polled)." },
+        "rst_pin": { "$ref": "#/$defs/module_pin_ref", "description": "Optional. Module pin wired to the reset line." },
+        "phy_type": {
+          "type": "string",
+          "enum": ["w5500", "ksz8851", "dm9051"]
+        },
+        "phy_addr": { "type": "integer", "minimum": 0, "maximum": 31, "description": "Optional; omit for FluidNC's default (1)." },
+        "frequency_hz": { "type": "integer", "minimum": 1000000, "maximum": 80000000, "description": "Optional suggested SPI clock; pre-filled but editable." },
+        "requires_spi_pins": {
+          "type": "boolean",
+          "description": "True if this module takes the board's SPI bus from the socket's shared-bus pins; it then only fits a socket with spi_pins set (see board.schema.json's expansion_socket)."
+        },
         "notes": { "type": "string" }
       }
     },

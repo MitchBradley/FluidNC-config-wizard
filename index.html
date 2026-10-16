@@ -1235,6 +1235,14 @@ function moduleFitsSocket(mod, socket) {
     refs.push(rc.tx_pin, rc.rx_pin);
     if (rc.rts_pin) refs.push(rc.rts_pin);
   });
+  (mod.ethernet_interfaces || []).forEach(eth => {
+    refs.push(eth.cs_pin);
+    if (eth.int_pin) refs.push(eth.int_pin);
+    if (eth.rst_pin) refs.push(eth.rst_pin);
+  });
+  // An SPI Ethernet module takes the board's SPI bus from the socket's
+  // shared-bus pins -- only sockets that bring them out (spi_pins) qualify.
+  if ((mod.ethernet_interfaces || []).some(e => e.requires_spi_pins) && !socket.spi_pins) return false;
   if (hasWildcard) return true;
   return refs.every(r => pinNums.has(r));
 }
@@ -1313,6 +1321,25 @@ function resolveModuleSocketConnectors(socket, moduleId) {
       tx_pin: txp.mcu_pin,
       rx_pin: rxp.mcu_pin,
       rts_pin: rtsp ? rtsp.mcu_pin : undefined,
+    });
+  });
+
+  (mod.ethernet_interfaces || []).forEach(eth => {
+    const csp = pinByModulePin[eth.cs_pin];
+    if (!csp) return;
+    const intp = eth.int_pin ? pinByModulePin[eth.int_pin] : null;
+    const rstp = eth.rst_pin ? pinByModulePin[eth.rst_pin] : null;
+    out.push({
+      kind: "ethernet",
+      label: eth.label,
+      generic_name: eth.generic_name || eth.label,
+      cs_pin: csp.mcu_pin,
+      int_pin: intp ? intp.mcu_pin : undefined,
+      rst_pin: rstp ? rstp.mcu_pin : undefined,
+      phy_type: eth.phy_type,
+      phy_addr: eth.phy_addr,
+      frequency_hz: eth.frequency_hz,
+      connector_type: eth.connector_type,
     });
   });
 
@@ -2337,7 +2364,7 @@ function isFixedProtocolPath(path) {
   // used at all is now a config-author choice (no longer a fixed
   // peripheral): once bound, its sda_pin/scl_pin are still I2C-protocol
   // pins with fixed signal requirements, same reasoning as spi/sdcard/i2so.
-  return /^(spi|sdcard|i2so|i2c\d*)\./.test(path) || /^uart\d+\./.test(path);
+  return /^(spi|sdcard|ethernet|i2so|i2c\d*)\./.test(path) || /^uart\d+\./.test(path);
 }
 
 /* ---------------------------------------------------------------------
@@ -3041,6 +3068,7 @@ function computeResourcePins() {
   allModuleSocketConnectors().forEach(({ si, key, socket: s, connector: c, moduleName }) => {
     const pins = c.kind === "generic_pin" ? [c.mcu_pin]
       : c.kind === "expansion_uart" ? [c.txd_pin, c.rxd_pin]
+      : c.kind === "ethernet" ? [c.cs_pin, c.int_pin, c.rst_pin]
       : [c.tx_pin, c.rx_pin, c.rts_pin];
     resourcePins[key] = pins.filter(Boolean);
     // Matches the exact label string generateDraft()'s dispatch loops
@@ -3970,6 +3998,22 @@ function renderResources() {
           } else if (c.kind === "rs485_channel") {
             const pins = `tx=${c.tx_pin} rx=${c.rx_pin}` + (c.rts_pin ? ` rts=${c.rts_pin}` : "");
             sub2.appendChild(makeRow(ckey, c.generic_name, pins, rs485RoleOptions(), c.label));
+          } else if (c.kind === "ethernet") {
+            const pins = `cs=${c.cs_pin}` + (c.int_pin ? ` int=${c.int_pin}` : "") + (c.rst_pin ? ` rst=${c.rst_pin}` : "") + ` (${c.phy_type})`;
+            // A config has one ethernet: section -- an onboard PHY always
+            // owns it, so the module's connector isn't offered at all.
+            if (board.fixed_peripherals && board.fixed_peripherals.ethernet) {
+              delete bindings[ckey];
+              const warn = document.createElement("div");
+              warn.className = "note note-warn";
+              warn.textContent = `${c.generic_name}: this board already has onboard Ethernet, so the module's is not used.`;
+              sub2.appendChild(warn);
+              return;
+            }
+            sub2.appendChild(makeRow(ckey, c.generic_name, pins, [
+              { value: "unused", label: "— Unused —" },
+              { value: "ethernet", label: "Wired Ethernet (ethernet:)" },
+            ], c.label));
           }
         });
         sec.appendChild(sub2);
@@ -4690,10 +4734,13 @@ function generateDraft() {
     // so it's simply omitted, same reasoning and same permanent
     // computeBoardFixedRoles() blacklist as sdcard.card_detect_pin, not a
     // spare GPIO a role could fill in later.
-    cfg.ethernet = { cs_pin: fp.ethernet.cs_pin, phy_type: fp.ethernet.phy_type, phy_addr: fp.ethernet.phy_addr };
+    cfg.ethernet = { cs_pin: fp.ethernet.cs_pin, phy_type: fp.ethernet.phy_type };
     if (fp.ethernet.int_pin && fp.ethernet.int_pin !== "NO_PIN") cfg.ethernet.int_pin = fp.ethernet.int_pin;
     if (fp.ethernet.rst_pin && fp.ethernet.rst_pin !== "NO_PIN") cfg.ethernet.rst_pin = fp.ethernet.rst_pin;
+    if (fp.ethernet.phy_addr !== undefined) cfg.ethernet.phy_addr = fp.ethernet.phy_addr;
     cfg.ethernet.frequency_hz = TBD;
+    if (fp.ethernet.frequency_hz) paramDefaultOverrides["ethernet.frequency_hz"] = { default: fp.ethernet.frequency_hz, defaultKind: "board" };
+    stubNonPinFields(cfg.ethernet, "ethernet");
   }
   // NOTE: I2C is intentionally NOT handled here as a fixed peripheral --
   // unlike spi:/i2so:, FluidNC rarely has an onboard device actually using
@@ -5067,6 +5114,27 @@ function generateDraft() {
       cfg[`uart_channel${n}`] = { report_interval_ms: TBD, uart_num: n };
     }
   });
+
+  // Ethernet module -> ethernet: section. One section per config: an
+  // onboard PHY (fixed_peripherals.ethernet, written above) wins, then the
+  // first bound module. Pins are the socket's real GPIOs; SPI itself is the
+  // board's spi: section. phy_addr/frequency_hz come from the module file
+  // when it states them (frequency_hz as an editable suggestion), else open.
+  if (!cfg.ethernet) {
+    const ethConn = allModuleSocketConnectors().find(x => x.connector.kind === "ethernet" && bindings[x.key] === "ethernet");
+    if (ethConn) {
+      const c = ethConn.connector;
+      annotate(cfg, "ethernet", `${ethConn.socket.label}/${ethConn.moduleName}/${c.label}`);
+      cfg.ethernet = { cs_pin: c.cs_pin };
+      if (c.int_pin) cfg.ethernet.int_pin = c.int_pin;
+      if (c.rst_pin) cfg.ethernet.rst_pin = c.rst_pin;
+      cfg.ethernet.phy_type = c.phy_type;
+      if (c.phy_addr !== undefined) cfg.ethernet.phy_addr = c.phy_addr;
+      cfg.ethernet.frequency_hz = TBD;
+      if (c.frequency_hz) paramDefaultOverrides["ethernet.frequency_hz"] = { default: c.frequency_hz, defaultKind: "suggested" };
+      stubNonPinFields(cfg.ethernet, "ethernet");
+    }
+  }
 
   // Imported virtual-pin values (see passthroughPins) -- written at their
   // original config path. The pin string carries NO :low/:pu suffix here;
@@ -5711,6 +5779,38 @@ function importConfig(doc, rawText) {
     }
     report.notes.push(`${key}: recognized ${EXPANDER_CATALOG[exId].expander.name} (baud ${ub.baud})`);
   });
+
+  // --- ethernet module (pre-pass, before function-pin claims): an ethernet:
+  // section on a board with no onboard PHY belongs to a plugged-in module.
+  // Find the module whose ethernet connector's cs_pin lands on the file's
+  // cs_pin, plug it into that socket and bind the connector; phy_type/
+  // phy_addr/frequency_hz come back via the generic scalar copy below. ---
+  if (doc.ethernet && doc.ethernet.cs_pin != null && !(board.fixed_peripherals && board.fixed_peripherals.ethernet)) {
+    const csPin = parsePinString(doc.ethernet.cs_pin);
+    let found = null;
+    Object.keys(MODULE_CATALOG).sort().forEach(moduleId => {
+      const mod = MODULE_CATALOG[moduleId];
+      if (found || !(mod.ethernet_interfaces || []).length) return;
+      (board.expansion_sockets || []).forEach((socket, si) => {
+        const cur = bindings[resourceKeyModuleSocket(si)];
+        if (found || (cur && cur !== "unused" && cur !== moduleId) || !moduleFitsSocket(mod, socket)) return;
+        (resolveModuleSocketConnectors(socket, moduleId) || []).forEach((c, ci) => {
+          if (!found && c.kind === "ethernet" && csPin && c.cs_pin === csPin.basePin) found = { si, moduleId, ci };
+        });
+      });
+    });
+    if (found) {
+      bindings[resourceKeyModuleSocket(found.si)] = found.moduleId;
+      computeResourcePins();
+      pinOwnerIndex = buildPinOwnerIndex();
+      report.notes.push(`ethernet: inferred module "${found.moduleId}" via module socket ${found.si}`);
+      bind(resourceKeyModConn(found.si, found.ci), "ethernet", "ethernet");
+    } else {
+      const message = `cs_pin ${doc.ethernet.cs_pin} matches no Ethernet module on this board; the ethernet: section is kept as imported scalars only`;
+      report.unrecognized.push(`ethernet: ${message}`);
+      recordFailedImport("ethernet", doc.ethernet, message);
+    }
+  }
 
   // blocks (motor driver bodies, spindle stubs, homing, kinematics, etc.)
   // where the field NAMES are already known to line up with what

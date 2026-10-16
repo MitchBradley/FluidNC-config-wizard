@@ -104,6 +104,7 @@ generic_pins:
 expansion_sockets:
   - label: "Module Socket"
     generic_name: "Module Socket"
+    spi_pins: true
     pins:
       - { module_pin: "1", mcu_pin: gpio.14, direction: either }
       - { module_pin: "2", mcu_pin: gpio.13, direction: either }

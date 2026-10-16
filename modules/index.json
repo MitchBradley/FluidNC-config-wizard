@@ -12,5 +12,6 @@
   "pendant",
   "passthrough2",
   "passthrough4",
-  "passthrough8"
+  "passthrough8",
+  "ethernet_w5500"
 ]
