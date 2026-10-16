@@ -3999,21 +3999,15 @@ function renderResources() {
             const pins = `tx=${c.tx_pin} rx=${c.rx_pin}` + (c.rts_pin ? ` rts=${c.rts_pin}` : "");
             sub2.appendChild(makeRow(ckey, c.generic_name, pins, rs485RoleOptions(), c.label));
           } else if (c.kind === "ethernet") {
-            const pins = `cs=${c.cs_pin}` + (c.int_pin ? ` int=${c.int_pin}` : "") + (c.rst_pin ? ` rst=${c.rst_pin}` : "") + ` (${c.phy_type})`;
-            // A config has one ethernet: section -- an onboard PHY always
-            // owns it, so the module's connector isn't offered at all.
+            // No row: Ethernet has no sub-function to choose -- plugging the
+            // module in IS the choice (see generateDraft()). Only explain
+            // the one case where it has no effect.
             if (board.fixed_peripherals && board.fixed_peripherals.ethernet) {
-              delete bindings[ckey];
               const warn = document.createElement("div");
               warn.className = "note note-warn";
               warn.textContent = `${c.generic_name}: this board already has onboard Ethernet, so the module's is not used.`;
               sub2.appendChild(warn);
-              return;
             }
-            sub2.appendChild(makeRow(ckey, c.generic_name, pins, [
-              { value: "unused", label: "— Unused —" },
-              { value: "ethernet", label: "Wired Ethernet (ethernet:)" },
-            ], c.label));
           }
         });
         sec.appendChild(sub2);
@@ -5121,7 +5115,7 @@ function generateDraft() {
   // board's spi: section. phy_addr/frequency_hz come from the module file
   // when it states them (frequency_hz as an editable suggestion), else open.
   if (!cfg.ethernet) {
-    const ethConn = allModuleSocketConnectors().find(x => x.connector.kind === "ethernet" && bindings[x.key] === "ethernet");
+    const ethConn = allModuleSocketConnectors().find(x => x.connector.kind === "ethernet");
     if (ethConn) {
       const c = ethConn.connector;
       annotate(cfg, "ethernet", `${ethConn.socket.label}/${ethConn.moduleName}/${c.label}`);
@@ -5804,7 +5798,7 @@ function importConfig(doc, rawText) {
       computeResourcePins();
       pinOwnerIndex = buildPinOwnerIndex();
       report.notes.push(`ethernet: inferred module "${found.moduleId}" via module socket ${found.si}`);
-      bind(resourceKeyModConn(found.si, found.ci), "ethernet", "ethernet");
+      report.matched.push(`ethernet -> ${found.moduleId} (module socket ${found.si})`);
     } else {
       const message = `cs_pin ${doc.ethernet.cs_pin} matches no Ethernet module on this board; the ethernet: section is kept as imported scalars only`;
       report.unrecognized.push(`ethernet: ${message}`);
