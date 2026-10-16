@@ -4480,6 +4480,17 @@ function motorBlockFor(socket) {
         half_step: TBD,
       }};
     }
+    if (t === "standard_stepper") {
+      // A soldered-on driver chip that FluidNC nevertheless drives as a
+      // plain step/dir device (e.g. Creality Falcon2's TMC2208s, whose
+      // UART is not used/wired) -- same block as an external_connector
+      // socket, no run_amps or other tuning fields.
+      return { key: "standard_stepper", body: {
+        step_pin: socket.pins.step_pin,
+        direction_pin: socket.pins.direction_pin,
+        disable_pin: socket.pins.disable_pin || "NO_PIN"
+      }};
+    }
     if (t === "tmc_2209") {
       return { key: "tmc_2209", body: {
         step_pin: socket.pins.step_pin,
