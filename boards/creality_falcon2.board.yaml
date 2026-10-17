@@ -1,0 +1,258 @@
+# Creality Falcon2 laser engraver -- the stock mainboard, v3.2.S3.402.
+#
+# No schematic or vendor pin documentation exists for this board. Every
+# fact below comes from one of three places, named in each entry's notes:
+#   - "measured": probed on a real Falcon2 (22W) with FluidNC running on
+#     the stock board;
+#   - "stock firmware": read from the behavior of Creality's own firmware
+#     (CV50-MASTER V3.0.4) that shipped on the board;
+#   - "inferred": a reasonable reading of the above that has NOT been
+#     checked against the circuit.
+# The silkscreen on this board is not documented anywhere, so the `label`
+# fields are the names the source config uses for each connector/pin, not
+# vendor wording. The source for all of it is the contributed FluidNC
+# config at bdring/fluidnc-config-files PR #8
+# (contributed/Creality_Falcon2/Falcon2_laser_XY.yaml).
+
+board:
+  id: creality_falcon2
+  name: "Creality Falcon2 (stock mainboard)"
+  manufacturer: "Creality"
+  mcu_chip: esp32s3
+  revision: "v3.2.S3.402"
+  status: community_documented
+
+meta:
+  vendor_docs_url: "https://github.com/bdring/fluidnc-config-files/pull/8"
+  notes: >
+    The mainboard inside the Creality Falcon2 laser engraver (board
+    silkscreen "v3.2.S3.402"): an ESP32-S3-WROOM-1 N8R8 module with two
+    soldered-on TMC2208 stepper drivers, a USB-C connector on the chip's
+    native USB pins, a micro-SD slot, a 7-button keypad, a buzzer, and a
+    cable to the laser head carrying PWM, a power-enable line and a UART.
+    It is only sold as part of the machine, so there is no vendor page
+    for the board itself; the vendor_docs_url above points at the
+    contributed FluidNC config this file was derived from. Flash the
+    esp32s3 FluidNC build; back up the stock firmware first (esptool
+    read_flash 0 0x800000), it is the only way back.
+
+    Native USB: the USB-C connector goes straight to the ESP32-S3's fixed
+    USB_D-/USB_D+ pins (gpio.19/gpio.20), so those two are not available
+    for anything else (inferred from the board working over USB CDC with
+    no USB-serial bridge chip; not traced on the PCB).
+
+    Air pump: the pump is driven by an H-bridge on gpio.43/gpio.44, which
+    are also UART0, where FluidNC prints its console. The console's
+    idle-high TX line can leave DC on the pump coil, which then overheats
+    without running (measured). Those two pins are deliberately NOT
+    listed as a usable resource here: stock FluidNC cannot drive the pump
+    and must not be configured to; unplug the pump when running stock
+    FluidNC. A modified firmware that drives the pump and talks to the
+    laser head is at https://github.com/nicosonna/FluidNC/tree/falcon2.
+
+    The laser head has its own processor and expects a serial handshake
+    on the head UART (see expansion_uarts); stock FluidNC does not
+    provide it. Without it the head's LED blinks yellow but the laser
+    still fires normally (measured).
+
+stepping:
+  engines: [rmt, timed]
+  notes: >
+    rmt is what the contributed config uses and was tested on the
+    machine. timed is listed because the motor pins are plain GPIOs, so
+    it should also work; not tested.
+
+fixed_peripherals:
+  spi:
+    miso_pin: gpio.4
+    mosi_pin: gpio.6
+    sck_pin: gpio.5
+    notes: "Measured: the micro-SD slot works with these SPI pins."
+  sdcard:
+    cs_pin: gpio.7
+    card_detect_pin: NO_PIN
+    notes: >
+      Measured: cs gpio.7 works. No card-detect pin was found (inferred:
+      the slot may simply not have one; stock firmware behavior was not
+      checked for it).
+
+motor_sockets:
+  shared_disable_pin: gpio.47
+  shared_reset_pin: NO_PIN
+  notes: >
+    Two TMC2208 drivers soldered on the board, one per axis, driven in
+    plain step/dir mode. The stock firmware does not use the drivers'
+    UART (no current/microstep tuning over serial), and whether the chips'
+    PDN_UART pins are wired to the ESP32-S3 at all is unknown, so the
+    FluidNC motor type is standard_stepper, not tmc_2208; current and
+    microstepping are whatever the board's resistors and MS pins fix them
+    to. gpio.47 is the shared disable line, active low (low = drivers
+    enabled; measured). Motor current, microstepping and the resulting
+    80 steps/mm are not board facts the wizard can know; the contributed
+    config has the values that match the stock firmware.
+  # Standard 4-wire bipolar stepper motor connection from each TMC2208.
+  output_profile: { drive_type: bipolar_stepper }
+  sockets:
+    - label: "X motor"
+      generic_name: "Motor1"
+      driver_class: onboard_fixed
+      fixed_motor_type: standard_stepper
+      pins: { step_pin: gpio.39, direction_pin: gpio.38 }
+      notes: >
+        Measured. On the machine as wired from the factory, X runs the
+        right way with direction_pin inverted (gpio.38:low) -- a fact of
+        the machine's motor wiring, not of the board, so the active level
+        is left for the config author to pick.
+    - label: "Y motor"
+      generic_name: "Motor2"
+      driver_class: onboard_fixed
+      fixed_motor_type: standard_stepper
+      pins: { step_pin: gpio.41, direction_pin: gpio.42 }
+      notes: "Measured. Y runs the right way with the direction pin not inverted on the factory wiring."
+
+generic_pins:
+  # Limit switches. The machine has two switches per axis (X left/right,
+  # Y front/back), and each pair arrives on ONE pin -- the two switches
+  # are in parallel (measured: both switches of an axis assert the same
+  # pin). Whether that parallel connection is on the board or in the
+  # machine's harness was not checked. The pin reads high while a switch
+  # is pressed and the contributed config uses no :pu/:pd on them, so the
+  # idle (low) level is provided by the board or the switch wiring, not
+  # the MCU's internal pulls; the conditioning circuit itself was not
+  # inspected, hence `raw`.
+  - label: "X limit switches"
+    generic_name: "In40"
+    mcu_pin: gpio.40
+    direction: input
+    input_profile: { conditioning: raw }
+    notes: >
+      Measured: high when either X switch (left or right) is pressed, low
+      otherwise, with no :pu/:pd. Used as limit_all_pin in the
+      contributed config, since FluidNC cannot tell the two switches
+      apart. Conditioning circuit not inspected (raw is an inference).
+  - label: "Y limit switches"
+    generic_name: "In48"
+    mcu_pin: gpio.48
+    direction: input
+    input_profile: { conditioning: raw }
+    notes: >
+      Measured: high when either Y switch (front or back) is pressed, low
+      otherwise, with no :pu/:pd. Used as limit_all_pin in the
+      contributed config. Conditioning circuit not inspected (raw is an
+      inference).
+
+  # Keypad: seven buttons on the machine's front panel, each one a plain
+  # switch to ground on its own GPIO with no pull resistor of its own,
+  # so the MCU's internal pull-up must be enabled (measured: each works
+  # as <pin>:low:pu and floats without :pu). NOTE for the wizard's
+  # :low/:high hint: the wizard assumes a `raw` input reads high while
+  # conducting; these read LOW while pressed, so for a button wired as
+  # it is from the factory the right choice is :low.
+  - label: "HOME button"
+    generic_name: "In10"
+    mcu_pin: gpio.10
+    direction: input
+    input_profile: { conditioning: raw, internal_pullup_required: true }
+    notes: "Measured: pulls gpio.10 low while pressed; needs :pu. Contributed config: control.homing_button_pin."
+  - label: "PLAY/PAUSE button"
+    generic_name: "In14"
+    mcu_pin: gpio.14
+    direction: input
+    input_profile: { conditioning: raw, internal_pullup_required: true }
+    notes: "Measured: pulls gpio.14 low while pressed; needs :pu. Contributed config: control.cycle_start_pin."
+  - label: "FRAME button"
+    generic_name: "In13"
+    mcu_pin: gpio.13
+    direction: input
+    input_profile: { conditioning: raw, internal_pullup_required: true }
+    notes: "Measured: pulls gpio.13 low while pressed; needs :pu. Contributed config: control.feed_hold_pin."
+  - label: "UP button"
+    generic_name: "In11"
+    mcu_pin: gpio.11
+    direction: input
+    input_profile: { conditioning: raw, internal_pullup_required: true }
+    notes: "Measured: pulls gpio.11 low while pressed; needs :pu. Contributed config: control.macro0_pin (jog Y+)."
+  - label: "DOWN button"
+    generic_name: "In9"
+    mcu_pin: gpio.9
+    direction: input
+    input_profile: { conditioning: raw, internal_pullup_required: true }
+    notes: "Measured: pulls gpio.9 low while pressed; needs :pu. Contributed config: control.macro1_pin (jog Y-)."
+  - label: "LEFT button"
+    generic_name: "In3"
+    mcu_pin: gpio.3
+    direction: input
+    input_profile: { conditioning: raw, internal_pullup_required: true }
+    notes: >
+      Measured: pulls gpio.3 low while pressed; needs :pu. Contributed
+      config: control.macro2_pin (jog X-). gpio.3 is an ESP32-S3
+      strapping pin (JTAG source select, see chips/esp32s3.chip.yaml);
+      a button held at power-on could affect boot. Not observed to be a
+      problem on the machine.
+  - label: "RIGHT button"
+    generic_name: "In12"
+    mcu_pin: gpio.12
+    direction: input
+    input_profile: { conditioning: raw, internal_pullup_required: true }
+    notes: "Measured: pulls gpio.12 low while pressed; needs :pu. Contributed config: control.macro3_pin (jog X+)."
+
+  # Laser head. Three signals go down the head cable (plus the UART
+  # below). The output stages were not inspected, so drive_type is an
+  # inference: totem_pole means only "a logic-level output that works
+  # when driven directly from the GPIO", nothing about buffering or
+  # voltage.
+  - label: "Laser PWM"
+    generic_name: "Laser PWM"
+    mcu_pin: gpio.46
+    direction: output
+    output_profile: { drive_type: totem_pole }
+    notes: >
+      Measured: the laser head's power follows a PWM on gpio.46 (the
+      contributed config drives it at 1 kHz as Laser.output_pin, active
+      high). gpio.46 is an ESP32-S3 strapping pin (ROM message printing)
+      -- harmless here, it idles low. Output stage not inspected
+      (drive_type inferred). generic_name equals label because the 5V/
+      logic level of this line was not measured.
+  - label: "Laser head power"
+    generic_name: "Laser Enable"
+    mcu_pin: gpio.45
+    direction: output
+    output_profile: { drive_type: totem_pole }
+    notes: >
+      Measured: high on gpio.45 powers the laser head (its fan starts);
+      Laser.enable_pin in the contributed config. gpio.45 is an ESP32-S3
+      strapping pin (VDD_SPI voltage select); it idles low, so no boot
+      interference was seen. Output stage not inspected (drive_type
+      inferred).
+
+  # Onboard buzzer.
+  - label: "Buzzer"
+    generic_name: "Buzzer"
+    mcu_pin: gpio.21
+    direction: output
+    output_profile: { drive_type: totem_pole }
+    notes: >
+      Measured: a high level on gpio.21 sounds the onboard buzzer (the
+      contributed config exposes it as user_outputs.digital0_pin, M62 P0
+      / M63 P0). Whether the GPIO drives the buzzer directly or through
+      a transistor was not checked (drive_type inferred).
+
+expansion_uarts:
+  - label: "Laser head UART"
+    generic_name: "Laser head UART"
+    connector_type: "laser head cable"
+    txd_pin: gpio.17
+    rxd_pin: gpio.18
+    baud: 9600
+    mode: "8N1"
+    notes: >
+      Serial link to the laser head's own processor, which expects a
+      handshake from the mainboard (stock firmware: 9600 8N1, TX gpio.17
+      from the ESP32-S3, RX gpio.18). Stock FluidNC has no driver for
+      that protocol, so this entry is documentation: leave it unused in
+      the wizard. It is NOT a FluidNC pendant/expander port -- the far
+      end is the laser head, and the baud is fixed by the head firmware
+      -- so binding it as a uart_channel is not meaningful on an
+      unmodified machine. The contributed config declares it as a bare
+      uart1: block (9600 8N1) for the modified firmware linked in
+      meta.notes.
