@@ -1,0 +1,4 @@
+module_id: ethernet_w5500
+image: images/ethernet_w5500_module.jpg
+hotspots:
+  []

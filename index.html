@@ -5073,7 +5073,9 @@ function generateDraft() {
     const annotateLabel = ex.commentLabel || ex.label;
     annotate(cfg, `uart${n}`, annotateLabel);
     cfg[`uart${n}`] = uartBlock;
-    annotate(cfg, `uart_channel${n}`, annotateLabel);
+    // Say what is on the channel: plain I/O expansion (pendant/display) or a
+    // specific expander -- the uartN: block above keeps the bare connector name.
+    annotate(cfg, `uart_channel${n}`, `${annotateLabel} (${expanderId ? `Expander: ${EXPANDER_CATALOG[expanderId].expander.name}` : "I/O Expansion"})`);
     cfg[`uart_channel${n}`] = { report_interval_ms: TBD, uart_num: n };
   });
 
@@ -5539,6 +5541,13 @@ function buildPinLabelHints(rawText) {
  * { matched, ambiguous, unrecognized, notes } report for display. Resets
  * all import-relevant state first, same as loadBoard() does for a fresh
  * board load. */
+// True if any string value anywhere in `node` satisfies `test`.
+function jsonHasString(node, test) {
+  if (typeof node === "string") return test(node.trim());
+  if (node && typeof node === "object") return Object.values(node).some(v => jsonHasString(v, test));
+  return false;
+}
+
 function importConfig(doc, rawText) {
   bindings = {};
   paramValues = {};
@@ -5750,7 +5759,16 @@ function importConfig(doc, rawText) {
     if (!m) return;
     const ub = doc[`uart${m[1]}`];
     if (!ub || ub.txd_pin == null) return;
-    const exId = Object.keys(EXPANDER_CATALOG).find(id => EXPANDER_CATALOG[id].uart.baud === Number(ub.baud));
+    // Baud alone can't tell an expander from a pendant on the same link
+    // (Greyhound's RJ12 pendant also runs 1000000), so also require evidence:
+    // some pin in the file names this channel's virtual pins, or the uart
+    // block carries the expander's own passthrough_baud.
+    const usesVirtualPins = jsonHasString(doc, v => new RegExp(`^uart_channel${m[1]}\\.\\d+`).test(v));
+    const exId = Object.keys(EXPANDER_CATALOG).find(id => {
+      const u = EXPANDER_CATALOG[id].uart;
+      return u.baud === Number(ub.baud) &&
+        (usesVirtualPins || (u.passthrough_baud && u.passthrough_baud === Number(ub.passthrough_baud)));
+    });
     if (!exId) return;
     let connKey = null;
     const r = resolvePin(ub.txd_pin, key, ["expuart", "modconn"], true);
