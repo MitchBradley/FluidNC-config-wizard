@@ -184,6 +184,14 @@ A new board is always added as its own complete, independent file --
 this project deliberately does not share pin facts between board
 "family" members/revisions, even closely related ones.
 
+## Privacy
+
+The hosted wizard uses [GoatCounter](https://www.goatcounter.com) for
+anonymous usage counts: page views, which catalogued board was loaded, and
+whether a config was copied or downloaded. It sets no cookies and collects
+no personal data. Your config contents, machine names and any custom board
+file are never sent.
+
 ## Status
 
 Actively evolving; board coverage grows as boards are contributed. See

@@ -85,6 +85,8 @@
      "above" than "above and off to the right". */
   .header-picker { flex: 1; text-align: center; }
   .header-right { margin-left: auto; display: flex; align-items: baseline; gap: 16px; }
+  .stats-credit { color: var(--muted); font-size: 11px; text-decoration: none; white-space: nowrap; }
+  .stats-credit:hover { color: var(--accent); }
   select, button {
     color: var(--text); border: 1px solid var(--border);
     border-radius: 5px; padding: 6px 10px; font-size: 13px; font-family: inherit;
@@ -509,6 +511,8 @@
     background: rgba(230,60,200,.16); box-shadow: inset 0 0 0 2px #e63cc8; border-radius: 6px;
   }
 </style>
+<script data-goatcounter="https://mitchbradley.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </head>
 <body>
 
@@ -533,6 +537,8 @@
     <button id="gotoHotspotEditorBtn" onclick="gotoHotspotEditor()">Open Hotspot Editor</button>
     <span id="hotspotEditorOpenNote" class="header-note" style="display:none">Hotspot Editor is open in another tab — switch to it manually</span>
     <input type="file" id="customBoardFileInput" accept=".yaml,.yml,text/yaml" style="display:none">
+    <a class="stats-credit" href="https://www.goatcounter.com" target="_blank" rel="noopener"
+       title="Anonymous page and board-selection counts; no cookies, no personal data, no config contents">Stats: GoatCounter</a>
   </div>
 </header>
 
@@ -2907,6 +2913,17 @@ function resourceKeyExpIo(connKey, io) { return `expio:${connKey}:${io}`; }
 /* ---------------------------------------------------------------------
  * Rendering
  * ------------------------------------------------------------------- */
+/* Anonymous usage counting (GoatCounter: no cookies, no personal data).
+ * Only the id of a catalogued board is ever sent -- never config contents,
+ * machine names, or anything from a custom board file. */
+function trackEvent(path, title) {
+  try {
+    if (window.goatcounter && window.goatcounter.count) {
+      window.goatcounter.count({ path, title: title || path, event: true });
+    }
+  } catch (e) { /* analytics must never break the wizard */ }
+}
+
 async function loadBoard(id) {
   let boardText;
   try {
@@ -2937,6 +2954,7 @@ async function loadBoard(id) {
   // applyBoardDoc() is also used for locally-picked custom board files
   // (see loadCustomBoardFile() below), which have no such counterpart.
   await applyBoardDoc(doc, id);
+  trackEvent(`board/${id}`, `Board: ${id}`);
 }
 
 /* Shared tail of loadBoard()/loadCustomBoardFile(): takes an already-
@@ -6510,6 +6528,7 @@ function formatFailedImports(entries) {
 function copyDraft() {
   const btn = event && event.target ? event.target : document.querySelector('button[onclick="copyDraft()"]');
   const flash = (ok) => {
+    if (ok) trackEvent("config/copy", "Config copied");
     if (!btn) return;
     const original = btn.dataset.origLabel || btn.textContent;
     btn.dataset.origLabel = original;
@@ -6551,6 +6570,7 @@ function downloadDraft() {
   a.href = URL.createObjectURL(blob);
   a.download = `${board.board.id}.config.yaml`;
   a.click();
+  trackEvent("config/download", "Config downloaded");
 }
 
 /* ---------------------------------------------------------------------
