@@ -1,0 +1,31 @@
+# FluidNC Config Wizard
+
+> Browser tool that builds a FluidNC `config.yaml` from a board's real pinout. Its data files (boards, chips, modules, expanders) are the machine-readable source of truth for which pins a supported board has, what each pin can do, and how add-on modules attach. Read these files instead of guessing pins from memory.
+
+Base URL: https://mitchbradley.github.io/FluidNC-config-wizard/
+Source: https://github.com/MitchBradley/FluidNC-config-wizard
+
+This site is about hardware: pins, connectors, modules. For config-file grammar and the per-field reference, use the FluidNC repository's `FluidNC/docs/config_items.yaml`, `tools/fluidnc-config-spec.md` and `tools/validate_fluidnc_config.py` (see the wiki page below). Use both.
+
+## Read before writing any pin assignment
+
+- [AI assistants and the config wizard data](http://wiki.fluidnc.com/en/config/ai_config_wizard_data): the workflow and the rules in prose. Read this first.
+- [Board index](https://mitchbradley.github.io/FluidNC-config-wizard/boards/index.json): the list of supported board ids.
+- Board file, one per board: `boards/<id>.board.yaml`, e.g. [boards/greyhound.board.yaml](https://mitchbradley.github.io/FluidNC-config-wizard/boards/greyhound.board.yaml). It lists the connectors (motor sockets, generic pins, RS485 channels, expansion UARTs, I2C, module sockets), their pins, labels, and `notes:` saying how confident each fact is.
+- Chip files: `chips/<chip_id>.chip.yaml`, e.g. [chips/esp32.chip.yaml](https://mitchbradley.github.io/FluidNC-config-wizard/chips/esp32.chip.yaml). Per-GPIO capabilities: input, output, pull-up, pull-down, reserved. The board file names its chip in `board.mcu_chip`.
+- [Module index](https://mitchbradley.github.io/FluidNC-config-wizard/modules/index.json): add-on modules that plug into a board's module socket. Files are `modules/<id>.module.yaml`.
+- [Expander index](https://mitchbradley.github.io/FluidNC-config-wizard/expanders/index.json): UART I/O expanders. Files are `expanders/<id>.expander.yaml`.
+
+## Schemas and guides
+
+- [schema/board.schema.json](https://mitchbradley.github.io/FluidNC-config-wizard/schema/board.schema.json), [schema/module.schema.json](https://mitchbradley.github.io/FluidNC-config-wizard/schema/module.schema.json), [schema/expander.schema.json](https://mitchbradley.github.io/FluidNC-config-wizard/schema/expander.schema.json): JSON Schemas for the data files.
+- [BOARD_FILE_GUIDE.md](https://github.com/MitchBradley/FluidNC-config-wizard/blob/main/BOARD_FILE_GUIDE.md): how to write a board file for a board that is not listed. It includes advice for AI assistants.
+
+## Rules for AI assistants
+
+- If the user's board has a board file, take every pin from it. Never invent or "remember" a pin for a listed board.
+- A pin may be used for one function only. Where the board file shows two resources sharing a pin (for example a pin that is both a plain output and a MOSFET driver), only one of them can be used.
+- Check the chip file before assigning a function: input-only GPIOs cannot be outputs, and pull-up/pull-down options only exist where the chip file says so. Do not use reserved pins.
+- If the board is not listed, say so. Ask for the board's wiki page or schematic, or help write a board file with `BOARD_FILE_GUIDE.md`. Do not guess pins.
+- Treat any `notes:` that say a fact was inferred or unverified as a reason to ask the user to check the wiring.
+- When you have produced a config, tell the user to paste it into the wizard's "load config" button as a cross-check, and to confirm the wiring themselves. A generated config describes the pins; it cannot see how the machine is actually wired.
