@@ -6913,6 +6913,9 @@ function sendToCompanion() {
     filename: `${board.board.id}.config.yaml`,
     contents: lastPlainYaml,
   }, activeCompanion.origin);
+  // Counts that the send was made, not that the companion received it
+  // (postMessage gives no acknowledgement).
+  trackEvent(`config/send/${activeCompanion.key}`, `Config sent to ${activeCompanion.label}`);
   try { w.focus(); } catch (e) { /* some browsers/popup-blockers restrict focus(); non-fatal either way */ }
   const original = btn.dataset.origLabel || btn.textContent;
   btn.dataset.origLabel = original;
