@@ -85,6 +85,15 @@
      "above" than "above and off to the right". */
   .header-picker { flex: 1; text-align: center; }
   .header-right { margin-left: auto; display: flex; align-items: baseline; gap: 16px; }
+  /* Warning dialog shown before saving/sending a config that still has TBDs */
+  #tbdDialog { background: var(--panel); color: var(--text); border: 1px solid var(--warn);
+               border-radius: 8px; padding: 18px 22px; max-width: 520px; }
+  #tbdDialog::backdrop { background: rgba(0,0,0,.55); }
+  #tbdDialog h3 { margin: 0 0 8px; font-size: 15px; color: var(--warn); }
+  #tbdDialog p { margin: 0 0 10px; font-size: 13px; line-height: 1.45; }
+  #tbdDialog pre { margin: 0 0 12px; padding: 8px 10px; font-size: 12px; max-height: 160px;
+                   overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; }
+  #tbdDialog .dialog-buttons { display: flex; gap: 10px; justify-content: flex-end; }
   .stats-credit { color: var(--muted); font-size: 11px; text-decoration: none; white-space: nowrap; }
   .stats-credit:hover { color: var(--accent); }
   select, button {
@@ -578,6 +587,17 @@
     <pre id="draft"></pre>
   </div>
 </main>
+
+<dialog id="tbdDialog">
+  <h3>This config contains TBDs</h3>
+  <p id="tbdDialogText"></p>
+  <pre id="tbdDialogList"></pre>
+  <p>FluidNC will not accept this file until every TBD is replaced with a real value.</p>
+  <div class="dialog-buttons">
+    <button type="button" id="tbdDialogBack" class="primary">Go back and fix</button>
+    <button type="button" id="tbdDialogSave">Save anyway</button>
+  </div>
+</dialog>
 
 <script>
 /* ---------------------------------------------------------------------
@@ -6525,8 +6545,10 @@ function formatFailedImports(entries) {
     return `<div class="failed-import-entry"><div class="failed-import-label">${label}</div><pre>${escaped}</pre></div>`;
   }).join("");
 }
-function copyDraft() {
+async function copyDraft() {
+  // Read the clicked button before awaiting: the global `event` is gone afterwards.
   const btn = event && event.target ? event.target : document.querySelector('button[onclick="copyDraft()"]');
+  if (!(await confirmSaveWithTbds())) return;
   const flash = (ok) => {
     if (ok) trackEvent("config/copy", "Config copied");
     if (!btn) return;
@@ -6564,7 +6586,40 @@ function copyDraft() {
   }
 }
 
-function downloadDraft() {
+/* Lines of the current draft that still contain a TBD placeholder
+ * (comments ignored). */
+function tbdLinesInDraft() {
+  return lastPlainYaml.split("\n")
+    .map(l => l.replace(/#.*$/, "").trimEnd())
+    .filter(l => /\bTBD\b/.test(l))
+    .map(l => l.trim());
+}
+
+/* Resolves true if the draft has no TBDs, or the user chooses to save anyway
+ * after being warned; false if they go back to fix it. */
+function confirmSaveWithTbds() {
+  const lines = tbdLinesInDraft();
+  if (!lines.length) return Promise.resolve(true);
+  const dlg = document.getElementById("tbdDialog");
+  if (!dlg || typeof dlg.showModal !== "function") {
+    return Promise.resolve(window.confirm(`This config still contains ${lines.length} TBD value(s) and will not work until they are replaced. Save anyway?`));
+  }
+  document.getElementById("tbdDialogText").textContent =
+    `${lines.length} value${lines.length === 1 ? " is" : "s are"} still TBD:`;
+  const shown = lines.slice(0, 8);
+  document.getElementById("tbdDialogList").textContent =
+    shown.join("\n") + (lines.length > shown.length ? `\n...and ${lines.length - shown.length} more` : "");
+  return new Promise(resolve => {
+    const done = ok => { dlg.close(); resolve(ok); };
+    document.getElementById("tbdDialogBack").onclick = () => done(false);
+    document.getElementById("tbdDialogSave").onclick = () => done(true);
+    dlg.oncancel = e => { e.preventDefault(); done(false); };  // Esc = go back
+    dlg.showModal();
+  });
+}
+
+async function downloadDraft() {
+  if (!(await confirmSaveWithTbds())) return;
   const blob = new Blob([lastPlainYaml], { type: "text/yaml" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -6885,11 +6940,12 @@ function notifyCompanionReady() {
   } catch (e) { /* non-fatal -- opener just won't get a chance to hand us a config */ }
 }
 
-function sendToCompanion() {
+async function sendToCompanion() {
   if (!activeCompanion || !board) {
     console.warn("[fluidnc-wizard] sendToCompanion: nothing to send", { activeCompanion, hasBoard: !!board });
     return; // no board picked/loaded yet -- nothing to send
   }
+  if (!(await confirmSaveWithTbds())) return;
   const w = openerWindow;
   const btn = document.getElementById("sendToCompanionBtn");
   if (!w || w.closed) {
